@@ -10,6 +10,7 @@ import importlib
 import json
 import os
 import platform
+import stat
 import subprocess
 import sys
 
@@ -270,6 +271,14 @@ def main():
         # skip already linked files
         if is_already_linked(source_path, target_path):
             continue
+
+        # unlink wrongly linked files
+        try:
+            if stat.S_ISLNK( os.lstat(target_path).st_mode ):
+                os.unlink(target_path)
+                print(f"{common.terminal_symbol_to} unlinking {target_path}")
+        except e:
+            pass
 
         # backup already present files
         if pathlib.exists(target_path):
