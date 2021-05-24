@@ -69,6 +69,7 @@ sources = {
     "./.local/bin/num-set-desc": { "linux": "" },
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/rcb": "",
+    "./.local/bin/reconnman": { "linux": "" },
     "./.local/bin/record-screen": "",
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/show-no-connman-con": { "linux": "" },
