@@ -277,7 +277,7 @@ def main():
             if stat.S_ISLNK( os.lstat(target_path).st_mode ):
                 os.unlink(target_path)
                 print(f"{common.terminal_symbol_to} unlinking {target_path}")
-        except e:
+        except:
             pass
 
         # backup already present files
