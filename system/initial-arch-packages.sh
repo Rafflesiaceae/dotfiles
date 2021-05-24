@@ -195,6 +195,7 @@ dev=(
     tidy
     tig
     tup
+    yarn
 )
 network=(
     connman
