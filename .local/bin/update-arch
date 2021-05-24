@@ -33,7 +33,7 @@ yay -S --answerdiff "None" --answerclean "None" \
     deadbeef-git
 
 echo {{{1 update vim plugins
-vim +'PlugUpdate --sync' +qa
+nvim +'PlugUpdate --sync' +qa
 
 echo {{{1 update amr
 amrloc="$HOME/.amr"
