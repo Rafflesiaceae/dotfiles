@@ -18,6 +18,7 @@ sources = {
     "./.config/nvim/autoload/airline/themes/base16_kokonai.vim": { "linux": "" },
     "./.config/nvim/colors/base16-kokonai.vim": { "linux": "" },
     "./.config/nvim/init.vim": "",
+    "./.config/parcellite/parcelliterc": { "linux": "" },
     "./.config/ranger/rc.conf": { "linux": "" },
     "./.config/ranger/rifle.conf": { "linux": "" },
     "./.config/systemd/user/ssh-agent.service": { "linux": "" },
