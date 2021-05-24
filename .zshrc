@@ -370,4 +370,4 @@ function pyselect2() {
 # for local zshrc settings outside of dotfiles
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
-# PROMPT='$(show_last_exit_code) %{$fg[yellow]%}%~ %{$reset_color%}%% '
+true # or else one-liner conditionals bleed their status into last_exit_code
