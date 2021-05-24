@@ -37,7 +37,7 @@ vim +'PlugUpdate --sync' +qa
 
 echo {{{1 update amr
 amrloc="$HOME/.amr"
-[[ ! -d "$amrloc" ]] && git clone "file:///home/raf/workspace/pkgbuilds" "$amrloc"
+[[ ! -d "$amrloc" ]] && git clone "https://github.com/Rafflesiaceae/pkgbuilds.git" "$amrloc"
 pushd "$amrloc"
 git pull
 
