@@ -1,0 +1,34 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+[[ $# -ne 1 ]] && die "pass me an argument"
+
+inp="$1"
+inp=$(realpath "$inp")
+
+inpfn=$(basename -- "$inp")
+
+tf="$HOME/.local/bin/$inpfn"
+
+if [[ -L "$tf" ]]; then
+    tflink=$(readlink "$tf") || die "couldnt read link for $tf"
+    if [[ "$tflink" != "$inp" ]]; then
+        echo "symlink exists, wrong destination ($tflink), relinking"
+        rm "$tf"
+        ln -s "$inp" "$tf"
+    else
+        echo "already correctly linked"
+    fi
+elif [[ -f "$tf" ]]; then
+    echo "$tf already exists, please move it"
+    exit 1
+else
+    echo "linking to $tf"
+    ln -s "$inp" "$tf"
+fi
+exit 0

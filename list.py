@@ -59,6 +59,7 @@ sources = {
     "./.local/bin/i3-make-sticky": { "linux": "" },
     "./.local/bin/i3-swap-workspaces": { "linux": "" },
     "./.local/bin/i3-type-mark": { "linux": "" },
+    "./.local/bin/install-local-bin": { "linux": "" },
     "./.local/bin/lastdl": "",
     "./.local/bin/mark-code": "",
     "./.local/bin/music-to-youtube": "",
