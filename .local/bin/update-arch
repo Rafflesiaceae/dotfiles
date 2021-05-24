@@ -29,8 +29,8 @@ rm -rf "$TEMPDIRLOC"
 
 echo {{{1 update some AUR packages
 tput bel # ring-bell
-yay -S --answerdiff "None" --answerclean "NotInstalled" \
-    rxvt-unicode-patched
+yay -S --answerdiff "None" --answerclean "None" \
+    deadbeef-git
 
 echo {{{1 update vim plugins
 vim +'PlugUpdate --sync' +qa
