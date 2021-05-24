@@ -996,7 +996,7 @@ Plug 'majutsushi/tagbar'
 
 if has('python3')
     Plug 'SirVer/ultisnips'
-    Plug 'numgit:/numgit/vim-snippets'
+    Plug 'Rafflesiaceae/vim-snippets'
 endif
 
 " Plug 'rhysd/vim-grammarous'
@@ -1052,8 +1052,8 @@ Plug 'heavenshell/vim-jsdoc'
 Plug 'maxmellon/vim-jsx-pretty'
 " Plug 'edwinb/idris-vim'
 " Plug 'mitsuhiko/vim-python-combined' ,{ 'for': 'python'  }
-Plug 'numgit:/numgit/vim-py-indent',         { 'for': 'python,starlark' }
-Plug 'numgit:/numgit/vim-xml-indent'
+Plug 'Rafflesiaceae/vim-py-indent',         { 'for': 'python,starlark' }
+Plug 'Rafflesiaceae/vim-xml-indent'
 " Plug 'python-rope/ropevim'
 " Plug 'vim-scripts/DoxyGen-Syntax'
 
