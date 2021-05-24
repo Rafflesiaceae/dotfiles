@@ -1,0 +1,13 @@
+#!/bin/bash
+TMPFILE=$(mktemp)
+function clean_tmpfile {
+  rm -rf "$TMPFILE"
+}
+trap clean_tmpfile EXIT
+
+while true; do
+    find . -type d > "$TMPFILE"
+    find . -name "*.go" >> "$TMPFILE"
+    cat "$TMPFILE" \
+        | entr -dsc 'echo "$(date +"%T")" && echo "\$ go list" && go list && echo "\$ go build" && go build'
+done

@@ -1,0 +1,3 @@
+#!/bin/bash
+set -eo pipefail
+echo "break $1" >> "$HOME/breakpoints"

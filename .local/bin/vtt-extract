@@ -1,0 +1,26 @@
+#!/bin/bash
+# extracts plain text primairly out of youtube dl'ed vtts
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+remove_xmlish_tags() { sed -e 's/<[^>]*>//g'; }
+remove_info_line() { sed -e '/^[0-9:\.]\+\ -->\ .*/d' ; }
+remove_empty_lines() { sed '/^ *$/d' $files; }
+remove_duplicate_consecutive_lines() { awk '!(f == $0){print} {f=$0}'; }
+
+[[ "$#" != 1 ]] && die "pass me a single argument"
+
+read_from_stdin=
+[[ "$1" == "-" ]] && read_from_stdin=1
+
+(
+    if [[ $read_from_stdin ]]; then
+        cat -
+    else
+        cat "$1"
+    fi
+) | remove_xmlish_tags | remove_info_line | remove_empty_lines | tail -n +4 | remove_duplicate_consecutive_lines

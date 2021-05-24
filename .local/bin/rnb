@@ -1,0 +1,22 @@
+#!/bin/env python3
+# @XXX mostly inspired from https://github.com/ranger/ranger/blob/1562a4487d29bd54b710247f025b16badca731d4/tests/ranger/container/test_bookmarks.py
+import sys
+from ranger.container.bookmarks import Bookmarks
+from os import path
+
+def usage():
+    print(f"{path.basename(sys.argv[0])}: <bookmark>\nprints bookmarks stored by ranger", file=sys.stderr)
+    sys.exit(255)
+
+class NotValidatedBookmarks(Bookmarks):
+    def _validate(self, value):
+        return True
+
+bmstore = NotValidatedBookmarks(path.expanduser("~/.config/ranger/bookmarks"))
+
+bmstore.load()
+
+if (len(sys.argv) == 1):
+    usage()
+
+print(bmstore[sys.argv[1]])

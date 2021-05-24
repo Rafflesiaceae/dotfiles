@@ -1,0 +1,119 @@
+{
+    "breadcrumbs.enabled": true,
+    "cmake.configureOnOpen": true,
+    "debug.toolBarLocation": "docked",
+    "editor.cursorBlinking": "solid",
+    "editor.minimap.enabled": false,
+    "explorer.confirmDelete": true,
+    "files.associations": {
+        "*.iss": "pascal"
+    },
+    "gitlens.codeLens.authors.enabled": false,
+    "gitlens.codeLens.recentChange.enabled": false,
+    "search.location": "panel",
+    "terminal.integrated.scrollback": 1000000,
+    "tslint.alwaysShowRuleFailuresAsWarnings": true,
+    "vim.hlsearch": true,
+    "vim.leader": ",",
+    "window.title": "${activeEditorLong}${separator}${rootName}",
+    "window.titleBarStyle": "custom",
+    "window.zoomLevel": 0,
+    "workbench.activityBar.visible": false,
+    "workbench.editor.enablePreview": false,
+
+    {% if isLinux %}
+    "keyboard.dispatch": "keyCode",
+    "terminal.integrated.rendererType": "dom",
+    {% endif %}
+    {% if vscode and vscode["cmake-tools-helper.cmake_download_path"] %}
+    "cmake-tools-helper.cmake_download_path": "»vscode["cmake-tools-helper.cmake_download_path"]«",
+    {% endif %}
+    {% if vscode and vscode["terminal.integrated.shell.windows"] %}
+    "terminal.integrated.shell.windows": "»vscode["terminal.integrated.shell.windows"]«",
+    {% endif %}
+
+    // intellisense
+    "editor.quickSuggestionsDelay": 0,
+    "editor.acceptSuggestionOnEnter": "off",
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.suggestSelection": "recentlyUsedByPrefix",
+    // "editor.snippetSuggestions": "none",
+    "editor.wordBasedSuggestions": true,
+    "editor.quickSuggestions": {
+        "other": true,
+        "comments": true,
+        "strings": true,
+    },
+
+    "vim.normalModeKeyBindingsNonRecursive": [
+    {
+        "before": ["#"],
+        "after": ["*"]
+    },
+    {
+        "before": ["*"],
+        "after": ["#"]
+    },
+    ],
+    "vim.normalModeKeyBindings": [
+    {
+        "before": ["<C-l>"],
+        "commands": ["workbench.action.navigateEditorGroups"]
+    },
+    {
+        "before": ["<leader>", "a"],
+        "commands": ["workbench.view.extension.outline"]
+    },
+    {
+        "before": ["<leader>", "r"],
+        "commands": ["workbench.action.files.save", "workbench.action.tasks.runTask"]
+    },
+    {
+        "before": ["<leader>", "w"],
+        "commands": ["workbench.action.files.save"]
+    },
+    {
+        "before": ["<leader>", "l"],
+        "commands": ["workbench.action.files.revert"]
+    },
+    {
+        "before": ["enter"],
+        "commands": [ "editor.action.goToDeclaration"]
+    },
+    {
+        "before": ["backspace"],
+        "commands": ["editor.action.referenceSearch.trigger"],
+    },
+    { // <C-q> => :q!
+        "before": ["<C-q>"],
+        "commands": ["workbench.action.closeActiveEditor"]
+    },
+    {
+        "before": ["<C-h>"],
+        "commands": ["editor.action.showHover"]
+    },
+    { // space => :
+        "before": ["<space>"],
+        "after": [":"]
+    },
+    { // 0 => ^
+        "before": ["0"],
+        "after": ["^"]
+    }
+    ],
+
+    "vim.visualModeKeyBindings": [
+    { // <C-q> => :q!
+        "before": ["<C-q>"],
+        "commands": ["workbench.action.closeActiveEditor"]
+    },
+    { // space => :
+        "before": ["<space>"],
+        "after": [":"]
+    },
+    { // 0 => ^
+        "before": ["0"],
+        "after": ["^"]
+    },
+    ],
+}

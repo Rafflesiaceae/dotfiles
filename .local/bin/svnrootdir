@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+abspath() {
+  ## $1 : relative filename
+  echo "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+}
+
+function is_svn_dir() {
+    ## $1 : path to a directory to test
+    ## returns wether this directory is inside a svn repo or not
+    pushd "$1" > /dev/null || exit 255
+
+    if svn info > /dev/null 2>&1; then
+        popd > /dev/null || exit 255
+        return 0
+    fi
+    popd > /dev/null || exit 255
+    return 255
+}
+
+# TODO proper cli with --help
+if [[ -n $1 ]]; then
+    if [[ -d $1 ]]; then # is dir
+        CURDIR=$(abspath "$1")
+    elif [[ -f $1 ]]; then # is file
+        CURDIR=$(abspath "$(dirname "$1")")
+    else # is neither (invalid path or so)
+        echo "invalid path \"$1\"" >&2
+        exit 255
+    fi
+else 
+    CURDIR=$PWD
+fi
+
+# find upmost directory that's still a svn-dir
+LAST_FOUND_SVN_DIR=""
+while true; do
+
+    if is_svn_dir "$CURDIR"; then
+        LAST_FOUND_SVN_DIR=$CURDIR
+    else 
+        break
+    fi
+
+    if [[ "$CURDIR" == "/" ]]; then
+        exit 255;
+    fi
+
+    CURDIR=$(dirname "$CURDIR")
+done
+
+# output if found
+if [[ -n $LAST_FOUND_SVN_DIR ]]; then
+    echo "$LAST_FOUND_SVN_DIR"
+    exit 0
+fi
+exit 255

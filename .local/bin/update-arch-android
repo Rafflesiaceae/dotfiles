@@ -1,0 +1,22 @@
+#!/bin/bash
+set -ex
+set -o pipefail
+
+aurman -S --noconfirm --needed \
+    android-studio \
+    android-sdk \
+    android-tools \
+    android-udev
+
+sudo chgrp wheel -R \
+    /opt/android-sdk \
+    /opt/android-studio
+
+sudo chmod 0775 -R \
+    /opt/android-sdk \
+    /opt/android-studio
+
+set +x
+if [[ -z "${JAVA_HOME}" ]]; then
+    echo "[WARNING] \$JAVA_HOME is _NOT_ set - some java applications expect this to be set to \`/usr/lib/jvm/default\`"
+fi

@@ -1,0 +1,3 @@
+#!/bin/bash
+FC_DEBUG=4 pango-view -q -t "$1" 2>&1 |  grep -o 'family: "[^"]\+' | uniq | cut -c 10-
+echo "  ^ the last line should be the bottommost font that provides the glyph"

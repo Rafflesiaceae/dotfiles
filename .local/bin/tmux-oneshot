@@ -1,0 +1,6 @@
+#!/usr/bin/bash
+# call with some command that gets run in a vertical-split pane
+tmux set-option remain-on-exit off
+tmux split-window "$@"
+tmux last-pane
+tmux select-layout even-vertical

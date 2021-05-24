@@ -1,0 +1,9 @@
+#!/bin/sh
+youtube-dl $* \
+    --output "$HOME/Music/%(title)s_%(id)s.%(ext)s" \
+    --format bestaudio \
+    --extract-audio \
+    --no-mtime
+
+    # --audio-format mp3 \
+    # --audio-quality 0 \

@@ -1,0 +1,43 @@
+#!/bin/sh
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: [--stackfile <path>] --push <line>|--pop
+    returns retcode 2 if stack empty"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+stackfile="$1"
+2>/dev/null shift || usage_and_die "first arg ought to be stackfile"
+
+push() {
+    line=$1
+    2>/dev/null shift || usage_and_die "pass me a line boi"
+
+    echo "$line" >> "$stackfile"
+}
+
+pushed_once=
+for arg in "$@"; do
+    pushed_once=1
+    push "$arg"
+done
+
+if [ ! $pushed_once ]; then
+    line=$(sed -i -e '${w /dev/stdout' -e 'd;}' "$stackfile")
+
+    if [ ! "$line" ]; then
+        exit 2
+    else
+        echo "$line"
+    fi
+    exit 0
+fi

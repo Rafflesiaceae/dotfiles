@@ -1,0 +1,84 @@
+#!/bin/sh
+
+die() {
+  2>&1 echo $1
+  exit 1
+}
+
+show_help() {
+  cat <<EOF
+usage:
+
+  -h/--help      show this message here
+  -ne/--no-enter don't send a <CR> at the end
+  -f/--focus     focus at the end
+  -k/--key       send a key, e.g.: `ctrl+u` instead of typing
+EOF
+  exit 255
+}
+
+end_with_cr=1
+focus=
+keys=
+
+arg_pos_1=
+while :; do
+  case $1 in
+    -h|-\?|--help)
+      show_help
+      exit
+      ;;
+    -ne|--no-enter)
+      end_with_cr=
+      ;;
+    -f|--focus)
+      focus=1
+      ;;
+    -k|--key)
+        if [ "$2" ]; then
+            key=$2
+            shift
+            keys=" $keys $key"
+        else
+            die  "-k|--key requires a single follow up argument"
+        fi
+        ;;
+    --)
+      shift
+      break
+      ;;
+    -?*)
+      printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+      ;;
+    *)
+      break
+      ;;
+  esac
+
+  shift
+done
+
+mark=$1
+2>/dev/null shift || die "can not shift first argument"
+
+window_id=$(i3-msg -t get_tree | jq -r ".. | select(.window?) | select(.marks // [] | contains([\"$mark\"])).window")
+if [ ! "$window_id" ]; then
+  die "can't find mark: $mark"
+fi
+
+if [ $focus ]; then
+  xdotool windowfocus --sync "$window_id"
+fi
+sleep 0.1
+
+for key in $keys ; do
+    xdotool key --clearmodifiers --window "$window_id" "$key"
+done
+
+if [ "$*" ]; then
+    xdotool type --clearmodifiers --window "$window_id" "$*"
+    if [ $end_with_cr ]; then
+      xdotool type --clearmodifiers --window "$window_id" "
+    "
+    fi
+fi

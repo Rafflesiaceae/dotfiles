@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# source /etc/X11/xinit/xinitrc.d
+if [ -d /etc/X11/xinit/xinitrc.d ]; then
+    for f in /etc/X11/xinit/xinitrc.d/*; do
+        [ -x "$f" ] && . "$f"
+    done
+    unset f
+fi
+
+# settings
+xrdb -load "$HOME/.Xresources"
+xsetroot -solid "#191A15"
+xsetroot -cursor_name left_ptr
+xmodmap "$HOME/.Xmodmap"
+xset r rate 200 50
+
+# autostart
+parcellite -d &
+cbatticon &
+redshift -l "48.20849:16.37208" &
+show-no-connman-con --font "/usr/share/fonts/microsoft/consola.ttf" &
+
+# hack restart gvfs
+{ sleep 5 && pkill "gvfs*";} &
+
+exec dbus-launch "$1"

@@ -1,0 +1,59 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+usage() {
+    echo "usage: cb [-i|--in] [-o|--out] [-s|--str <str>]"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+cli_out=
+cli_in=
+cli_str=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -o|--out)
+            cli_out=1
+            ;;
+        -i|--in)
+            cli_in=1
+            ;;
+        -s|--str)
+            cli_str=1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+clip_out() { xclip -sel clip -o; }
+clip_in() { cat - | xclip -sel clip -i; }
+
+if [[ $cli_out ]]; then
+    clip_out
+elif  [[ $cli_in ]]; then
+    clip_in
+elif  [[ $cli_str ]]; then
+    echo "$1" | clip_in
+else
+    if [ -t 0 ]; then
+        clip_out
+    else
+        clip_in
+    fi
+fi

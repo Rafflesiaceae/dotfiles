@@ -1,0 +1,44 @@
+#!/bin/sh
+# keyboard-layout should sit in: /usr/share/X11/xkb/symbols/desc
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: num-set-desc [-r|--revert]"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+revert=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -r|--revert)
+            revert=1
+            break
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+if [ $revert ]; then
+    setxkbmap -layout de \
+        -model pc105 -variant nodeadkeys && xmodmap ~/.Xmodmap && xset r rate 200 50
+else
+    setxkbmap -layout desc \
+        -model pc105 -variant nodeadkeys && xmodmap ~/.Xmodmap && xset r rate 200 50
+fi

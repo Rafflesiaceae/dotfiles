@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "open line in vim",
+            "type": "shell",
+            "command": "termpopup",
+            "args": [
+                "--no-float",
+                "--",
+                "vim",
+                "+${lineNumber}",
+                "\\\"${file}\\\"",
+            ],
+            "group": "none",
+            "presentation": {
+                "clear": false,
+                "echo": true,
+                "focus": false,
+                "panel": "shared",
+                "reveal": "never",
+                "showReuseMessage": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

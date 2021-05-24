@@ -1,0 +1,11 @@
+#!/bin/bash
+dbgf="/tmp/debug-caller"
+
+if [[ "$#" == 1 ]] && [[ "$1" == "-e" ]]; then
+    "$EDITOR" "$dbgf"
+    exit 0
+fi
+
+stdinc=$(timeout 2 cat) 
+notify-send "debug-caller" "# ARGS: $*\n# STDIN: \n$(echo "$stdinc" | head -n 10)\n# ENV: \n$(env | head -n 10)\n..."
+printf "===========================================================\n$(date)\n# ARGS: %s\n# STDIN\n%s\n# ENV\n%s\n" "$*" "$stdinc" "$(env)" >> "$dbgf"

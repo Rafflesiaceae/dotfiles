@@ -1,0 +1,38 @@
+[svn]
+	pushmergeinfo = true
+[fetch]
+	prune = true
+[alias]
+    st = status
+    cp = cherry-pick
+    st = status -s
+    cl = clone
+    ci = commit
+    co = checkout
+    br = branch
+    diff = diff --word-diff
+    dc = diff --cached
+
+    gud = log --oneline --decorate --graph --simplify-by-decoration
+    unpushed = "!f() { git log \"$1/$2..$2\"; }; f"
+
+    xxx = "!git commit -am \"@SQUASHME - XXX commit - committed an intermediate state for likely testing reasons\" && git push"
+
+    suburr = submodule update --init --recursive --remote
+    tag-creation-dates = "log --tags --simplify-by-decoration --pretty=\"format:%ai %d\""
+{% if gitconfig.use_lfs %}
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+{% endif %}
+[commit]
+    verbose = true
+[pull]
+  rebase = true
+[merge]
+	tool = nvimdiff
+{% if gitconfig.aux %}
+»gitconfig.aux«
+{% endif %}

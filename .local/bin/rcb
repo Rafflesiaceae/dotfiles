@@ -1,0 +1,71 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+usage() {
+    echo "usage: rcb [-g|--get] [-i|--in] [-o|--out] [-p|--put]"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+cli_get=
+cli_in=
+cli_out=
+cli_put=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -g|-get|--get)
+            cli_get=1
+            ;;
+        -i|-in|--in)
+            cli_in=1
+            ;;
+        -o|-out|--out)
+            cli_out=1
+            ;;
+        -p|-put|--put)
+            cli_put=1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+ssh_get() { ssh_out | xclip -sel clip -i; }
+ssh_in() { cat - | ssh numstash "cat > \$HOME/.cp"; }
+ssh_out() { ssh numstash "cat \$HOME/.cp"; }
+ssh_put() { xclip -sel clip -o | ssh numstash "cat > \$HOME/.cp"; }
+
+if  [[ $cli_get ]]; then
+    ssh_get
+elif  [[ $cli_in ]]; then
+    ssh_in
+elif [[ $cli_out ]]; then
+    ssh_out
+elif [[ $cli_put ]]; then
+    if [ -t 0 ]; then
+        ssh_put
+    else
+        ssh_in
+    fi
+else
+    if [ -t 0 ]; then
+        ssh_out
+    else
+        ssh_in
+    fi
+fi

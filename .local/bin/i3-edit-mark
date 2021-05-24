@@ -1,0 +1,91 @@
+#!/bin/sh
+die() {
+  2>&1 echo "$1"
+
+  if [ "$press_any_key" ]; then
+    echo "press any key..."
+    read -r
+  fi
+
+  exit 1
+}
+
+spawn_window() {
+   termpopup "$0" "prompt" "$@"
+}
+
+prompt() {
+  export press_any_key=1
+
+  parent_windowid=$1
+  2>/dev/null shift || die "pass \$parent_windowid"
+
+  # read possible mark
+  current_mark=$(i3-msg -t get_tree | jq -r ".. | select(.window?) | select(.window==$parent_windowid) | .marks[0]")
+
+  if [ "$current_mark" = "null" ]; then
+    current_mark=""
+  fi
+
+  # get input
+  # @TODO POSIX compatible
+  read -p "mark: " -i "$current_mark" -e new_mark
+
+  # write new mark
+  if [ "$new_mark" ]; then
+    i3-msg "[id=\"$parent_windowid\"] mark --replace \"$new_mark\""
+  else
+    i3-msg "[id=\"$parent_windowid\"] unmark"
+  fi
+}
+
+
+show_help() {
+  cat <<EOF
+usage:
+  default
+    -a/--active use active window
+
+  prompt \$window_id <args>
+
+  -h/--help   show this message here
+EOF
+  exit 255
+}
+
+while :; do
+  case $1 in
+    -h|-\?|--help)
+      show_help
+      exit
+      ;;
+    -e|--embedded)
+      window_id=$WINDOWID
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -?*)
+      printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+      ;;
+    *)
+      break
+  esac
+
+  shift
+done
+
+if [ "$1" = "prompt" ]; then
+  shift
+  prompt "$@"
+else
+  if [ "$1" ]; then
+    window_id=$1
+    shift
+  else
+    window_id=$(xdotool getactivewindow)
+  fi
+
+  spawn_window "$window_id"
+fi

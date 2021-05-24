@@ -1,0 +1,46 @@
+#!/bin/bash
+function switch_if_necessary() {
+    if [[ "$(git rev-parse --abbrev-ref HEAD)" != "$1" ]]; then
+        git checkout "$1" || exit 9
+        return $?
+    fi
+}
+
+if [[ "$*" == *-h* ]]; then
+  printf "usage: gitup [BRANCH]...\npulls given branch\n"
+  exit 255
+fi
+
+# default to current branch
+if [[ $# -eq 0 ]]; then
+  current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
+  set -- "$current_branch" 
+fi
+
+now=$(date +%Y.%m.%d.%s).$RANDOM
+
+git stash save "$now" || exit 2
+
+previous_branch=$(git rev-parse --abbrev-ref HEAD) || exit 3
+
+for branch in "$@"; do
+    switch_if_necessary "$branch" || exit 4
+    git pull --rebase || exit 5
+done
+
+
+switch_if_necessary "$previous_branch" || exit 6
+
+now_stash_ref=$(git stash list | sed -rn "s/(stash@\{[^\}]+\}).*${now}$/\1/p") || exit 7
+if [[ "$now_stash_ref" ]]; then
+  git stash pop -q "$now_stash_ref"; popret=$?
+  case $popret in
+      0) ;;
+      1)
+          printf "\nCONFLICTS:\n"
+          git diff --name-only --diff-filter=U
+          exit 8
+          ;;
+      *) exit $((9+popret)) ;;
+  esac
+fi

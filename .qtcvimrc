@@ -1,0 +1,30 @@
+source ~/.vimrc
+
+" on first usage press Tools -> Options -> FakeVim -> Copy Text Editor Settings
+
+" qt-creator doesnt pick up g:mapleader
+map , <leader>
+
+" qt-creator doesnt support :e!
+nnoremap <leader>l :qtreverttosaved<CR>
+
+" these `qt*` commands need to be manually set in Tools -> Options -> FakeVim -> Ex Command Mapping and then in the Field `Ex Command` -> `Regular expression`
+nnoremap gcc     :qtuncomment<CR>
+vnoremap gc      :qtuncomment<CR>
+nnoremap <Enter> :tag<CR>
+nnoremap <BS>    :qtfindusages<CR>
+nnoremap <C-f>   :qtquickfix<CR>
+" doesnt work :(  ↓
+nnoremap <C-h>   :qtfunctionhint<CR>
+
+noremap <C-o>    :qtgoback<CR>
+noremap <C-i>    :qtgoforward<CR>
+noremap <C-s>    :qtsave<CR>
+noremap <C-c>    :qtcopy<CR>
+noremap <C-v>    :qtpaste<CR>
+inoremap <C-v>   <C-o>:qtpaste<CR>
+
+noremap <C-p>     :qtfilesincurrentproject<CR>
+noremap <leader>r :qtrun<CR>
+noremap <leader>b :qtbuild<CR>
+noremap <leader>e :qtbuild<CR>

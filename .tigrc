@@ -1,0 +1,62 @@
+# Settings
+set main-view = line-number:no,interval=4 \
+    id:yes \
+    date:default \
+    author:full \
+    commit-title:yes,graph,refs,overflow=72
+
+set line-graphics = utf-8
+set show-changes = yes
+set show-untracked = no
+
+set tab-size = 4
+set ignore-case = true
+
+# Keybindings
+bind generic g none
+bind generic gg move-first-line
+
+bind main    G move-last-line
+bind generic G move-last-line
+
+bind generic h back
+bind generic l view-next
+bind generic H view-help
+bind generic <C-R> refresh
+
+bind main R !git rebase -i %(commit)^
+bind diff R !git rebase -i %(commit)^
+
+bind main ! !git revert %(commit)
+
+bind generic C !git commit
+bind main C !git commit
+
+bind main c !?git checkout %(commit)
+bind main p ?git cherry-pick %(commit)
+
+bind status D !@?rm %(file)
+
+bind refs D !?git push %(remote) --delete %(branch)
+
+bind generic S ?git format-patch -1 -N %(commit)
+
+# copy commit ID to clipboard
+bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
+
+bind generic E !@code -g %(file):%(lineno)
+
+# Colors
+color author green default
+color cursor black yellow
+color date yellow default
+color graph-commit green default
+color main-head magenta default
+color main-tag magenta default
+color stat-staged green default
+color stat-unstaged red default
+color stat-untracked yellow default
+color status white default
+color title-focus white black
+color tree.directory cyan default
+color tree.header white default

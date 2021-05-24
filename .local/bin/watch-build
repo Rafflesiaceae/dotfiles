@@ -1,0 +1,34 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: watch-build [build-cmds]+"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+if [[ ! $# -gt 0 ]]; then
+    die "nope"
+fi
+
+buildcmd=$*
+
+TMPFILE=$(mktemp)
+function clean_tmpfile {
+  rm -rf "$TMPFILE"
+}
+trap clean_tmpfile EXIT
+
+while true; do
+    find . -type d > "$TMPFILE"
+    find . -name "*.*" >> "$TMPFILE"
+    cat "$TMPFILE" \
+        | entr -dsc "$buildcmd"
+done

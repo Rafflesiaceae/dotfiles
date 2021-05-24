@@ -1,0 +1,122 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: [-w|--window] [-na|--no-audio]"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+capture_window=
+no_audio=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -w|--window)
+            capture_window=1
+            ;;
+        -na|--no-audio)
+            no_audio=1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+if [[ $capture_window ]]; then
+    # @TODO this needs a fix big-time, don't calc i3border around like that instead use xwininfo which will do this for you see https://unix.stackexchange.com/a/14170
+    i3border=5
+
+    geom=$(xdotool getwindowgeometry "$(xdotool selectwindow)")
+    res=$(echo "$geom" | grep -oP "Geometry: \K(.*)")
+    posRaw=$(echo "$geom" | grep -Po 'Position: \K([^\ ]*)')
+
+    IFS=',' read -ra pos <<< "$posRaw"
+    x="${pos[0]}"
+    y="${pos[1]}"
+
+    # remove i3border
+    # @TODO this is only needed **floating**, but we don't differentiate atm, so this won't work on non-floating windows w/o borders
+    x=$(("$x"-5))
+    y=$(("$y"-5))
+else
+    # @TODO lul dont hardcode dis get both frum xrandr or somesing
+    res="1920x1080"
+    x="0"
+    y="0"
+fi
+
+# @TODO (???) colors are messed up, the pix_fmt needs to be some sort of proper conversion instead of what seems like a cast
+
+tmpfile="$HOME/record-tempfile.mkv"
+
+args=(
+    -video_size "$res"
+    -framerate 60
+    -f x11grab -i ":0.0+$x,$y"
+)
+
+postprocess=(
+    -c:v libx264 -crf 14 -preset slow
+    -pix_fmt yuvj420p                   # or else it won't play on smurtphones
+    -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" # ensure resolution has width/height power of 2, which pix_fmt yuvj420p requires
+)
+
+[[ ! $no_audio ]] && args+=(
+    -f pulse 
+    -ac 2
+    -i default
+) && postprocess+=(
+    -c:a aac 
+)
+
+# capture fastest first
+function ctrl_c() {
+    kill -s SIGINT "$pid_capture"
+    trap - SIGINT
+}
+trap ctrl_c SIGINT
+
+( set -x; ffmpeg \
+    ${args[*]} \
+    -vcodec libx264 -preset ultrafast -qp 0 -pix_fmt yuv444p \
+    "$tmpfile" -y ; ) &
+
+pid_capture=$!
+wait
+
+# postprocess
+function ctrl_c() {
+    kill -s SIGINT "$pid_postprocess"
+    trap - SIGINT
+    postprocess_was_aborted=1
+}
+trap ctrl_c SIGINT
+
+postprocess_output=capture_$(date +"%T").mp4
+( set -x; ffmpeg \
+    -i "$tmpfile" \
+    ${postprocess[*]} \
+    "$postprocess_output" ; ) &
+
+pid_postprocess=$!
+wait
+
+[[ $postprocess_was_aborted ]] && rm "$postprocess_output"
+
+
+wait

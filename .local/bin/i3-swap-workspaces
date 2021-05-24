@@ -1,0 +1,40 @@
+#!/bin/bash
+set -Eeuo pipefail
+ 
+function raise_assertion_error() {
+    local err=$?
+    echo "AssertionError: ${BASH_SOURCE[1]}:${BASH_LINENO[0]} returned $err"
+    exit 255
+}
+
+
+function i3_rename_workspace() {
+    STDOUT_CAPTURE=$( i3-msg "rename workspace \"$1\" to \"$2\"" 2>/dev/null | jq -r '.[0].success' )
+    if [[ $STDOUT_CAPTURE == "false" ]]; then return 255; else return 0; fi
+}
+
+function i3_get_active_workspace() {
+    STDOUT_CAPTURE=$( i3-msg -t get_workspaces | jq -r '.[] | select(.focused == true) | .name' )
+    echo "$STDOUT_CAPTURE"
+}
+
+function i3_swap_workspaces() {
+    if ! i3_rename_workspace "$1" "$2"; then
+        i3_rename_workspace "$2" "$2_tmp" || raise_assertion_error
+        i3_rename_workspace "$1" "$2" || raise_assertion_error
+        i3_rename_workspace "$2_tmp" "$1" || raise_assertion_error
+    fi
+}
+
+case "$#" in
+    1)
+        i3_swap_workspaces "$(i3_get_active_workspace)" "$1"
+        ;;
+    2)
+        i3_swap_workspaces "$1" "$2"
+        ;;
+    *)
+        echo "usage: i3-swap [source_workspace] target_workspace"
+        exit 255
+esac
+

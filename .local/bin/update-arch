@@ -1,0 +1,65 @@
+#!/bin/bash
+set -eo pipefail
+
+echo {{{1 record itself
+if [[ "$1" != "--no-record" ]]; then
+    title="update_arch_$(date +%s)"
+    echo "recording output to $HOME/$title.cast"
+    asciinema rec \
+        --command "\"$0\" --no-record" \
+        --title "$title" \
+        --quiet \
+        "$HOME/$title.cast"
+    exit 0
+fi
+
+echo {{{1 update official packages
+sudo pacman -Syu --noconfirm
+
+echo {{{1 update yay
+tput bel # ring-bell
+pushd "$(mktemp -d)"
+TEMPDIRLOC=$PWD
+wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
+aunpack "yay.tar.gz" && cd yay
+makepkg --skippgpcheck
+sudo pacman -U --noconfirm ./*.pkg*
+popd
+rm -rf "$TEMPDIRLOC"
+
+echo {{{1 update some AUR packages
+tput bel # ring-bell
+yay -S --answerdiff "None" --answerclean "NotInstalled" \
+    rxvt-unicode-patched
+
+echo {{{1 update vim plugins
+vim +'PlugUpdate --sync' +qa
+
+echo {{{1 update amr
+amrloc="$HOME/.amr"
+[[ ! -d "$amrloc" ]] && git clone "file:///home/raf/workspace/pkgbuilds" "$amrloc"
+pushd "$amrloc"
+git pull
+
+makepkg-and-install() {
+    pushd "$1"
+    makepkg -i --noconfirm --needed
+    popd
+}
+
+makepkg-and-install "rxvt-unicode-patched"
+makepkg-and-install "xkeyboard-config-desc"
+
+popd
+
+echo {{{1 update YCM
+pushd "$HOME/.vim/plugged/YouCompleteMe"
+./install.py \
+    --clangd-completer \
+    --go-completer \
+    --java-completer \
+    --rust-completer \
+    --ts-completer
+popd
+
+echo "CONSIDER RESTARTING!"

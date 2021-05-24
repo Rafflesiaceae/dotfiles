@@ -1,0 +1,43 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+usage() {
+    echo "usage: <audio> <video> result.mkv"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+stream_type() { 
+    local streams
+    streams=$(ffprobe "$1" -print_format json -show_streams 2>/dev/null )
+    streams_len=$(echo "$streams" | jq '.streams | length' -r)
+    [[ $streams_len -ne 1 ]] && usage_and_die "passed argument \"$1\" expected to have exactly 1 stream, has $streams_len"
+
+    echo "$streams" | jq '.streams[0].codec_type' -r
+}
+
+audio=$1
+shift || usage_and_die "gimme an audio file"
+image=$1
+shift || usage_and_die "gimme an image file"
+output=$1
+shift || usage_and_die "gimme an output file"
+
+[[ $(stream_type "$audio") != "audio" ]] && usage_and_die "you didnt pass me an audio file as first arg"
+[[ $(stream_type "$image") != "video" ]] && usage_and_die "you didnt pass me an image file as second arg"
+
+ffmpeg \
+	-i "$audio" \
+	-f image2 -loop 1 -i "$image" \
+	-r 30 -s 1920x1080 \
+	-c:v libx264 -crf 1 -tune stillimage -preset fast \
+	-c:a copy \
+	-shortest "$output"
+

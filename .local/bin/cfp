@@ -1,0 +1,11 @@
+#!/bin/sh
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+[ "$#" != 1 ] && die "pass exactly one argument"
+abspath="$(realpath "$1")"
+[ ! -f "$abspath" ] && die "file: \"$abspath\" does not exist"
+echo "$abspath"
+printf "%s" "$abspath" | xclip -selection clipboard

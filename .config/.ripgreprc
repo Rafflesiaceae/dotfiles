@@ -1,0 +1,5 @@
+--no-ignore
+
+# limit long line output
+--max-columns=150
+--max-columns-preview

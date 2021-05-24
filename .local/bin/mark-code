@@ -1,0 +1,103 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+funky_die() {
+    notify-send -u critical "$0" "$1"
+    die "$1"
+}
+
+usage() {
+    echo "usage: mark-code [-o|-open] projdir line"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+assert_dir() {
+    if [[ ! -d "$1" ]]; then
+        usage_and_die "$1 is not a dir, needs to be a dir"
+    fi
+}
+
+cmd=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -o|--open)
+            cmd=open
+            ;;
+        -p|--path)
+            cmd=path
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+markfile=$HOME/marks
+
+cmd_open() {
+    "$EDITOR" $markfile
+}
+
+cmd_path() {
+    echo $markfile
+}
+
+cmd_store() {
+    # proj=$1
+    # shift || usage_and_die "first param has to be proj-dir"
+    # assert_dir "$proj"
+
+    line=$1
+    shift || usage_and_die "second param has to be line"
+
+    [[ ! "$line" =~ .*:.*:.* ]] && die "line has to match .*:.*:.*"
+
+    appends=
+    [[ -f "$markfile" ]] && appends=1
+
+    if [[ $appends ]]; then
+        grep -P "^${line}" "$markfile" >/dev/null && { exit 0; }
+
+        tmpmarkfile=${markfile}_$RANDOM
+        mv "$markfile" "$tmpmarkfile" || funky_die "couldnt move to tmpfile"
+        cleanup() {
+            rm "$tmpmarkfile" || funky_die "dude this should never happen we couldnt remove $tmpmarkfile"
+        }
+        trap 'cleanup' EXIT
+    fi
+
+    printf "%s\t%s\n" "$line" "$*" >> "$markfile" || funky_die "dude we couldnt write to $markfile wtf"
+
+    if [[ $appends ]]; then
+        cat "$tmpmarkfile" >> "$markfile"
+    fi
+
+    return 0
+}
+
+if [[ $cmd == "open" ]]; then
+    cmd_open $*
+elif [[ $cmd == "path" ]]; then
+    cmd_path $*
+else
+    cmd_store $* || die "failed to store"
+fi
+
+exit 0

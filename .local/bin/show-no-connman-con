@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+# Show No Connman Con v0.3 (2020-12-08) (fe8e94c72396172)
+# shows a systray icon in case connman connection disappears
+
+import argparse
+import io
+import signal
+import sys
+
+from PyQt5 import QtCore, QtDBus, QtWidgets
+from PyQt5.QtDBus import QDBusMessage
+from PyQt5.QtGui import QPixmap, QIcon
+from PyQt5.QtWidgets import QSystemTrayIcon
+from PIL import Image, ImageDraw, ImageFont
+
+# handle C-c
+signal.signal(signal.SIGINT, signal.SIG_DFL)
+
+stateicons = {} # holds QIcons as values with states as keys
+def build_states(args):
+    global stateicons
+
+    def render_stateicon(id: str, color: str, outline_color: str) -> QPixmap:
+        im = Image.new("RGBA", (22, 22))
+        draw = ImageDraw.Draw(im)
+        if args.font is None:
+            font_obj = ImageFont.load_default()
+        else:
+            font_obj = ImageFont.truetype(args.font, args.font_size)
+        draw.rectangle([(0,0), (22,22)], fill="#f00")
+        draw.text((6, 4), id[0], color, font_obj, stroke_width=2, stroke_fill=outline_color)
+
+        pix = QPixmap()
+        with io.BytesIO() as output:
+            im.save(output, format="PNG")
+            pix.loadFromData(output.getvalue(), "PNG")
+
+        return QIcon(pix)
+
+    stateicons = {
+        "configuration" : render_stateicon("configuration" , "#000" , "#888") ,
+        "disconnect"    : render_stateicon("disconnect"    , "#000" , "#888") ,
+        "idle"          : render_stateicon("idle"          , "#000" , "#888") ,
+        "unknown"       : render_stateicon("?"             , "#000" , "#888") ,
+    }
+
+class MainQMainWindow(QtWidgets.QMainWindow):
+    def __init__(self, parent, args):
+        super().__init__()
+
+        self.args = args
+
+        service = "net.connman"
+        if not QtDBus.QDBusConnection.systemBus().interface().isServiceRegistered(service).value():
+            raise Exception(f"Could not connect to {service} dbus-system")
+
+        self.bus = QtDBus.QDBusConnection.systemBus()
+        self.bus.connect(service, "/", "net.connman.Manager",
+                         "PropertyChanged", self._slot)
+
+        self.bus_manager = QtDBus.QDBusInterface("net.connman", "/", "net.connman.Manager", self.bus)
+
+        self.tray = QSystemTrayIcon()
+
+    def ev_handle_state_change(self, newstate: str):
+        if self.args.debug:
+            sys.stderr.write(newstate+"\n")
+
+        # both of these mean online AFAIS
+        if newstate == "online" or newstate == "ready":
+            self.tray.setVisible(False)
+        elif newstate in stateicons:
+            self.tray.setIcon(stateicons[newstate])
+            self.tray.setVisible(True)
+        else:
+            self.tray.setIcon(stateicons["unknown"])
+            self.tray.setVisible(True)
+
+        self.tray.setToolTip(f"connman: {newstate}")
+        self.laststate = newstate
+
+    def poll_state(self):
+        newstate = self.bus_manager.call('GetProperties', None) \
+            .arguments()[0]["State"]
+        self.ev_handle_state_change(newstate)
+
+    @QtCore.pyqtSlot(QDBusMessage)
+    def _slot(self, msg):
+        args = msg.arguments()
+
+        if len(args) < 2:
+            return
+
+        if args[0] != "State":
+            return
+
+        state = args[1]
+        self.ev_handle_state_change(state)
+
+def main(args):
+    app = QtWidgets.QApplication([])
+
+    if not QSystemTrayIcon.isSystemTrayAvailable():
+        raise Exception("QSystemTrayIcon doesnt support your OS/WM")
+
+    build_states(args)
+
+    main = MainQMainWindow(app, args)
+    main.poll_state()
+
+    return app.exec()
+
+def cli():
+    parser = argparse.ArgumentParser(description="show systay icons when connman connection disappears")
+
+    parser.add_argument("-d", "--debug", dest="debug",action="store_true",help="debug print state changes")
+    parser.add_argument("-f", "--font", dest="font",type=str,help="font to use for system tray icon")
+    parser.add_argument("-fs", "--font-size", dest="font_size",type=int,default=18)
+
+    args = parser.parse_args()
+    sys.exit(main(args))
+
+if __name__ == "__main__":
+    cli()

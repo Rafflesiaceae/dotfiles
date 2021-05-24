@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+vim +"DirDiff $1 $2" ${@:2}

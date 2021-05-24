@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+
+echo $*
+
+src=$1
+shift
+from=$1
+shift
+to=$1
+shift
+
+(set -x;
+ffmpeg \
+	-i "$src" \
+	-c:v copy\
+	-c:a copy\
+	$* \
+	-ss "$from" \
+	-to "$to" \
+	-y "yt_$(date +%s).mp4")
+
+#	-map 0             `#use all subtitles/audio/videos` \
+
+#	-filter_complex "[0:v]scale=640:-2:flags=lanczos+accurate_rnd[rv]; [rv]subtitles=$1" `#hardcode subtitles into video` \
+#	-sn               `#strip subtitles` \
+
+#	-sws_flags lanczos+accurate_rnd `#use lanczos for downscaling instead of bicubic` \
+#	-vf scale=640:-2 \
+
+# only process 5 minutes
+#	-t 00:05:00        `#only process X minutes` \
+
+
+#	-c:v copy \
+
+#	-ss "$from" \
+#	-to "$to" \
+#	-c:a aac -b:a 64k -ac 1 \
+#	-vf scale=720 \

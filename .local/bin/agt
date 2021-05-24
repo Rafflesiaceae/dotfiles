@@ -1,0 +1,70 @@
+#!/bin/bash
+# rg "$1" --color always --line-number | less -R
+# ag "$1" --color ${@:2} | less -R
+# vim -c "CtrlSF ${@:2}"
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    cat <<EOF
+usage: [--debug] search_term rg_preargs* -- rg_postargs*
+
+-g '!tests/*' --                ignore matches
+              -- -s             case sensitive
+-tc -tpy      --                match only file extension/types
+--type-list   --                list possible extension/types
+EOF
+
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+# search_phrase=$1
+# shift || usage_and_die "provide me a search phrase"
+
+from_pre_to_post=
+
+rg_preargs=(
+    # -M 155 # omit lines longer than 155
+)
+rg_postargs=()
+rg_moresearches=()
+
+search_phrase=
+for arg in "$@"; do
+    case $arg in
+        -h|-\?|--help)
+            usage 
+            exit
+            ;;
+        --debug)
+            set -x
+            ;;
+        --)
+            from_pre_to_post=1
+            ;;
+        -)
+            shift
+            rg_moresearches+=("$(printf "%q" "$1")")  # escape it
+            ;;
+        *) 
+            if [[ ! $search_phrase ]]; then
+                search_phrase=$1
+            elif [[ $from_pre_to_post ]]; then
+                rg_postargs+=("$(printf "%q" "$1")") # escape it
+            else
+                rg_preargs+=("$(printf "%q" "$1")")  # escape it
+            fi
+            ;;
+    esac
+    shift
+done
+
+nvim -c "terminal rg ${rg_preargs[*]} \"$search_phrase\" ${rg_moresearches[*]}--no-ignore --color always --line-number --ignore-case ${rg_postargs[*]}"

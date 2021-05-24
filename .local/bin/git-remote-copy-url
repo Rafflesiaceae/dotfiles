@@ -1,0 +1,6 @@
+#!/bin/bash
+set -eo pipefail
+
+url=$(git config --get "remote.${1-origin}.url")
+printf "%s" "$url" | xclip -i -sel clip
+echo "$url"

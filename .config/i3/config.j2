@@ -1,0 +1,224 @@
+# i3 config file (v4)
+# Please see http://i3wm.org/docs/userguide.html for a complete reference!
+
+floating_modifier »i3.floating_modifier|default("Mod3")«
+
+force_focus_wrapping yes
+# https://i3wm.org/docs/userguide.html#_focus_wrapping
+
+show_marks yes
+
+# {{{ bindsym
+{# we just repeat this whole bindsym block for each mod_key in `mod_keys` #}
+{% for mod in i3.mod_keys|default(["Mod3"]) %}
+#    {{{ mod=»mod«
+
+bindsym »mod«+space focus mode_toggle
+
+bindsym »mod«+Shift+q kill
+bindsym »mod«+Shift+space floating toggle
+
+bindsym »mod«+Tab [urgent=latest] focus
+
+# exit i3 (logs you out of your X session)
+bindsym »mod«+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -b 'Yes, exit i3' 'i3-msg exit'"
+
+# NAVIGATION {{{
+bindsym »mod«+h focus left
+bindsym »mod«+j focus down
+bindsym »mod«+k focus up
+bindsym »mod«+l focus right
+bindsym »mod«+y focus left
+bindsym »mod«+x focus right
+bindsym »mod«+Shift+Y move left
+bindsym »mod«+Shift+X move right
+
+bindsym »mod«+Ctrl+X exec "bash -ic xkill"
+
+bindsym »mod«+Shift+h move left
+bindsym »mod«+Shift+j move down
+bindsym »mod«+Shift+k move up
+bindsym »mod«+Shift+l move right
+
+# my worfklow largely revolves around swapping focus between 2 h-split containers, this bind does exactly that, altought it's a ridiculous hack XXX
+bindsym »mod«+i focus parent; focus parent; focus parent; focus parent; focus parent; focus parent; focus parent; focus child; focus left
+bindsym »mod«+c focus parent; focus parent; focus parent; focus parent; focus parent; focus parent; focus parent; focus child; focus left
+
+# switch to workspace
+bindsym »mod«+1 workspace 1
+bindsym »mod«+2 workspace 2
+bindsym »mod«+3 workspace 3
+bindsym »mod«+4 workspace 4
+bindsym »mod«+5 workspace 5
+bindsym »mod«+6 workspace 6
+bindsym »mod«+7 workspace 7
+bindsym »mod«+8 workspace 8
+bindsym »mod«+9 workspace 9
+bindsym »mod«+0 workspace 10
+bindsym »mod«+ssharp workspace stash
+
+# move focused container to workspace
+bindsym »mod«+Shift+1 move container to workspace 1
+bindsym »mod«+Shift+2 move container to workspace 2
+bindsym »mod«+Shift+3 move container to workspace 3
+bindsym »mod«+Shift+4 move container to workspace 4
+bindsym »mod«+Shift+5 move container to workspace 5
+bindsym »mod«+Shift+6 move container to workspace 6
+bindsym »mod«+Shift+7 move container to workspace 7
+bindsym »mod«+Shift+8 move container to workspace 8
+bindsym »mod«+Shift+9 move container to workspace 9
+bindsym »mod«+Shift+0 move container to workspace 10
+bindsym »mod«+Shift+ssharp move container to workspace stash
+
+bindsym »mod«+n workspace next
+bindsym »mod«+p workspace prev
+bindsym »mod«+0x3e       workspace next
+bindsym »mod«+Shift+0x3e workspace prev
+
+bindsym »mod«+Escape workspace back_and_forth
+# }}}
+
+# LAYOUT-STUFF {{{
+bindsym »mod«+b split h
+
+bindsym »mod«+f fullscreen
+
+# change container layout (stacked, tabbed, toggle split)
+bindsym »mod«+t layout stacking
+bindsym »mod«+w layout tabbed
+bindsym »mod«+e layout toggle split
+
+# scratchpad
+bindsym »mod«+Shift+s move scratchpad
+bindsym »mod«+s scratchpad show
+
+bindsym »mod«+Shift+t sticky toggle
+
+bindsym »mod«+a focus parent
+bindsym »mod«+d focus child
+
+bindsym »mod«+Shift+c reload
+bindsym »mod«+Shift+r restart
+# }}}
+
+bindsym »mod«+z mode "resize"
+
+bindsym --whole-window »mod«+button9 workspace back_and_forth
+bindsym --whole-window »mod«+button8 kill
+
+# 3rd mouse button
+bindsym »mod«+shift+p exec "xdotool click 2"
+
+# start a terminal
+bindsym »mod«+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" »default_terminal_emulator«"
+bindsym »mod«+Shift+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" urxvt -name 'floating' --geometry »i3.floating_term_geometry|default("169x20+0+437")«"
+
+# launcher/dmenu
+# bindsym »mod«+r exec "bemenu-run --fn 'Consolas Bold 10' -p 'RUN' --fb '#383830' --nb '#383830' --nf '#F8F8F2' --hb '#A6E22E' --hf '#272822' --tb '#47473C' --tf '#33B9F3' --ff '#F8F8F2'"
+bindsym »mod«+r exec "rofi -show run -color-window '#222222, #222222, #b1b4b3' -color-normal '#222222, #b1b4b3, #222222, #005577, #b1b4b3' -color-active '#222222, #b1b4b3, #222222, #007763, #b1b4b3' -color-urgent '#222222, #b1b4b3, #222222, #77003d, #b1b4b3' -kb-row-down 'Control+j' -kb-accept-entry 'Return' -kb-row-up   'Control+k' -kb-remove-to-eol '' -matching fuzzy -sort"
+
+# locking screen
+bindsym »mod«+Ctrl+L exec "i3lock -i $HOME/.lock.bg.png -e -f"
+
+bindsym »mod«+q exec chromium
+# sometimes chromium requires killing
+bindsym »mod«+shift+Mod1+ctrl+k exec "pkill chromium"
+
+bindsym »mod«+M exec xtogglemouse
+bindsym »mod«+o exec paup
+bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
+{# @XXX the "&& :" part is here because otherwise termpopup using /bin/bash as $SHELL somehow prevents ezautocompl from copying to clipboard - might be a timing issue, however adding another command fixes this, so we use ":" - nop #}
+bindsym »mod«+u exec termpopup ezautocompl "--path" "$HOME/.config/ezautocompl.yml" "&&" ":"
+# bindsym »mod«+comma exec termpopup --no-shell fastkey
+bindsym »mod«+comma exec i3-ctrlc
+bindsym »mod«+ctrl+comma exec termpopup i3-edit-mark prompt "$(xdotool getactivewindow)"
+bindsym »mod«+period exec i3-ctrlp
+
+# print screen
+bindsym »mod«+Print exec "maim --select --hidecursor | xclip -selection clipboard -t image/png -i"
+
+#    }}} mod=»mod«
+{% endfor %}
+
+bindsym Print exec "maim ~/shot_$(date +%s).png"
+
+# }}}
+# {{{ MODES
+# resize window (you can also use the mouse for that)
+mode "resize" {
+    bindsym k resize shrink height 10 px or 10 ppt
+    bindsym j resize grow height 10 px or 10 ppt
+    bindsym h resize shrink width 10 px or 10 ppt
+    bindsym l resize grow width 10 px or 10 ppt
+
+    # back to normal: Enter or Escape
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+# }}}
+# {{{ VISUAL
+new_window pixel 5
+hide_edge_borders both
+
+font pango:Consolas, Bold 9
+
+# color.class           border  backgr. text    indicator
+client.focused          #506070 #506070 #ffffff #af3a3a
+client.focused          #506670 #506670 #ffffff #af3a3a
+client.focused          #365E70 #365E70 #ffffff #af3a3a
+client.focused          #76A121 #76A121 #ffffff #af3a3a
+client.focused          #575749 #575749 #ffffff #af3a3a
+client.focused          #47473C #47473C #ffffff #af3a3a
+client.focused_inactive #222222 #222222 #ffffff #222222
+client.focused_inactive #30302A #30302A #ffffff #af3a3a
+client.focused_inactive #292924 #292924 #ffffff #af3a3a
+client.focused_inactive #212229 #212229 #ffffff #af3a3a
+client.focused_inactive #1E1F1A #1E1F1A #E6DEB9 #af3a3a
+client.unfocused        #222222 #222222 #888888 #af3a3a
+client.unfocused        #383830 #383830 #99947B #af3a3a
+client.unfocused        #272822 #272822 #99947B #af3a3a
+client.unfocused        #1E1F1A #1E1F1A #99947B #af3a3a
+client.urgent           #900000 #900000 #ffffff #900000
+client.urgent           #FF4535 #FF4535 #4D1510 #900000
+client.urgent           #FF4535 #FF4535 #000000 #900000
+client.urgent           #FF4535 #FF4535 #000000 #900000
+# }}}
+
+bar {
+    position bottom
+    status_command »i3.statuscmd or 'i3status'«
+    {% if not i3.show_systray %}
+    tray_output none 
+    {% endif %}
+
+    font pango:Consolas 12
+    colors {
+        background           #383830
+        statusline           #F8F8F2
+        separator            #99947B
+        focused_workspace    #161713 #161713 #F8F8F2
+        inactive_workspace   #383830 #383830 #99947B
+        urgent_workspace     #FF4535 #FF4535 #4D1510
+	}
+}
+
+» include_if_exists("$/custom_i3") «
+
+# {{{ for_window
+for_window [class="URxvt" title="floating"] floating enable
+for_window [class="Wine"] floating enable
+for_window [class="Xephyr"] floating enable
+for_window [class="snippicker"] floating enable
+for_window [title="^floating$"] floating enable
+for_window [title="File Operation Progress"] floating enable
+for_window [title="Firefox Preferences"] floating enable
+for_window [title="Thunderbird Preferences"] floating enable
+for_window [title="zenity"] floating enable
+
+for_window [class="Calendar"] floating disable
+for_window [class="rdesktop"] floating disable
+for_window [instance="depends.exe"] floating disable
+for_window [instance="resourcehacker.exe"] floating disable
+for_window [title="foobar2000.*"] floating disable
+
+# }}}

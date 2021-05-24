@@ -1,0 +1,3 @@
+#!/bin/sh
+export FONTCONFIG_FILE=$HOME/.config/fontconfig/no-subpixels-fonts.conf
+/bin/gimp $*

@@ -1,0 +1,2 @@
+# see https://github.com/bazelbuild/bazel/issues/4616
+build --experimental_local_memory_estimate

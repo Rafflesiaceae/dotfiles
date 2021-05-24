@@ -1,0 +1,22 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+file=$1
+shift || die "pass me a file"
+dir=${1-$PWD}
+
+dir="$(realpath "$dir")"
+while [[ "$dir" != "/" ]] ; do
+    path="$dir/$file"
+    if [[ -f "$path" ]]; then
+        echo "$path"
+        exit 0
+    fi
+    dir=$(dirname "$dir")
+done
+exit 1

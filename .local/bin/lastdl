@@ -1,0 +1,39 @@
+#!/bin/bash
+# ! This just prints last downloaded file to stdout
+unset -v latest
+
+usage() {
+    echo "usage: [-m|--move]"
+    exit 1
+}
+
+cli_move=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -m|--move)
+            cli_move=1
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+# find latest file
+for file in "$HOME/Downloads"/*; do
+  [[ $file -nt $latest ]] && latest=$file
+done
+
+# find latest file
+if [[ $cli_move ]]; then
+    ( set -x; mv "$latest" "$PWD" )
+else
+    echo "$latest"
+fi

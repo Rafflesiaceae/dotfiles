@@ -1,0 +1,27 @@
+include=./config_user
+# e.g.:
+# vo=gpu
+hwdec=auto
+# sws-scaler=spline  # best software-scaler, won't get used if we use hwdec
+
+screenshot-format=png
+screenshot-png-compression=5
+
+# default langs
+slang=en,eng
+alang=en,eng
+
+# loudnorm by default
+af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]
+
+# Use cache for network streams
+cache=auto
+
+screenshot-template="~/mpv_%n"
+
+save-position-on-quit=yes
+
+# only play 720p yt videos
+# @XXX we get out of sync audio/video with some youtube-videos when using a separate audio-stream, so we give a nonsense selector for audio that causes youtube-dl to fallback to the videos own audio stream ( not sure what happens when the video doesnt have an audio stream, we'll see, possibly doesnt play audio at all :[ )
+# ytdl-format=bestvideo[height<=?720]+NONSENSE_PLACEHOLDER_SO_IT_USES_FALLBACK_FOR_AUDIO/best
+ytdl-format=bestvideo[height<=?720]+bestaudio/best

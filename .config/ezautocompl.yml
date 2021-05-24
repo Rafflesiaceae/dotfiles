@@ -1,0 +1,1052 @@
+---
+# cmd {{{1
+benchmark (startup) of a program (.cmd):
+    hyperfine PROGRAM
+
+git change commit messages of all commits/whole history (.cmd .git): |
+    #!/bin/sh
+    # https://stackoverflow.com/a/19681379
+
+    git filter-branch -f --msg-filter \
+    'sed "s/ezautocompl: //g"' \
+    --tag-name-filter cat -- --all
+
+git change author/commit-person of all commits/whole history (.cmd .git): |
+    #!/bin/sh
+    # https://stackoverflow.com/a/750182
+
+    # NEW
+    git-filter-repo \
+        --name-callback 'return b"MYNAME"' \
+        --email-callback 'return b"MYEMAIL"'
+
+    # OLD
+    git filter-branch --env-filter '
+    OLD_EMAIL="your-old-email@example.com"
+    CORRECT_NAME="Your Correct Name"
+    CORRECT_EMAIL="your-correct-email@example.com"
+    if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ]
+    then
+        export GIT_COMMITTER_NAME="$CORRECT_NAME"
+        export GIT_COMMITTER_EMAIL="$CORRECT_EMAIL"
+    fi
+    if [ "$GIT_AUTHOR_EMAIL" = "$OLD_EMAIL" ]
+    then
+        export GIT_AUTHOR_NAME="$CORRECT_NAME"
+        export GIT_AUTHOR_EMAIL="$CORRECT_EMAIL"
+    fi
+    ' --tag-name-filter cat -- --branches --tags
+
+git apply a patch (.cmd .git):
+    git am PATCHFILE
+git create a patch (.cmd .git):
+    git format-patch -1 HEAD
+git clone repository through subtree (.cmd .git):
+    git subtree add --prefix SUBDIR REPOSITORY HEAD --squash
+git read/fetch/get hash/commit from remote repository (.cmd .git):
+    git ls-remote PKG HEAD | cut -f1
+uninstall a package (.cmd .go): go clean -i IMPORTPATH
+
+ocr a pdf (.cmd): ocrmypdf -l eng,deu INPDF OUTPDF
+mount an iso (.cmd): sudo mount -o loop ISOPATH MOUNTPATH
+
+start a http server (.cmd):
+    cmd: bash
+    stdin: |
+      random_digit() { grep -m1 -ao '[0-9]' /dev/urandom | sed s/0/9/ | head -n1; }
+      printf "npx --no-install http-server -p 80%s%s -a 127.0.0.1 ." "$(random_digit)" "$(random_digit)"
+
+curl download a file like wget (.cmd): curl -L -O URL
+nmap list all IPs on LAN (.cmd): nmap -sP 192.168.0.0/24
+autoformat html (.cmd): tidy -i -w 100 SOMEHTMLFILE
+
+gcc build static library:
+    gcc -c -o out.o main.c && ar rcs libout.a out.o
+
+dbus debug / explore (.cmd .dbus): d-feet
+dbus list services (.cmd .dbus): qdbus && qdbus --system
+dbus monitor services (.cmd .dbus): sudo dbus-monitor --system "type='signal',sender='net.connman'"
+
+create archive / recursive tar compression (.cmd): tar -czvf backup.tar.gz folder
+list archive (.cmd): tar -tvf archive.tar
+
+youtube-dl download all subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --all-subs"
+youtube-dl download specific/eng subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --sub-lang en"
+
+check priv key (.cmd .ssh): FILE=""; ssh-keygen -lf "$FILE"; ssh-keygen -yf "$FILE"
+# https://wiki.archlinux.org/index.php/SSH_keys#Ed25519
+create key (.cmd .ssh): ssh-keygen -o -t ed25519 -C "user@hostname" -f OUTPUTFILE
+
+# https://superuser.com/a/692184
+create random text (.cmd): base64 --wrap=0 /dev/urandom | head -c 64
+create random bytes (.cmd): head -c $(( 128 * 1024 )) < /dev/urandom
+
+7zip extract archive into subdir (.cmd): 7z e ISOPATH -o./out
+
+restart / reboot (.win .cmd): shutdown -r -t 5
+list processes / tasks (.win .cmd): tasklist
+kill a process by name (.win .cmd): taskkill /F /IM firefox.exe
+kill a process by pid (.win .cmd): taskkill /F /PID 0000
+
+add new user (.linux .cmd):  useradd -m USERNAME
+add new group (.linux .cmd): groupadd GROUP
+add user to group (.linux .cmd): usermod -aG GROUP USER
+list/show application with open ports (.linux .ssh): sudo ss -tulpn
+update mirrorlist (.arch .linux .cmd): tmpfile=$(mktemp); curl -L -s 'https://archlinux.org/mirrorlist/?country=AT&country=DE&protocol=https&use_mirror_status=on' | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 5 - > "$tmpfile"; sudo mv "$tmpfile" "/etc/pacman.d/mirrorlist"
+
+create new svn branch (.svn .cmd): svn copy \\\n
+    "http://from" \\\n
+    "http://to" \\\n
+    -m "Creating branch 'm2suite_19.4' from 'm2suite_19.2'"
+
+# cmd-ffmpeg {{{1
+ffmpeg convert audio to highest quality ogg (.cmd): ffmpeg -i INP -c:a libvorbis -q:a 10 OUT
+convert audio to highest quality ogg (.cmd .ffmpeg): ffmpeg -i INP -c:a libvorbis -q:a 10 OUTP
+normalize audio (.cmd .ffmpeg): ffmpeg -i INP -filter:a "loudnorm=I=-16:TP=-3:LRA=4" -c:v copy OUTP
+
+# c {{{1
+string to integer (.c99): |
+  #include <inttypes.h>
+
+get own pid (.c .linux): |
+  #include <sys/types.h>
+  #include <unistd.h>
+
+  pid_t pid = getpid();
+
+list all running pids (.c .linux): |
+  struct dirent *entry;
+  DIR *d;
+
+  if (!(d = opendir("/proc")))
+     return;
+
+  while (entry = readdir(d)) {
+     puts(entry->d_name);
+  }
+
+  closedir(d);
+print to stderr (.c): fprintf(stderr, "\n");
+
+# cpp {{{1
+closure by ref (.cpp .c++): |
+  [&]{
+  };
+print to stderr (.cpp .c++): std::cerr << msg << std::endl;
+
+switch (.cpp .c++): |
+  enum color {RED, GREEN, BLUE};
+  switch(RED) {
+      case RED:   std::cout << "red\n"; break;
+      case GREEN: std::cout << "green\n"; break;
+      case BLUE:  std::cout << "blue\n"; break;
+  }
+
+throw/raise exception (.cpp .c++): throw std::runtime_error("ERROR");
+
+print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
+system notify-send (.cpp .c++): system("notify-send qwe asd");
+
+# golang {{{1
+append text to a file (.golang): |
+    f, err := os.OpenFile(FILEPATH, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    defer f.Close()
+    if _, err := f.WriteString("text to append\n"); err != nil {
+        log.Fatal(err)
+    }
+
+cast os.FileInfo.Sys() to OS stat_t (.golang): |
+    // linux
+    if stt, ok := VAR_FILE_INFO.Sys().(*syscall.Stat_t); ok {
+    }
+
+os specific build flags (.golang): |
+    // +build linux
+    // +build windows
+    // +build darwin
+
+get string reader from string (.golang):
+  strings.NewReader("Foo")
+
+base/top-level/background context (.golang): context.Background()
+
+write bytes to file(.golang): |
+  d1 := []byte("hello\ngo\n")
+  err := ioutil.WriteFile("/tmp/dat1", d1, 0755)
+  if err != nil {
+    log.Fatal(err)
+  }
+
+string in/contains/has string (.golang): strings.Contains(str, substr)
+sleep (.golang): time.Sleep(2 * time.Second)
+
+touch/create a file (.golang): |
+    if fi, err := os.Stat(path); err != nil || fi.IsDir() {
+        file, err := os.Create("temp.txt")
+        file.Close()
+    }
+
+expand user/home (.golang): |
+    usr, err := user.Current()
+    usrDir := usr.HomeDir
+
+join array of strings (.golang): strings.Join(lines, "\n")
+regex extract groups (.golang): |
+    var rePattern *regexp.Regexp = regexp.MustCompile(`^\.\-(.*)-(\d\d\d\d).bak$`)
+    matches := rePattern.FindStringSubmatch(fname)
+    // either returns [] if no match or [whole match, group1, group2, ...]
+
+print the type of a variable at runtime (.golang): fmt.Println(reflect.TypeOf(fooVar).String())
+string to int (.golang): i, err := strconv.Atoi("-42")
+int to string (.golang): s := strconv.Itoa(-42)
+
+read stdin (.golang): bytes, err := ioutil.ReadAll(os.Stdin)
+pop off array (.golang): fooArr = fooArr[:len(fooArr)-1]
+
+try to cast a type (.golang): |
+    if s, ok := fooVal.(string); ok {
+    }
+
+
+check type runtime / type switch (.golang): |
+    switch t := foo.(type) {
+        case map[interface{}]interface{}:
+        case string:
+        default:
+            fmt.Printf("unexpected type %T\n", t)
+    }
+
+resolve symlinks (.golang): resolved, err := filepath.EvalSymlinks(fooPath)
+
+check if map contains/in key (.golang): |
+    if val, ok := dict["foo"]; ok {
+    }
+
+parse int from string (.golang): i, err := strconv.ParseInt("-42", 10, 64)
+
+strip/trim string (.golang): strings.TrimSpace(" qwe ")
+
+split string (.golang): strings.Split("a,b,c", ",")
+
+get home directory (.golang): |
+    user, err := user.Current()
+    if err != nil {
+        panic(err)
+    }
+    homeDir := user.HomeDir
+
+check if file exists (.golang): |
+    if fi, err := os.Stat(fooPath); err != nil {
+        log.Fatal(err)
+    } else if fi.IsDir() {
+        log.Fatalf(`stat %s: is a directory, expected to be file`, fooPath)
+    }
+
+parse / dump json (.golang): |
+    type Foo struct {
+        A string   `json:"a"`
+        B []string `json:"b"`
+    }
+    foo := make(map[interface{}]interface{})
+
+    err = json.Unmarshal([]byte(fooString), &foo)
+    if err != nil {
+        panic(err)
+    }
+
+    fooOutput, err := json.Marshal(&foo)
+    if err != nil {
+        panic(err)
+    }
+
+join paths (.golang): path.Join(fpath, "foo")
+
+get parent directory of path (.golang): parent := filepath.Dir(fpath)
+
+list directory (.golang): |
+    files, err := ioutil.ReadDir("./")
+    if err != nil {
+        panic(err)
+    }
+
+    for _, f := range files {
+            fmt.Println(f.Name())
+    }
+
+get/set working directory (.golang): |
+    wd, err := os.Getwd()
+    if err != nil {
+        panic(err)
+    }
+
+    err = os.Chdir(wd)
+    if err != nil {
+        panic(err)
+    }
+
+base64 (.golang): |
+    fooData := []byte("some input")
+    str := base64.StdEncoding.EncodeToString(fooData)
+    data, err := base64.StdEncoding.DecodeString(str)
+    if err != nil {
+        panic(err)
+    }
+
+string starts with/prefix (.golang): strings.HasPrefix("fooBar", "foo")
+pushd / popd / change dir (.golang): |
+    wd, err := os.Getwd()
+    if err != nil {
+        panic(err)
+    }
+
+    err = os.Chdir(filepath.Join(wd, "fooPath"))
+    if err != nil {
+        panic(err)
+    }
+
+    // ...
+
+    err = os.Chdir(wd)
+    if err != nil {
+        panic(err)
+    }
+
+parse / dump yaml (.golang): |
+    // "gopkg.in/yaml.v3"
+    type Foo struct {
+        A string   `yaml:"pa,omitempty"`
+        B []string `yaml:",flow,omitempty"`
+    }
+    foo := make(map[interface{}]interface{})
+
+    err = yaml.Unmarshal([]byte(fooString), &foo)
+    if err != nil {
+        panic(err)
+    }
+
+    fooOutput, err := yaml.Marshal(&foo)
+    if err != nil {
+        panic(err)
+    }
+
+get args (.golang): |
+    args := os.Args[1:]
+
+print to stderr (.golang): |
+    fmt.Fprintf(os.Stderr, "number of foo: %d", nFoo)
+
+create directory with parents / mkdir -p (.golang): os.MkdirAll(fooPath, 0755)
+check if path is existing directory (.golang): |
+    // check if file is dir
+    if fi, err := os.Stat(fooPath); err != nil {
+        log.Fatal(err)
+    } else if !fi.IsDir() {
+        log.Fatalf(`stat %s: not a directory`, fooPath)
+    }
+
+get keys of a map (.golang): |
+    fooKeys := make([]string, len(barMap))
+    { // get map keys
+        i := 0
+        for k := range barMap {
+            fooKeys[i] = k
+            i++
+        }
+    }
+
+hash a string/byte array (.golang): sha256.Sum256([]byte("hello world\n"))
+
+read a file (.golang): contents, err := ioutil.ReadFile()
+
+# http://rosettacode.org/wiki/Walk_a_directory/Recursively#Go
+abspath / realpath (.golang): |
+    fpathAbs, err := filepath.Abs(fpath)
+    if err != nil {
+        panic(err)
+    }
+
+check stat if symlink and resolve (.golang): |
+    if fi.Mode()&os.ModeSymlink != 0 {
+        link, err := os.Readlink(fi.Name())
+        if err != nil {
+            panic(err)
+        }
+    }
+
+walk directory recursively (.golang): |
+    err := filepath.Walk(".", func(fpath string, fi os.FileInfo, err error) error {
+        if err != nil {
+            fmt.Fprintf(os.Stderr, "stumbled while walking %v\n", err)
+            return nil
+        }
+
+        if fi.IsDir() {
+            return nil
+        }
+
+        matched, err := filepath.Match("*.*", fi.Name())
+        if err != nil {
+            return err
+        }
+
+        if matched {
+            fmt.Println(fpath)
+        }
+
+        return nil
+    })
+    if err != nil {
+        panic(err)
+    }
+
+get/set env (.golang): |
+    os.Setenv("FOO", "1")
+    fooEnv := os.Getenv("FOO")
+
+enum (.golang): |
+    type KindEnum string
+    const (
+        KindA KindEnum = "A"
+        KindB = "B"
+    )
+
+foreach line in string (.golang): |
+    scanner := bufio.NewScanner(strings.NewReader("some string"))
+    for scanner.Scan() {
+        fmt.Println(scanner.Text())
+    }
+    if err := scanner.Err(); err != nil {
+        panic(err)
+    }
+
+write string to file (.golang): |
+    err := ioutil.WriteFile("/tmp/dat1", []byte("test"), 0755)
+    if err != nil {
+        panic(err)
+    }
+
+fetch from http (.golang): |
+    resp, err := http.Get(URL)
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+
+    rawContents, err := ioutil.ReadAll(resp.Body)
+    if err != nil {
+        panic(err)
+    }
+
+    contents = string(rawContents)
+
+run/exec/subprocess and capture (.golang): |
+    cmd := exec.Command(cmdArg, args...)
+
+    var stdoutBuf, stderrBuf bytes.Buffer
+    cmd.Stdout = &stdoutBuf
+    cmd.Stderr = &stderrBuf
+    // cmd.Stdout = os.Stdout
+    // cmd.Stderr = os.Stderr
+
+    err := cmd.Run()
+    if err != nil {
+        if exitError, ok := err.(*exec.ExitError); ok {
+            return "", fmt.Errorf("command exited with code %d", exitError.ExitCode())
+        }
+    }
+
+    outStr, errStr := string(stdoutBuf.Bytes()), string(stderrBuf.Bytes())
+    return 0, outStr, errStr
+
+cli cobra (.golang): |
+    import (
+        "fmt"
+        "os"
+
+        "github.com/spf13/cobra"
+    )
+
+    var (
+        flagDebug bool
+    )
+
+    var rootCmd = &cobra.Command{
+        Use: "usher ...",
+        // Short: "",
+        Long: "",
+        Args: cobra.ExactArgs(1),
+        Run: func(cmd *cobra.Command, args []string) {
+            // @TODO
+        },
+    }
+
+    var subCmd = &cobra.Command{
+        Use: "exec [host]",
+        // Short: "",
+        // Long:  "",
+        Args: cobra.ExactArgs(1),
+        Run: func(cmd *cobra.Command, args []string) {
+            // @TODO
+        },
+    }
+
+    func init() {
+        rootCmd.AddCommand(subCmd)
+        rootCmd.PersistentFlags().BoolVar(&flagDebug, "debug", false, "Enable debug output")
+    }
+
+    func main() {
+        if err := rootCmd.Execute(); err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
+    }
+
+unittest (.golang): |
+    // main_test.go
+    package main
+
+    import (
+        "testing"
+
+        "github.com/stretchr/testify/assert"
+    )
+
+    func TestPrint(t *testing.T) {
+        output := "OK"
+        assert.Equal(t, "OK", output)
+        if output != "OK" {
+            t.Fatal("output ain't \"OK\"")
+        }
+    }
+
+main (.golang): |
+    package main
+
+    import (
+        "fmt"
+    )
+
+    func main() {
+        fmt.Printf("%s\n", "Main here")
+    }
+
+# lua {{{1
+hello world / main (.lua): |
+  print("Hello World")
+
+subprocess / spawn / communicate (.lua): |
+  fp = io.popen("foo >/tmp/unique", "w")
+  fp:write(anything)
+  fp:close()
+  fp = io.open("/tmp/unique")
+  x = read("*a")
+  fp:close()
+
+# python {{{1
+
+path relative to current script (.python): scriptpath = os.path.dirname(__file__)
+
+get own pid (.python): |
+  import os
+  os.getpid()
+
+write to file (.python): |
+    with open(FILEPATH, "w") as f:
+        f.writelines()
+        f.write()
+
+if regex matches (.python): |
+    if re.search(r"chromium", wincmdline, flags=re.IGNORECASE):
+
+for key val in dict (.python): |
+    for k, v in DICT.items():
+        pass
+
+check if dir exists (.python): os.path.isdir("path")
+check if object has method/key (.python): |
+    if hasattr(obj, "property"):
+        pass
+
+sleep (.python): |
+    import time
+    time.sleep(10)
+
+raise exception (.python): raise Exception("Smelly socks") from e
+
+expand user/home (.python): |
+    os.path.expanduser("~/.config")
+
+enum (.python): |
+    from enum import Enum, auto as EnumAuto
+    class Color(Enum):
+        RED = EnumAuto()
+        BLUE = EnumAuto()
+        GREEN = EnumAuto()
+
+print to stderr (.python): |
+    print(*args, file=sys.stderr, **kwargs)
+    sys.stderr.write("foo\n")
+
+read stdin (.python): contents = sys.stdin.read()
+
+get args (.python): |
+    import sys
+    print(sys.argv)
+
+read a file (.python): |
+    with open(foo_path) as f:
+        contents = f.read()
+
+create directory with parents / mkdir -p (.python): os.mkdir(foo_path, parents=True, exist_ok=True)
+
+run/exec a shell command/subprocess (.python): |
+    import subprocess
+    subprocess.check_call("nmap -v -oG - -sn 192.168.1.0/24", shell=True)
+    subprocess.check_output("nmap -v -oG - -sn 192.168.1.0/24", shell=True)
+
+# @TODO named-groups
+# @TODO just test for a match
+regex capture groups (.python): |
+    import re
+    result = re.search(r'Host:\ ([^\ ]+)\ \((.*)\)', input_string, flags=re.IGNORECASE | re.X)
+    result_groups = result.groups()
+    assert len(result_groups) == 2
+    print(result_groups[0])
+
+get current date / timestamp / unix/posix-time (.python): |
+    from datetime import datetime, timezone
+    now_iso_8601 = datetime.now(timezone.utc).astimezone().isoformat() 
+    now_posix = datetime.now().timestamp()
+
+if main (.python): |
+    #!/usr/bin/env python3
+    import sys
+
+    def main():
+        pass
+
+    if __name__ == "__main__":
+        main()
+
+cli / argparse (.python): |
+    import argparse
+    parser = argparse.ArgumentParser(description="A description of the Program")
+
+    parser.add_argument("from_path", metavar="from", type=str, nargs="?", help="from this location")
+    parser.add_argument("integers", metavar="N", type=int, nargs="+", help="an integer for the accumulator")
+
+    parser.add_argument("-e", "--any-enum", dest="any_enum", type=str, choices=["lf", "cr", "crlf"], default="cr", help="Some enums")
+    parser.add_argument("-f", "--any-flag", dest="any_flag",action="store_true", help="A flag")
+    parser.add_argument("-s", "--any-string", dest="any_string",type=str, default="default", help="A string")
+    parser.add_argument("-ss", "--any-strings", dest="any_strings", type=str, nargs="?", help="Multiple strings")
+
+    parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+
+    args = parser.parse_args()
+
+dataclass (.python): |
+    from dataclasses import dataclass
+    from typing import *
+
+    @dataclass
+    class InventoryItem:
+        name: str
+        unit_prices: List[float]
+        quantity_on_hand: int = 0
+
+        def total_costs(self) -> List[float]:
+            return [ price * self.quantity_on_hand for price in self.unit_prices ]
+
+# javascript / typescript {{{1
+read whole stdin synchronously (.js .node): |
+
+read line by line from stdin async (.js .node): |
+    // read line by line from stdin
+    const rl = require("readline").createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        terminal: false,
+    });
+    for await (const line of rl) {
+        console.log(line);
+    }
+
+string starts with/prefix (.js .ts): someString.startsWith("PREFIX")
+throw exception (.js .ts): throw new Error("OHNO");
+for each key/val in object/dictionary (.js .node .ts): |
+    for (const [key, val] of Object.entries(fooObj)) {
+        //
+    }
+
+check if dir exists (.js .node .ts): |
+    (await fs.promises.stat(path)).isDirectory()
+
+exit/quit (.js .node .ts): |
+    process.exit(0)
+
+read a file (.js .node .ts): |
+    import * as fs from "fs";
+    await fs.promises.readFile(file, "utf8");
+    fs.readFileSync(file, "utf8");
+
+for each line in string (.js .ts): |
+    { // for each line
+        let i = 0;
+        let j = 0;
+        while ((j = INPUTSTR.indexOf("\n", i)) !== -1) {
+            const line = INPUTSTR.substring(i, j);
+            i = j + 1;
+        }
+    }
+
+create directory with parents / mkdir -p (.js .node .ts): |
+    fs.mkdirSync(fooPath, { recursive: true })
+
+if main (.js .node .ts): |
+    #!/usr/bin/env node
+    function main(args) {
+        console.log(`hello world! I see you passed me ${args}, how nice of you!`);
+        return 0;
+    }
+
+    if (typeof require !== 'undefined' && require.main === module) {
+        process.exitCode = main(process.argv.slice(2));
+    }
+
+# bash {{{1
+
+check if user exists (.sh .bash): |
+    if id USERNAME &>/dev/null; then
+        echo 'user found'
+    fi
+
+set variable to heredoc (.sh .bash): |
+  read -r -d '' VAR <<EOF || true
+  ...
+  EOF
+
+lock/unlock a file (.sh .bash): |
+    # open file on fd 5
+    exec 5<> "./lockme.json"
+    flock 5
+    # ...
+    flock --unlock 5
+
+open file as file descriptor (.sh .bash): exec 5<> "./lockme.json"
+read lines of file into array (.bash): readarray -t VARNAME < FILEPATH
+
+write heredoc to file with sudo rights (.sh .bash): |
+    sudo tee "FILEPATH" >/dev/null <<EOF
+    ...
+    EOF
+
+extract/match regex groups (.bash): |
+    if [[ $line =~ ^(.*):\ \"([^\"]+)\"$ ]]; then
+        echo "${BASH_REMATCH[0]}" # full string
+        echo "${BASH_REMATCH[1]}" # first group
+        echo "${BASH_REMATCH[2]}" # second group
+    fi
+
+replace/remove substring (.zsh .bash): "\"${VARFOO//WORDTOREMOVE/}\""
+check if script running as root (.sh .bash): "[[ $EUID -eq 0 ]]"
+hashmap / declarative / associative array (.bash): |
+  declare -A MAP
+  MAP[foo]=bar
+  echo ${MAP[foo]}
+  echo "keys" ${!MAP[@]}
+  echo "vals" ${MAP[@]}
+
+create json (.jq .sh .bash): |
+    BUCKET_NAME=testbucket
+    OBJECT_NAME=testworkflow-2.0.1.jar
+    TARGET_LOCATION=/opt/test/testworkflow-2.0.1.jar
+
+    JSON_STRING=$( jq -n \
+                      --arg bn "$BUCKET_NAME" \
+                      --arg on "$OBJECT_NAME" \
+                      --arg tl "$TARGET_LOCATION" \
+                      '{bucketname: $bn, objectname: $on, targetlocation: $tl}' )
+
+write json object (.jq .sh .bash): |
+  jq -nc \
+      --arg foo "$foo" \
+      --arg bar "$bar" \
+      '{foo: $foo, bar: $bar}'
+
+write array to json (.jq .bash): |
+  manuallyEscapedArray=(100 '"numbers"' '"\n"' '"escaped newlines work fine in strings"')
+  printf "%s\n" "${manuallyEscapedArray[@]}" | jq -s '.'
+
+  allToStringArray=(100 "all-numbers-are-strings" "\n" "excessive escaping of escaped newlines")
+  printf "%s\n" "${allToStringArray[@]}" | jq -s --raw-input 'split("\n")[:-1]'
+
+change dir to script parent location path (.bash): |
+  # cd to parent dir of current script
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+
+check if string/variable starts with (.sh .bash): '[[ $var == prefix* ]]'
+
+list ls all files in directory (.sh .bash): |
+    for file in "$search_dir"/*; do
+        echo "$file"
+    done
+
+check if has stdin / is terminal (.sh .bash): |
+    if [ -t 0 ]; then
+        echo running interactivelly
+    else
+        while read -r line ; do
+            echo $line
+        done
+    fi
+
+wait for internet avail / ping google ping (.bash): |
+    while ! ( set -e; for i in {1..2}; do ping -c 2 -w 2 -q 8.8.8.8; done ); do
+        sleep 1
+    done
+
+kill/send ctrl-c/sigint to pid  (.sh .bash): kill -s SIGINT "$!"
+get last pid (.sh .bash): '"$!"'
+
+clear/unset trap (.sh .bash): |
+    trap - INT EXIT
+
+handle/trap ctrl-c (.sh .bash): |
+    function ctrl_c() {
+            echo "** Trapped CTRL-C"
+    }
+    trap ctrl_c INT
+
+check if env variable is set (.sh .bash): '[[ -z "${MY_ENV}" ]]'
+
+check if program/command exists (.sh .bash): |
+    ! command -v COMMAND &>/dev/null || die "can't find program: COMMAND"
+
+prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
+    prompt_continue() {
+        tput sc
+        while true; do
+            read -p "Continue? (y/n) " -n 1 -r yn
+            case $yn in
+                [Yy]*) break;;
+                [Nn]*) printf "\n"; exit 1;;
+                *) tput el1; tput rc ;;
+            esac
+        done
+        printf "\n"
+    }
+
+test if glob has any matches (.sh .bash): |
+    if compgen -G test/*; then
+        :
+    fi
+
+detect os system / win / mac / linux (.sh .bash): |
+    is_linux=
+    is_windows=
+    is_macos=
+    case $OSTYPE in
+        linux-gnu*)  is_linux=1 ;;
+        darwin*)     is_macos=1 ;;
+        cygwin|msys) is_windows=1 ;;
+        *) printf "ERROR: could not determine OS via \$OSTYPE" >&2; exit 1 ;;
+    esac
+
+interpret/render metacharacters from script output (.sh .bash): col -bp < "./typescript"
+
+print to stderr (.sh .bash): printf "%s\n" "$1" >&2
+
+check if string is number (.sh .bash): |
+    if [[ ! $yournumber =~ ^[0-9]+$ ]]; then
+        echo "NAN"
+    fi
+
+create temporary file (.sh .bash): |
+    tmpfile=$(mktemp)
+    cleanup_tmpfile() {
+        rm "$tmpfile"
+    }
+    trap 'cleanup_tmpfile' EXIT
+
+get parent directory of path (.sh .bash): parent=$(dirname "$file")
+
+check if dir exists (.sh .bash): |
+    [[ -d "$dir" ]] &&
+check if file exists (.sh .bash): |
+    [[ -f "$file" ]] &&
+
+for each line in file (.sh .bash): |
+    # https://mywiki.wooledge.org/BashFAQ/001
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        AlphaSignature="$line"
+    done < "$ReleasePath/$AlphaKeyFile"
+
+for each line of output (.sh .bash): |
+    find . -type f | while read -r f ; do
+        [[ "$f" == *"$(basename "$0")" ]] && continue # skip this script itself
+        # all subprocesses here will inherit the command as stdin, not the tty, so we need to set it explicitly again
+        vimdiff "$PWD/$f" "/$f" < /dev/tty
+    done
+
+if string ends with substring / suffix (.sh .bash): |
+    [[ $f == *"file.txt" ]] && continue # skip file.txt
+
+capture regex group (.sh .bash): |
+    echo "Geometry: 100x00" | grep -oP "Geometry: \K(.*)"
+
+arrays (.sh .bash): |
+    fooList=(foo bar "${fooList[@]}")
+    fooList+=(baz)
+    for foo in "${fooList[@]}"; do
+        echo $foo
+    done
+    myfunc "${fooList[@]}"
+
+count / number of arguments (.sh .bash): '"$#"'
+
+for each file in path (.sh .bash): |
+    for path in ./*.json; do
+        echo $path
+    done
+
+abspath / realpath (.sh .bash): |
+    fabspath=$(realpath "$path")
+
+extract file name and extension from path (.sh .bash): |
+    local fnamewext=$(basename -- "$path")
+    local fbase="${path%/*}"
+    local fext="${fnamewext##*.}"
+    local fname="${fnamewext%.*}"
+
+kill background processes along with main process (.sh .bash): |
+    bgpids=()
+    trap '2>/dev/null kill "${bgpids[@]}"' EXIT
+    longrunningprocess1 & bgpids+=("$!")
+    longrunningprocess2 & bgpids+=("$!")
+    wait
+    unset 'bgpids[${#bgpids[@]}-2]'
+
+defer exit (.sh .bash): |
+    cleanup() {
+        echo "ASD"
+    }
+    trap 'cleanup' EXIT
+
+date-posix (.cmd .sh .bash): date +%s
+
+# https://stackoverflow.com/a/35638712
+func is_nohup (.sh .bash): |
+    is_nohup() {
+        grep -Eq 'SigIgn:\s.{15}[13579bdf]' "/proc/$$/status" && return 0 || return 1
+    }
+
+die usage usage_and_die (.sh .bash): |
+    die() {
+        printf '%s\n' "$1" >&2
+        exit "${2-1}"
+    }
+
+    usage() {
+        echo "usage: copypass|edituuid|forget|generate|verify [-cp|--copypass]"
+        exit 1
+    }
+
+    usage_and_die() {
+        printf '%s\n' "$1" >&2
+        usage
+    }
+
+foreach argument (.sh .bash): |
+    for var in "$@"; do
+        echo "$var"
+    done
+
+echo heredoc (.sh .bash): |
+    cat <<EOF
+    ...
+    EOF
+
+# https://mywiki.wooledge.org/BashFAQ/035
+cli, parseargs argument parsing cli (.sh .bash): |
+    while :; do
+        case $1 in
+            -h|-\?|--help)
+                usage; exit ;;
+            -f|--file)
+                [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
+                file=$2
+                shift || usage
+                ;;
+            --)
+                shift || usage
+                break
+                ;;
+            -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+            *) break ;;
+        esac
+
+        shift || usage
+    done
+
+# {{{2 Templates
+push rsync script (.templ .sh .bash): |
+  #!/bin/bash
+  set -eo pipefail
+
+  # cd to parent dir of current script
+  cd "$(dirname "${BASH_SOURCE[0]}")"
+
+  files=(
+      "$PWD/./foo/CHNG_FILE"
+  )
+
+  printf "%s\n" "${files[@]}" | rsync --files-from "-" "/" "$(rsync-hosts CHNG_HOST)"
+
+# html/css {{{1
+include a css /file (.html .css): |
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {background-color: powderblue;}
+        h1   {color: blue;}
+        p    {color: red;}
+    </style>
+
+include a javascript /file (.html .css): |
+    <script src="javascript.js"></script>
+    <script>
+        alert("Hello World!");
+    </script>
+
+# systemd {{{1
+simple shell script (.systemd .service): |
+    [Unit]
+
+    [Service]
+    User=root
+    Type=idle
+    ExecStart=/root/postinstall.sh
+
+    [Install]
+    WantedBy=multi-user.target
+
+# various {{{1
+vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
+vim run compile (.cpp .vim .various): // [RUN] bear -- clang++ $(pkg-config --cflags --libs libpcrecpp jsoncpp) "%" -o "%.out"
+
+vim modeline for basic text (.vim .various): |
+  // vim: noai:tw=80:nosmartindent:
+vim modeline for setting filetype (.vim .various): |
+  # vim: ft=nginx:
+show term cursor again via tput (.gdb): 'shell tput cnorm'
+
+utf8/unicode symbols (.various): |
+  ⇑ ↑ ▲ ⬆ ⇡ ⤊ ↥
+  ← → ↑ ↓ ⟵ ⟶ ⇦ ⇨ ⇧ ⇩ ⬅ ( ⮕ ➡ ) ⬆ ⬇
+  ↔ ↕ ↚ ⇳ ⬍
+  ↖ ↗ ↘ ↙ ⬁ ⬀ ⬂ ⬃ ⬉ ⬈ ⬊ ⬋
+  ⇠ ⇢ ⇡ ⇣

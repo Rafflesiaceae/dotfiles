@@ -1,0 +1,55 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+[[ $# != 1 ]] && die "usage: <host>/-l/--list"
+
+re_host="Host[[:space:]]+(.*)"
+re_hostname="Hostname[[:space:]]+(.*)"
+
+cmd_resolve_host() {
+
+    found_host=
+    while read -r l ; do
+    if [[ $found_host ]]; then
+        if [[ "$l" =~ $re_host ]]; then
+            die "host $1 has no hostname"
+        elif [[ "$l" =~ $re_hostname ]]; then
+            echo "${BASH_REMATCH[1]}"
+            exit 0
+        fi
+    else
+        if [[ "$l" =~ $re_host ]]; then
+            host="${BASH_REMATCH[1]}"
+            if [[ $host = "$1" ]]; then
+                found_host=$host
+            fi
+        fi
+    fi
+    done < "$HOME/.ssh/config"
+
+    die "could not find host: $1"
+}
+
+cmd_list() {
+    tmp=
+    while read -r l ; do
+        if [[ "$l" =~ $re_host ]]; then
+            tmp+="${BASH_REMATCH[1]}\n"
+        fi
+    done < "$HOME/.ssh/config"
+    echo -e "${tmp%\\n}" | sort
+}
+
+case $1 in
+    -l|--list )
+        cmd_list $*
+        ;;
+    *)
+        cmd_resolve_host $*
+        ;;
+esac

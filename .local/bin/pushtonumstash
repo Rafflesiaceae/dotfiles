@@ -1,0 +1,78 @@
+#!/usr/bin/bash
+set -eo pipefail
+
+notify-send "DEPRECATED" "$0"
+remote_prefix="numstash:/usr/local/openresty/nginx/html"
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+usage() {
+    printf "%s\n%s\n" "usage: from to / -l|--list to [-]" "to is relative to remote"
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+# if it has contents it stores the location to
+input_list=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -l|--list)
+            [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument, denoting the relative path on host"
+            input_list=$2
+            shift || usage
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+cleanup_tmpfile() { [[ $tmpfile ]] && rm "$tmpfile"; }
+
+if [[ $input_list ]] || [[ "$#" -gt 2 ]]; then
+    files=()
+
+    # possibly read files from stdin
+    read_from_stdin=
+    [[ "$#" == 0 ]] && read_from_stdin=1
+    [[ "$#" == 1 ]] && [[ "$1" == "-" ]] && read_from_stdin=1
+
+    if [[ $read_from_stdin ]]; then
+        while read -r line ; do
+            files+=($line)
+        done
+    else
+        files=("$@")
+    fi
+
+    tmpfile=$(mktemp)
+    trap 'cleanup_tmpfile' EXIT
+
+    printf "%s\n" "${files[@]}" > "$tmpfile"
+
+    rtarget="$remote_prefix/$input_list"
+    echo "( ${files[*]} ) => $rtarget"
+
+    rsync \
+        "--files-from=$tmpfile" \
+        "." \
+        "$rtarget" 
+elif [[ "$#" == 2 ]]; then
+    rsync "$1" "$remote_prefix/$2"
+else
+    usage
+fi

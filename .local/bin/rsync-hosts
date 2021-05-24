@@ -1,0 +1,8 @@
+#!/bin/bash
+declare -A hosts
+hosts[foo]="foo:/usr/local/foo/html"
+hosts[bar]="${hosts[foo]}/bar"
+
+[[ $# != 1 ]] && printf "pass an arg\n" >&2 && exit 1
+[[ $1 == "-l" ]] && echo "${!hosts[@]}" && exit 0
+echo ${hosts[$1]}

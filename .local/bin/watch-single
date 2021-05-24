@@ -1,0 +1,22 @@
+#!/bin/bash
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: watch-single <file> buildcmds..."
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+file=$1
+shift || usage_and_die "pass me a file to listen for"
+
+while true; do
+    echo "$file" | entr -src "$file" $*
+done

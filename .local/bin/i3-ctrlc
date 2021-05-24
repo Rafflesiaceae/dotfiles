@@ -1,0 +1,3 @@
+#!/bin/sh
+i3-type-mark --key ctrl+c ctrlc
+notify-send --urgency=LOW ctrlc ""

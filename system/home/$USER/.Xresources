@@ -1,0 +1,98 @@
+! vi:syntax=xdefaults:commentstring=!\ %s:
+! [RUN] xrdb ~/.Xresources
+
+!{{{1 XTerm
+XTerm*termName: xterm-256color
+XTerm*locale: true
+XTerm*VT100.translations: #override <Btn1Up>: select-end(PRIMARY, CLIPBOARD, CUT_BUFFER0)
+XTerm*metaSendsEscape: true
+XTerm*font: "xft:Consolas:pixelsize=14"
+
+!{{{1 URxvt
+URxvt.externalBorder: 0
+URxvt.fading: 0
+URxvt.font: xft:Consolas:size=11,xft:Fixed:size=11
+URxvt.internalBorder: 0
+URxvt.iso14755: False
+URxvt.iso14755_52:  false
+URxvt.saveLines: 5000
+URxvt.scrollBar: false
+URxvt.urgentOnBell: true
+
+URxvt.perl-ext-common: default,url-select,keyboard-select
+
+! plugin - url select
+URxvt.keysym.Mod4-Control-g: perl:url-select:select_next
+URxvt.url-select.launcher: /usr/bin/chromium
+URxvt.url-select.underline: true
+
+! plugin - search scrollback
+URxvt.keysym.M-Escape: perl:keyboard-select:activate
+URxvt.keyboard-select.clipboard: true
+
+! bind <C-s-v> / <C-s-c>
+URxvt.keysym.Shift-Control-V: eval:paste_clipboard
+URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
+
+! print key prints to file
+URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
+
+!{{{1 XFT
+Xft.antialias:1
+Xft.autohint:0
+! Xft.dpi:98
+Xft.hinting:1
+Xft.hintstyle:hintfull
+Xft.lcdfilter:lcddefault
+Xft.rgba:rgb
+
+!{{{1 Colors
+! Base16 Kokonai
+
+#define base00 #272822
+#define base01 #383830
+#define base02 #49483e
+#define base03 #75715e
+#define base04 #a59f85
+#define base05 #f8f8f2
+#define base06 #f5f4f1
+#define base07 #f9f8f5
+#define base08 #f92826
+#define base09 #fd971f
+#define base0A #f0b600
+#define base0B #a6e22e
+#define base0C #a1efe4
+#define base0D #2790d9
+#define base0E #ae81ff
+#define base0F #cc6633
+
+*.foreground:   base05
+*.background:   base00
+*.cursorColor:  base05
+
+*.color0:       base00
+*.color1:       base08
+*.color2:       base0B
+*.color3:       base0A
+*.color4:       base0D
+*.color5:       base0E
+*.color6:       base0C
+*.color7:       base05
+
+*.color8:       base03
+*.color9:       base08
+*.color10:      base0B
+*.color11:      base0A
+*.color12:      base0D
+*.color13:      base0E
+*.color14:      base0C
+*.color15:      base07
+
+! Note: colors beyond 15 might not be loaded (e.g., xterm, urxvt),
+! use 'shell' template to set these if necessary
+*.color16:      base09
+*.color17:      base0F
+*.color18:      base01
+*.color19:      base02
+*.color20:      base04
+*.color21:      base06

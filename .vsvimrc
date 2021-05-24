@@ -1,0 +1,9 @@
+source ~\.vimrc
+
+" VsVim
+nnoremap gcc     :vsc Edit.ToggleLineComment<CR>
+vnoremap gc      :vsc Edit.ToggleLineComment<CR>
+nnoremap <C-h>   :vsc Edit.QuickInfo<CR>
+nnoremap <Enter> :vsc Edit.GoToDefinition<CR>
+noremap <C-o>    :vsc View.NavigateBackward<CR>
+noremap <C-i>    :vsc View.NavigateForward<CR>

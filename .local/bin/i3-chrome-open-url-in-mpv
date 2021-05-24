@@ -1,0 +1,61 @@
+#!/bin/bash
+sleep 1
+
+# @XXX hack of simulating keypresses to copy the current URL of an active chromium window and run it with mpv
+key() {
+    xdotool key --clearmodifiers "$1"
+}
+sleep_tick() {
+    sleep 0.05
+}
+die() {
+    printf '%s\n' "$1" >&2
+    notify-send "i3-chrome-open-url-in-mpv" "$1"
+    exit 1
+}
+strip_special_chars() {
+    local a=${1//[^[:alnum:]]/}
+    echo "${a,,}"
+}
+
+# store/restore clipboard
+restore_clip() {
+    cat /tmp/clipb | xclip -sel clip
+    rm /tmp/clipb
+}
+trap 'restore_clip' EXIT
+xclip -o -sel clip > /tmp/clipb
+
+# if we're focusing a chromium window, copy the url
+activewindow=$(xdotool getactivewindow)
+windowname=$(xdotool getwindowname "$activewindow")
+# windowname=$(strip_special_chars "$windowname")
+windowpid=$(xdotool getwindowpid "$activewindow")
+if ! cat /proc/"$windowpid"/cmdline | grep "chromium" ; then
+    die "you're not focusing a chromium window"
+fi
+key ctrl+l
+sleep_tick
+key ctrl+c
+sleep_tick
+if ! xclip -o -sel clip | grep "youtu" ; then
+    die "couldn't copy a youtube URL"
+fi
+key ctrl+w
+sleep_tick
+
+# switch to ws 9 and open urxvt
+i3-msg workspace number 9
+sleep_tick
+sleep 1
+nohup urxvt >/dev/null 2>&1 &
+env > /tmp/envd
+sleep 0.3
+
+# build & run mpv command
+xdotool type 'mpv "'
+key ctrl+shift+v
+xdotool type '"; : \# '
+xdotool type "$(echo "$windowname" | tr -dc '[:alnum:]\n\r\ ' | head -c 48)"
+sleep_tick
+key Return

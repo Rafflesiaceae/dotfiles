@@ -1,0 +1,68 @@
+#!/bin/bash
+# @XXX tried `urxvtc` here but it returns right away and there's no argument for it to keep open until the terminal closes, see http://lists.schmorp.de/pipermail/rxvt-unicode/2009q4/001126.html
+# @XXX 8>&1 indefinitely blocks a bunch of applications
+# @TODO pass an identifier and ensure only one instance of the identifier can run at a time
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit 1
+}
+
+usage() {
+    echo "usage: termpopup [-ns|--no-shell] [-ne|--no-escape] [-nf|--no-float] [-w|--wait] ..."
+    exit 1
+}
+
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+no_shell=
+no_escape=
+no_float=
+wait=1
+while :; do
+    case $1 in
+        -h|-\?|--help)  usage; exit ;;
+        -ns|--no-shell) no_shell=1 ;;
+        -ne|--no-escape) no_escape=1 ;;
+        -fe|--no-float) no_escape=1; no_float=1 ;;
+        -w|--wait)      wait=1 ;;
+        --)
+            shift
+            break
+            ;;
+        -?*) 
+            die "Unknown option: $1"
+            break
+            ;;
+        *) break ;;
+    esac
+
+    shift
+done
+
+if [[ $wait ]]; then
+    cmd=(urxvt)
+else
+    cmd=(urxvtc)
+fi
+
+if [[ ! $no_float ]]; then
+    cmd+=(-title "floating")
+fi
+
+if [[ ! $no_escape ]]; then
+    cmd+=(-keysym.Escape "eval: exit")
+fi
+
+if [[ ! $no_shell ]]; then
+    cmd+=(-e "$SHELL" \
+        -i \
+        -c "$*")
+else
+    cmd+=(-e "$*")
+fi
+
+"${cmd[@]}"
