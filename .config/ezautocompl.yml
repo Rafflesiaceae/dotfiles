@@ -3,6 +3,9 @@
 benchmark (startup) of a program (.cmd):
     hyperfine PROGRAM
 
+git squash all commits into one (.cmd .git): | # https://stackoverflow.com/a/23486788
+    git reset $(git commit-tree HEAD^{tree} -m "hello world")
+
 git change commit messages of all commits/whole history (.cmd .git): |
     #!/bin/sh
     # https://stackoverflow.com/a/19681379
