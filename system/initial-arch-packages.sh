@@ -55,6 +55,7 @@ base=(
     docker-compose
     dos2unix
     entr
+    fzf
     git
     git-filter-repo
     glances
