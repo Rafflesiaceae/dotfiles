@@ -19,6 +19,7 @@
     xxx = "!git commit -am \"@SQUASHME - XXX commit - committed an intermediate state for likely testing reasons\" && git push"
 
     suburr = submodule update --init --recursive --remote
+    subur = submodule update --init --recursive
     tag-creation-dates = "log --tags --simplify-by-decoration --pretty=\"format:%ai %d\""
 {% if gitconfig.use_lfs %}
 [filter "lfs"]
