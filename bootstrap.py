@@ -60,7 +60,7 @@ def log_syschange_write():
 
     now_posix = datetime.now().timestamp()
     __log_cache.reverse() # it's important to apply undos in reverse order
-    with open(f"{scriptpath}/syschange_{now_posix}.log", "w") as f:
+    with open(f"{scriptpath}/.syschange_{now_posix}.log", "w") as f:
         f.writelines(__log_cache)
 atexit.register(log_syschange_write)
 
