@@ -63,6 +63,7 @@ base=(
     gvfs
     gvfs-smb
     gvim
+    highlight
     htop
     hyperfine
     imagemagick
