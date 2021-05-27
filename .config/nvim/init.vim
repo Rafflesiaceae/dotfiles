@@ -618,6 +618,7 @@ autocmd FileType iss set filetype=pascal
 autocmd FileType pascal setlocal commentstring=//\ %s
 
 " GROOVY
+au BufRead,BufNewFile *.gvy set filetype=groovy
 autocmd FileType groovy nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
 
 augroup QuickFix
