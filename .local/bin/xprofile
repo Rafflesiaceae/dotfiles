@@ -1,0 +1,84 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    echo "usage: [-l|--list]"
+    exit 1
+}
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+list() {
+    echo "supported profiles: [ main, ims, home ]"
+    exit 0
+}
+
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        # -f|--file)
+            # [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
+            # file=$2
+            # shift || usage
+            # ;;
+        -l|--list)
+            list
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+profiles=(
+    "main"
+    "ims"
+    "home"
+)
+
+profile=$1
+shift || list
+
+set_restart_autorandr_profile() { echo "autorandr --change \"$1\"" > "$HOME/.xrandr.restart"; }
+get_dpi() { cat "$HOME/.Xresources" | sed -n "s/Xft\.dpi:\s*//p"; }
+set_dpi_and_xrandr() { 
+    dpi=$1
+    shift || die "pass me dpi"
+    autorandr_profile=$1
+    shift || die "pass me an autorandr_profile"
+    if [[ "$(get_dpi)" != "$dpi" ]]; then
+        echo "setting dpi to $dpi";
+        sed -i "s/Xft.dpi:.*/Xft.dpi:$dpi/" "$HOME/.Xresources"; 
+        set_restart_autorandr_profile "$autorandr_profile"
+        i3-msg exit
+    else
+        autorandr --change "$autorandr_profile"
+    fi
+}
+
+case $profile in
+    main)
+        set_dpi_and_xrandr "128" "main"
+    ;;
+    ims)
+        set_dpi_and_xrandr "128" "ims-two-unset"
+        ;;
+    home)
+        set_dpi_and_xrandr "96" "home"
+        ;;
+    *)
+        die "don't know your profile: $profile"
+        ;;
+esac

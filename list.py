@@ -90,6 +90,7 @@ sources = {
     "./.local/bin/watch-build": { "linux": "" },
     "./.local/bin/watch-go": { "linux": "" },
     "./.local/bin/watch-single": { "linux": "" },
+    "./.local/bin/xprofile": { "linux": "" },
 
     "./.local/bin_override/gimp": { "linux": "" },
 
