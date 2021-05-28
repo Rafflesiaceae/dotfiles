@@ -30,6 +30,7 @@ alias ..='cd ..'
 alias grep="grep --color"
 alias less="less -r"
 alias ls="ls --color -GF"
+alias ll="ls -ltrah"
 alias mkdir="mkdir -p"
 alias ssh="TERM=xterm ssh"
 alias ip="ip -c=auto"
