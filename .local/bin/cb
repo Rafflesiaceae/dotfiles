@@ -49,7 +49,7 @@ if [[ $cli_out ]]; then
 elif  [[ $cli_in ]]; then
     clip_in
 elif  [[ $cli_str ]]; then
-    echo "$1" | clip_in
+    printf "%s" "$1" | clip_in
 else
     if [ -t 0 ]; then
         clip_out
