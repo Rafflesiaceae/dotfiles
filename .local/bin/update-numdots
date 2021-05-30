@@ -8,7 +8,7 @@ if_exists_set_targetdir "$HOME/.dotfiles"
 set -e
 pushd "$targetdir"
 
-gitup master
+gitup main
 ./bootstrap.py
 
 popd
