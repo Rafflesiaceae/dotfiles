@@ -59,6 +59,7 @@ base=(
     git
     git-filter-repo
     glances
+    gnome-keyring
     gsmartcontrol
     gvfs
     gvfs-smb
@@ -124,6 +125,7 @@ x11=(
     lightdm-gtk-greeter
     parcellite
     rofi
+    seahorse
     tigervnc
     ttf-droid
     ttf-liberation
