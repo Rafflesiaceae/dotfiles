@@ -722,6 +722,7 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+default value for env/arg variable (.sh .bash): ${1:-default}
 
 check if user exists (.sh .bash): |
     if id USERNAME &>/dev/null; then
