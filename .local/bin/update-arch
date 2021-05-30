@@ -43,11 +43,15 @@ git pull
 
 makepkg-and-install() {
     pushd "$1"
-    makepkg -i --noconfirm --needed
+    if [[ "$2" == "force" ]]; then
+        makepkg -i --noconfirm --force
+    else
+        makepkg -i --noconfirm --needed
+    fi
     popd
 }
 
-makepkg-and-install "rxvt-unicode-patched"
+makepkg-and-install "rxvt-unicode-patched"  "force" # needs recompilation when perl updates
 makepkg-and-install "xkeyboard-config-desc"
 
 popd
