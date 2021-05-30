@@ -113,6 +113,7 @@ base=(
 )
 
 x11=(
+    # xorg-xbacklight # conflicts with acpilight
     d-feet
     dunst
     freetype2
@@ -133,7 +134,6 @@ x11=(
     xf86-input-libinput
     xorg-mkfontscale
     xorg-server
-    # xorg-xbacklight # conflicts with acpilight
     xorg-xgamma
     xorg-xinput
     xorg-xkill
