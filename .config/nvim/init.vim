@@ -335,11 +335,6 @@ au BufRead,BufNewFile *.gd set filetype=gdscript
 au FileType gdscript set list
 " }}}
 " {{{ ocaml
-" $ opam install merlin
-let g:opamshare = substitute(system('opam config var share'),'\n$','','''')
-execute "set rtp+=" . g:opamshare . "/merlin/vim"
-execute "helptags " . g:opamshare . "/merlin/vim/doc"
-" }}}
 
 
 inoremap <M-o> <ESC>o
