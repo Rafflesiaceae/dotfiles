@@ -238,9 +238,9 @@ bindkey '^G' list_git_branches_via_fzf
 # {{{ RPROMPT GIT & STUFF
 local zsh_git_prompt=$HOME/.zsh/zsh-git-prompt/zshrc.sh
 local has_zsh_git_prompt=
-[[ -f "$zsh_git_prompt" ]] && has_zsh_git_prompt=1
+command -v gitusers &>/dev/null && has_zsh_git_prompt=1
 function rprompt_cmd() {
-    [[ $has_zsh_git_prompt ]] && echo "$(source "$zsh_git_prompt" && git_super_status)"
+    [[ $has_zsh_git_prompt ]] && echo "$(gitusers -p)"
 }
 
 ASYNC_PROC=0
