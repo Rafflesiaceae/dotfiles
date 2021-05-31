@@ -151,6 +151,27 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+timeout for a goroutine (.golang .cncr .goroutine): |
+    select {
+    case <-time.After(3 * time.Second):
+        return fmt.Error("timeout")
+    }
+
+sync/wait for multiple goroutines via waitgroup (.golang .cncr .goroutine): |
+    var wg sync.WaitGroup
+
+    somefunc := func(wg *sync.WaitGroup) {
+        defer wg.Done()
+        time.Sleep(1 * time.Second)
+    }
+
+    for i := 1; i <= 5; i++ {
+        wg.Add(1)
+        go somfunc(&wg)
+    }
+
+    wg.Wait()
+
 append text to a file (.golang): |
     f, err := os.OpenFile(FILEPATH, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
     if err != nil {
@@ -204,7 +225,12 @@ regex extract groups (.golang): |
     // either returns [] if no match or [whole match, group1, group2, ...]
 
 print the type of a variable at runtime (.golang): fmt.Println(reflect.TypeOf(fooVar).String())
-string to int (.golang): i, err := strconv.Atoi("-42")
+string to int (.golang): |
+    // for `int`
+    i, err := strconv.Atoi("-42")
+    // for `int64` ...
+    i, err := strconv.ParseInt(s, 10, 64)
+    // for other "number types" see `strconv.Parse...`
 int to string (.golang): s := strconv.Itoa(-42)
 
 read stdin (.golang): bytes, err := ioutil.ReadAll(os.Stdin)
