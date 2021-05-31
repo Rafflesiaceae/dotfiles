@@ -3,7 +3,7 @@ set -eo pipefail
 
 echo {{{1 record itself
 if [[ "$1" != "--no-record" ]]; then
-    title="update_arch_$(date +%s)"
+    title=".update_arch_$(date +%s)"
     echo "recording output to $HOME/$title.cast"
     asciinema rec \
         --command "\"$0\" --no-record" \
