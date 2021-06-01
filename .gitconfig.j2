@@ -1,3 +1,9 @@
+{% if gitconfig.user %}
+[user]
+	name  = »gitconfig.user.name«
+	email = »gitconfig.user.email«
+[global]
+{% endif %}
 [svn]
 	pushmergeinfo = true
 [fetch]
