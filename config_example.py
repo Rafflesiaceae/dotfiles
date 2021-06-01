@@ -1,4 +1,7 @@
 gitconfig = {
+    "name"  : "<USER>",
+    "email" : "<EMAIL>",
+
     "use_lfs" : False,
 }
 
