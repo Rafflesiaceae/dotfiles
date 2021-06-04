@@ -791,6 +791,12 @@ hashmap / declarative / associative array (.bash): |
   echo "keys" ${!MAP[@]}
   echo "vals" ${MAP[@]}
 
+all keys matching/equal-to a given value (.jq .sh .bash): |
+    jq -e 'to_entries[] | select(.value=="xxx")) | .key'
+
+first key matching/equal-to a given value (.jq .sh .bash): |
+    jq -e 'first( to_entries[] | select(.value=="xxx")) | .key'
+
 create json (.jq .sh .bash): |
     BUCKET_NAME=testbucket
     OBJECT_NAME=testworkflow-2.0.1.jar
