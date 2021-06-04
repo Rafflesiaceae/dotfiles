@@ -55,6 +55,8 @@ elif [[ $is_windows ]]; then
     alias thu="explorer ."
 fi
 
+cdd() { cd "$(dirname "$1")"; }
+
 nh() {
     tmpfile=$(mktemp)
     [[ -z "$*" ]] && { printf "give me a command to run\n"; return 0; }
