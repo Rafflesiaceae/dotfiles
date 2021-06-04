@@ -58,7 +58,7 @@ set_dpi_and_xrandr() {
     shift || die "pass me dpi"
     autorandr_profile=$1
     shift || die "pass me an autorandr_profile"
-    refresh-keyboard
+    refresh-keyboard || true
     if [[ "$(get_dpi)" != "$dpi" ]]; then
         echo "setting dpi to $dpi";
         sed -i "s/Xft.dpi:.*/Xft.dpi:$dpi/" "$HOME/.Xresources"; 
