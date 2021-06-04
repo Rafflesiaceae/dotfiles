@@ -102,12 +102,12 @@ let g:ycm_language_server =
   \     'cmdline': [ '/home/raf/.nimble/bin/nimlsp' ],
   \     'filetypes': [ 'nim' ],
   \   },
-  \   {
-  \     'name': 'groovy',
-  \     'cmdline': [ 'java', '-jar', '/usr/share/java/groovy-language-server/groovy-language-server-all.jar' ],
-  \     'filetypes': [ 'groovy', 'gvy', 'gy', 'gsh' ],
-  \   }
   \ ]
+  " \   {
+  " \     'name': 'groovy',
+  " \     'cmdline': [ 'java', '-jar', '/usr/share/java/groovy-language-server/groovy-language-server-all.jar' ],
+  " \     'filetypes': [ 'groovy', 'gvy', 'gy', 'gsh' ],
+  " \   }
 
 map <C-g> :CtrlSF 
 map <C-f> :CtrlSF<CR>
