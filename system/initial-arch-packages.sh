@@ -21,12 +21,13 @@ sudo pacman -S \
 # record itself
 if [[ "$1" != "--no-record" ]]; then
     title="initial_arch_packages_$(date +%s)"
-    echo "recording output to $HOME/$title.cast"
+    castfile=$HOME/.$title.cast
+    echo "recording output to $castfile"
     asciinema rec \
         --command "\"$0\" --no-record" \
         --title "$title" \
         --quiet \
-        "$HOME/$title.cast"
+        "$castfile"
     exit 0
 fi
 
