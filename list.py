@@ -72,6 +72,7 @@ sources = {
     "./.local/bin/rcb": "",
     "./.local/bin/reconnman": { "linux": "" },
     "./.local/bin/record-screen": "",
+    "./.local/bin/refresh-keyboard": { "linux": "" },
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/show-no-connman-con": { "linux": "" },
     "./.local/bin/showcqt": "",
