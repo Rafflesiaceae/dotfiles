@@ -426,6 +426,8 @@ nnoremap <leader>cw "+yiw<CR>
 
 nnoremap <leader>m :buffers<CR>:buffer<Space>
 
+noremap <leader>gb :Git blame<CR>
+
 " Google it - TODO for visual selection
 nnoremap <leader>gg :call system("chromium \"http://www.google.com/search?q=".expand("<cword>")."\"")<CR>
 
