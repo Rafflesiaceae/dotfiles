@@ -1,8 +1,7 @@
 ---
 # cmd {{{1
 find and replace simple sed (.sed .cmd): sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
-benchmark (startup) of a program (.cmd):
-    hyperfine PROGRAM
+benchmark (startup) of a program (.cmd): hyperfine PROGRAM
 
 git squash all commits into one (.cmd .git): | # https://stackoverflow.com/a/23486788
     git reset $(git commit-tree HEAD^{tree} -m "hello world")
