@@ -1,5 +1,6 @@
 ---
 # cmd {{{1
+find and replace simple sed (.sed .cmd): sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
 benchmark (startup) of a program (.cmd):
     hyperfine PROGRAM
 
