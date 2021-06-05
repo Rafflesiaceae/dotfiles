@@ -158,6 +158,7 @@ let g:ale_linters = {
 \   'c': [],
 \   'objc': [],
 \   'javascript': [],
+\   'markdown': [],
 \}
 
 " }}}
