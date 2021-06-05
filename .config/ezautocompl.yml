@@ -146,6 +146,15 @@ switch (.cpp .c++): |
   }
 
 throw/raise exception (.cpp .c++): throw std::runtime_error("ERROR");
+catch all exceptions (.cpp .c++): |
+  try {
+    // ...
+  } catch(std::exception const & ex) {
+    // ...
+  } catch(...) {
+    // ignore ex
+  }
+
 
 print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
