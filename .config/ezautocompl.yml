@@ -224,10 +224,6 @@ touch/create a file (.golang): |
         file.Close()
     }
 
-expand user/home (.golang): |
-    usr, err := user.Current()
-    usrDir := usr.HomeDir
-
 join array of strings (.golang): strings.Join(lines, "\n")
 regex extract groups (.golang): |
     var rePattern *regexp.Regexp = regexp.MustCompile(`^\.\-(.*)-(\d\d\d\d).bak$`)
@@ -271,11 +267,8 @@ strip/trim string (.golang): strings.TrimSpace(" qwe ")
 
 split string (.golang): strings.Split("a,b,c", ",")
 
-get home directory (.golang): |
+get user/home directory/path (.golang): |
     user, err := user.Current()
-    if err != nil {
-        panic(err)
-    }
     homeDir := user.HomeDir
 
 check if file exists (.golang): |
