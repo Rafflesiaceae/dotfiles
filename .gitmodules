@@ -1,4 +1,0 @@
-[submodule "bundled_packages/gettemp"]
-	path = bundled_packages/gettemp
-	url = numgit:/numgit/gettemp
-	branch = master
