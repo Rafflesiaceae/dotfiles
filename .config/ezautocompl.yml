@@ -989,12 +989,10 @@ die usage usage_and_die (.sh .bash): |
         printf '%s\n' "$1" >&2
         exit "${2-1}"
     }
-
     usage() {
         echo "usage: copypass|edituuid|forget|generate|verify [-cp|--copypass]"
         exit 1
     }
-
     usage_and_die() {
         printf '%s\n' "$1" >&2
         usage
