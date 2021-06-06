@@ -1,5 +1,21 @@
 ---
 # cmd {{{1
+
+add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
+
+# https://unix.stackexchange.com/a/264977
+echo/print file contents from-to/between 2 matches (.sed .cmd): sed -n '/^pattern1/,${p;/^pattern2/q}'
+
+# https://unix.stackexchange.com/a/80400
+echo/print file contents after/from a match (.sed .cmd): sed '1,/^pattern1/d'
+
+# https://unix.stackexchange.com/a/11323
+echo/print file contents up to match (.sed .cmd): |
+    # print up to and including the match
+    sed '/pattern/q' filename
+    # print up to BUT NOT including the match (GNU)
+    sed '/pattern/Q' filename
+
 find and replace line with group match/extract (.sed .cmd): sed -ri "s/^PREFIX:(.*)/# PREFIX:\1/" FILE
 find and replace simple sed (.sed .cmd): sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
 benchmark (startup) of a program (.cmd): hyperfine PROGRAM
