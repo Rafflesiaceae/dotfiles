@@ -72,7 +72,7 @@ geometry = "0x5-30-50"
 # Don't remove messages, if the user is idle (no mouse or keyboard input)
 # for longer than idle_threshold seconds.
 # Set to 0 to disable.
-idle_threshold = 0
+idle_threshold = 2
 
 
 # Display notification on focused monitor. Possible modes are:
