@@ -1,0 +1,196 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    prefix_tab() { sed 's/^/\t/'; }
+    filter_cases() { sed -rn 's/\s+(.*)\)\s*# \{\{\{2/\1/p' | sort | prefix_tab; }
+
+    source_to_pair_comment_line() { sed -r '/^# \{\{\{1 pair/q'; }
+    source_from_pair_comment_line() { sed -r '1,/^# \{\{\{1 pair/d'; }
+    echo "usage: <template> | <target> <ft-template>"
+    echo "templates:"
+    cat "$0" | source_to_pair_comment_line | filter_cases
+    echo ""
+    echo "ft-templates:"
+    cat "$0" | source_from_pair_comment_line | filter_cases
+
+    exit 1
+}
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+icat() {
+    [[ -f "$1" ]] && exit 0
+    mkdir -p "$(dirname "$1")" || true
+    echo "+ $1"
+    cat > "$1"
+}
+
+xicat() {
+    icat "$1"
+    [[ -f "$1" ]] && chmod +x "$1"
+}
+
+# {{{1 single templates
+if [[ $# -eq 1 ]]; then 
+    case "$1" in
+        .editorconfig|editorconfig) # {{{2
+            icat ".editorconfig" <<'EOF'
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.nim]
+indent_size = 2
+
+[*.py]
+indent_size = 4
+
+[*.{js,mjs,jsx,ts,tsx}]
+indent_size = 2
+
+[*.{c,cc,cpp,h,hh,hpp}]
+indent_style = tab
+indent_size = 3
+
+[Makefile]
+indent_style = tab
+
+[meson.build]
+indent_size = 4
+indent_style = tab
+
+# serialization & markup
+
+[*.{json,jsonl,json5}]
+indent_style = tab
+indent_size = 2
+
+[*.yaml]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = tab
+trim_trailing_whitespace = false
+EOF
+        ;;
+
+        meson) # {{{2
+            icat ".meson" <<'EOF'
+project(
+	'cex',
+	['c', 'cpp'],
+	version: '0.0.1',
+	license: 'GPL',
+)
+
+
+# subproject - lib: ./clib/meson.build
+glib_dep = dependency('glib-2.0')
+
+libclib_inc = include_directories('include')
+libclib = static_library(
+  'clib',
+  files('src/clib.c'),
+  include_directories: [libclib_inc],
+  dependencies: [glib_dep],
+)
+
+clib_dep = declare_dependency(
+  link_with: libclib,
+  include_directories: libclib_inc,
+)
+
+# mainproject - exec
+clib_proj = subproject('clib')
+clib_dep = clib_proj.get_variable('clib_dep')
+
+executable('cex',
+	files(
+      './src/main.c',
+	),
+	dependencies: [
+      clib_dep,
+	],
+)
+EOF
+        ;;
+
+        dockerfile) # {{{2
+            icat "Dockerfile" <<'EOF'
+FROM debian:jessie
+MAINTAINER My Self <myself@gmail.com>
+
+COPY something/* /tmp/something
+
+ENV SOMETHING_PATH /tmp/something
+# default answers for all questions
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update -qq && apt-get upgrade -y
+
+RUN apt-get install --no-install-recommends -y \ 
+        build-essential make pkg-config ca-certificates curl unzip python git-core cmake \
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+USER someuser
+
+# EXPOSE 8080
+
+# VOLUME  ["/opt/whatever"]
+
+# default cmd
+CMD ["/usr/bin/bash", "-c", "echo \"ASD\""]
+
+# vim: syntax=dockerfile
+EOF
+        ;;
+    # }}}
+    *)
+    usage_and_die "ERROR: unknown template $1"
+        ;;
+    esac
+
+# {{{1 pair ft-templates
+elif [[ $# -eq 2 ]]; then
+    case $2 in # template
+        sh|bash|.sh) # {{{2
+            xicat "$1" <<'EOF'
+#!/bin/bash
+set -eo pipefail
+
+EOF
+            ;;
+        py|python|.py) # {{{2
+            xicat "$1" <<'EOF'
+#!/usr/bin/env python3
+import sys
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
+EOF
+            ;;
+    # }}}
+    *)
+    usage_and_die "ERROR: unknown ft-template $2"
+        ;;
+    esac
+    :
+else
+    usage
+fi

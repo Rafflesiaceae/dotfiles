@@ -80,6 +80,7 @@ sources = {
     "./.local/bin/sshhost": "",
     "./.local/bin/svimdiff": { "linux": "" },
     "./.local/bin/svnrootdir": "",
+    "./.local/bin/t": "",
     "./.local/bin/termpopup": { "linux": "" },
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/togglekb": "",
