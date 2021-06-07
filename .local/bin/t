@@ -25,10 +25,13 @@ usage_and_die() {
     usage
 }
 
+writtenFiles=()
+
 icat() {
     [[ -f "$1" ]] && exit 0
     mkdir -p "$(dirname "$1")" || true
     echo "+ $1"
+    writtenFiles+=($1)
     cat > "$1"
 }
 
@@ -193,4 +196,8 @@ EOF
     :
 else
     usage
+fi
+
+if [[ ${#writtenFiles[@]} -gt 0 ]]; then
+    "$EDITOR" "${writtenFiles[@]}"
 fi
