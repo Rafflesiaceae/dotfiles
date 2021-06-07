@@ -308,7 +308,7 @@ fi
 # {{{ edit which current buffer (F5)
 edit_which_current_buffer() {
     trimmed_buffer=$(echo "$BUFFER" | awk '{$1=$1;print}') # trim string
-    "$EDITOR" "$(which "$trimmed_buffer")"
+    "$EDITOR" "$(readlink "$(which "$trimmed_buffer")")"
 }
 zle -N edit_which_current_buffer
 bindkey '^[[15~' edit_which_current_buffer # F5
