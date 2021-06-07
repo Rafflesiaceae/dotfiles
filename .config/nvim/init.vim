@@ -1097,6 +1097,7 @@ Plug 'cespare/vim-toml'
 Plug 'wsdjeg/vim-fetch'
 
 Plug 'will133/vim-dirdiff'
+Plug 'LnL7/vim-nix'
 
 call SourceIfExists("~/.config/nvim/local_custom_imports")
 
