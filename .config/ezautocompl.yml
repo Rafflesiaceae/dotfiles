@@ -253,7 +253,7 @@ string to int (.golang): |
     // for `int64` ...
     i, err := strconv.ParseInt(s, 10, 64)
     // for other "number types" see `strconv.Parse...`
-int to string (.golang): s := strconv.Itoa(-42)
+parse int from string (.golang): s := strconv.Itoa(-42)
 
 read stdin (.golang): bytes, err := ioutil.ReadAll(os.Stdin)
 pop off array (.golang): fooArr = fooArr[:len(fooArr)-1]
@@ -276,8 +276,6 @@ resolve symlinks (.golang): resolved, err := filepath.EvalSymlinks(fooPath)
 check if map contains/in key (.golang): |
     if val, ok := dict["foo"]; ok {
     }
-
-parse int from string (.golang): i, err := strconv.ParseInt("-42", 10, 64)
 
 strip/trim string (.golang): strings.TrimSpace(" qwe ")
 
@@ -1015,8 +1013,8 @@ die usage usage_and_die (.sh .bash): |
     }
 
 foreach argument (.sh .bash): |
-    for var in "$@"; do
-        echo "$var"
+    for arg in "$@"; do
+        echo "$arg"
     done
 
 echo heredoc (.sh .bash): |
