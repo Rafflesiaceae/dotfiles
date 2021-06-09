@@ -177,6 +177,15 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+check if error is type/subtype of an error type (.golang): |
+    switch err.(type) {
+    case *fs.PathError:
+        break
+    default:
+        panic(err)
+    }
+
+reflect/print/determine type of pointer during runtime (.golang): println(reflect.ValueOf(err).Type().String()) 
 timeout for a goroutine (.golang .cncr .goroutine): |
     select {
     case <-time.After(3 * time.Second):
