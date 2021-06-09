@@ -774,6 +774,8 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+remove postfix (.sh .bash): ${"/foo/bar"%/bar}
+remove prefix (.sh .bash): ${"/foo/bar"#/foo/}
 default value for env/arg variable (.sh .bash): ${1:-default}
 
 check if user exists (.sh .bash): |
