@@ -1,11 +1,15 @@
 #!/bin/bash
-# asc v0.1 (2021-06-10) (614bcbf02c34a6fd)
+# asc v0.1 (2021-06-10) (79fcff910dcc93a0)
 set -eo pipefail
 die() {
     printf '%b\n' "$1" >&2
     exit "${2-1}"
 }
 qdie() { printf '%b\n' "$1" >&2; should_exit=1; }
+usage() {
+    echo "usage: [-h|--help] shell-command"
+    exit 1
+}
 
 # ascii colors
 cred=$(     2>/dev/null tput setaf 1) || true
@@ -51,9 +55,16 @@ args=(
 
 # "cli"
 if [[ $# -eq 1 ]]; then
-    args+=( --command "$1" )
+    case $1 in
+        -h|--help)
+            usage
+            ;;
+        *)
+            args+=( --command "$1" )
+            ;;
+    esac
 else
-    die "I only accept 1 argument, that being the command to run"
+    usage
 fi
 
 echo "${banner} ${cmagenta}recording to${cred}:${creset} $castf"
