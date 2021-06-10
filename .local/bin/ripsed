@@ -2,31 +2,71 @@
 from io import StringIO
 from typing import *
 from typing.io import *
-import os
 import shutil
+import subprocess
 import sys
 import tempfile
 
-#  @XXX @NOTE: we don't support all possible cases of weird filenames, if
-#  you have ':[0-9]+:' as part of any filename, we will break for sure
+# @XXX @NOTE: we don't support all possible cases of weird filenames, as
+# ripgrep doesn't do any escaping, if you have ':[0-9]+:' as part of any
+# filename, we will break for sure
+#
+# once https://github.com/BurntSushi/ripgrep/issues/1872 goes through we
+# can swap over to parsing the '--json' output and then this issue will be
+# fixed
 
 import re
 re_number_sep = re.compile(r':([0-9]+):')
 
 def main():
-    if sys.stdin.isatty():
-        # @TODO
-        sys.stderr.write("only passing ripgrep output to stdin is supported atm, exiting")
-        sys.exit(1)
+    if sys.stdin.isatty(): # we invoke ripgrep
+        args=sys.argv[1:]
 
-    rg_out=sys.stdin.readlines()
+        if len(args) == 0 or len([a for a in args if a == "-h" or a == "--help"]):
+            print("""
+                  do like a normal rg with -r to get the result that you
+                  want and then just prefix me to the whole shell command,
+                  I'll do the rest, you can also pass me the stdout of an
+                  rg command as long as it's piped, but I expect a
+                  specific format from ripgrep, check 'clean_args' in my
+                  source if you want to do that, I'll also add them to the
+                  last example
 
-    queue = []
+                  have a nice day
+
+                  examples:
+                      ripsed rg "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**'
+                      ripsed "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**'
+
+                      rg "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**' \\
+                          --color never --context 0 --line-number \\
+                          --max-columns 0 --no-column | ripsed
+                  """)
+            sys.exit(0)
+
+        if args[0] == 'rg':
+            args.pop(0)
+
+        # we overwrite potential rg arguments in order to get deterministic output 
+        clean_args = [
+            "--color", "never",
+            "--context", "0",
+            "--line-number",
+            "--max-columns", "0",
+            "--no-column",
+        ]
+
+        rg_out = subprocess.check_output([ "rg", *args, *clean_args ]).decode("utf-8").splitlines(True)
+    else: # we use ripgrep output from stdin
+        # @NOTE: this requires you to use proper rg arguments yourself, see 'clean_args' above
+        rg_out=sys.stdin.readlines()
+
+    queue: List[any] = []
     entry_i_line_number=0
     entry_i_newtext=1
-    buckets: Dict[str, List[any]] = {}
+    buckets: Dict[str, List[any]] = {} # path => entry
 
-    # parse from ripgrep output and fill buckets
+    # parse output and fill into buckets
     for line in rg_out:
         number_seperator=next(re_number_sep.finditer(line))
 
