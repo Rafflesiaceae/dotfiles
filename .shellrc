@@ -19,6 +19,7 @@ esac
 
 # - - -
 
+alias gf="git fetch"
 alias ws="cd ~/workspace"
 
 # shell nav helper
