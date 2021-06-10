@@ -7,12 +7,10 @@ die() {
     printf '%s\n' "$1" >&2
     exit 1
 }
-
 usage() {
     echo "usage: termpopup [-ns|--no-shell] [-ne|--no-escape] [-nf|--no-float] [-w|--wait] ..."
     exit 1
 }
-
 usage_and_die() {
     printf '%s\n' "$1" >&2
     usage
