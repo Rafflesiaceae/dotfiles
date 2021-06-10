@@ -605,6 +605,25 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
+extract group from compiled regex (.python): |
+    import re
+    re_number_sep    = re.compile(r':([0-9]+):')
+    number_seperator = next(re_number_sep.finditer(line))
+    group0           = number_seperator.groups()[0]
+
+check if stdin is terminal/tty or pipe/stdin (.python): |
+    if sys.stdout.isatty():
+        print("tty")
+    else:
+        print("non-tty")
+
+typeannotations (.python): |
+    from typing import *
+    name: str
+    unit_prices: List[float]
+    map: Dict[str, int]
+    quantity_on_hand: int = 0
+
 path relative to current script (.python): scriptpath = os.path.dirname(__file__)
 
 get own pid (.python): |
@@ -775,6 +794,15 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+cat heredoc to file (.sh .bash): |
+    cat <<EOF > FILE
+    ...
+    EOF
+
+git helper (.git .sh): |
+    git_branch_exists() { [[ -z "$(git branch --list "$1")" ]]; }
+    git_current_branch() { local head; head="$(git symbolic-ref HEAD)"; echo "${head:11}"; }
+
 remove postfix (.sh .bash): ${"/foo/bar"%/bar}
 remove prefix (.sh .bash): ${"/foo/bar"#/foo/}
 default value for env/arg variable (.sh .bash): ${1:-default}
