@@ -1,5 +1,5 @@
 #!/bin/bash
-# asc v0.1 (2021-06-10) (79fcff910dcc93a0)
+# asc v0.1 (2021-06-10) (f5378b538345d577)
 set -eo pipefail
 die() {
     printf '%b\n' "$1" >&2
