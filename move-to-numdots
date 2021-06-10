@@ -16,7 +16,7 @@ move() {
     [[ ! -f "$from" ]] && die "from: $from should exist"
     [[ -f "$to" ]] && die "to: $to should not exist"
 
-    echo $from => $to
+    echo "$from => $to"
     mv "$from" "$to"
     echo "    \"./$file\": \"\"," >> ./list.py
     git add "$file"
