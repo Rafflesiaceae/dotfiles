@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+from io import StringIO
+from typing import *
+from typing.io import *
+import os
+import shutil
+import sys
+import tempfile
+
+#  @XXX @NOTE: we don't support all possible cases of weird filenames, if
+#  you have ':[0-9]+:' as part of any filename, we will break for sure
+
+import re
+re_number_sep = re.compile(r':([0-9]+):')
+
+def main():
+    if sys.stdin.isatty():
+        # @TODO
+        sys.stderr.write("only passing ripgrep output to stdin is supported atm, exiting")
+        sys.exit(1)
+
+    rg_out=sys.stdin.readlines()
+
+    queue = []
+    entry_i_line_number=0
+    entry_i_newtext=1
+    buckets: Dict[str, List[any]] = {}
+
+    # parse from ripgrep output and fill buckets
+    for line in rg_out:
+        number_seperator=next(re_number_sep.finditer(line))
+
+        line_number = int(number_seperator.groups()[0])
+        span        = number_seperator.span()
+
+        path    = line[:span[0]]
+        newtext = line[span[1]:]
+
+        entry = [ line_number, newtext ]
+
+        if path in buckets:
+            buckets[path].append(entry)
+        else:
+            buckets[path] = [entry]
+
+    # rewrite files with changes
+    for path,entries in buckets.items():
+        with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
+            i = 0
+            ei = 0
+            entry = entries[ei]
+            with open(path) as input_file:
+                for line in input_file:
+                    if i == entry[entry_i_line_number]-1:
+                        temp_file.write(entry[entry_i_newtext])
+                        ei+=1
+                        if ei < len(entries): entry = entries[ei]
+                    else:
+                        temp_file.write(line)
+                    i+=1
+
+            temp_file.flush()
+            shutil.move(temp_file.name, path)
+
+if __name__ == "__main__":
+    main()
