@@ -102,6 +102,7 @@ sources = {
     "./.local/bin/watch-go": { "linux": "" },
     "./.local/bin/watch-single": { "linux": "" },
     "./.local/bin/xprofile": { "linux": "" },
+    "./.local/bin/zoom-share-bar-hide": "",
 
     "./.local/bin_override/gimp": { "linux": "" },
 

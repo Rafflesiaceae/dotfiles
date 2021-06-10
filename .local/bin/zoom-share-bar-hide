@@ -1,0 +1,16 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+>/dev/null pgrep ^zoom$ || die "zoom ain't runnin'"
+
+toolbar_visible=$(xdotool search --onlyvisible --name "as_toolbar") || toolbar_invisible=$(xdotool search --name "as_toolbar") || die "failed to find share-screen bar (toolbar)"
+if [[ $toolbar_visible ]]; then
+    xdotool windowunmap "$toolbar_visible"
+else
+    xdotool windowmap "$toolbar_invisible"
+fi
