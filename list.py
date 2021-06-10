@@ -82,6 +82,7 @@ sources = {
     "./.local/bin/refresh-keyboard": { "linux": "" },
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
+    "./.local/bin/scan-brother": "",
     "./.local/bin/show-no-connman-con": { "linux": "" },
     "./.local/bin/showcqt": "",
     "./.local/bin/smart-context": { "linux": "" },

@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eo pipefail
+now=$(date +%s)
+imgtiff=scan-brother-$now.tiff
+imgpng=scan-brother-$now.png
+
+scanimage --source Flatbed --device "airscan:w0:Brother MFC-L2710DN series" --format=tiff --output-file "$imgtiff" --resolution 600 --progress
+# magick convert "$imgtiff" "$imgpng"
