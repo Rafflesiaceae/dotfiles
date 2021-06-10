@@ -90,7 +90,7 @@ EOF
         ;;
 
         meson) # {{{2
-            icat ".meson" <<'EOF'
+            icat "meson.build" <<'EOF'
 project(
 	'cex',
 	['c', 'cpp'],
