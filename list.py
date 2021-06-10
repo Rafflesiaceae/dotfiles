@@ -90,6 +90,7 @@ sources = {
     "./.local/bin/svnrootdir": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": { "linux": "" },
+    "./.local/bin/thuncb": "",
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/togglekb": "",
     "./.local/bin/update-arch": { "linux": "" },

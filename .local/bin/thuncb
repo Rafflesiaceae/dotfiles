@@ -1,0 +1,6 @@
+#!/bin/bash
+set -eo pipefail
+
+mkdir -p /tmp/thuncb-floatpath
+cb > "/tmp/thuncb-floatpath/log-$(date +%s).txt"
+thunar /tmp/thuncb-floatpath >/dev/null 2>/dev/null &
