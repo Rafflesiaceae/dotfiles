@@ -9,15 +9,14 @@
 [fetch]
 	prune = true
 [alias]
-    st = status
-    cp = cherry-pick
-    st = status -s
-    cl = clone
-    ci = commit
-    co = checkout
-    br = branch
+    br   = branch
+    ci   = commit
+    cl   = clone
+    co   = checkout
+    cp   = cherry-pick
+    dc   = diff --cached
     diff = diff --word-diff
-    dc = diff --cached
+    st   = status -s
 
     gud = log --oneline --decorate --graph --simplify-by-decoration
     unpushed = "!f() { git log \"$1/$2..$2\"; }; f"
