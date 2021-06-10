@@ -69,11 +69,16 @@ fi
 
 echo "${banner} ${cmagenta}recording to${cred}:${creset} $castf"
 
-tbefore="$(date +%s)" 
+tbefore="$(date +%s.%N)" 
 asciinema "${args[@]}"
-tnow="$(date +%s)"
+tnow="$(date +%s.%N)"
 
 # print time spent
 printf "%s ${cmagenta}time spent${cred}:${creset} " "${banner}"
-tdiff="(( $tnow - $tbefore ))"
-python -c "import datetime;print(datetime.timedelta(seconds=$tdiff))"
+tdiff="$(printf "%s\t%s" "$tnow" "$tbefore" | awk '{print $1-$2}')" # awk emits a double-float
+python -c "import datetime;print(datetime.timedelta(seconds=${tdiff%.**}))"
+
+# asciinema doesn't record when the command finishes, only on actual terminal output,
+# so we add that information ourselves, the time-field is specified as a double-float, 
+# which is why we used awk above
+printf "[%s, \"o\", \"\"]" "$tdiff" >> "$castf"
