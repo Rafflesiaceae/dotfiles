@@ -187,6 +187,14 @@ check if error is type/subtype of an error type (.golang): |
     }
 
 reflect/print/determine type of pointer during runtime (.golang): println(reflect.ValueOf(err).Type().String()) 
+
+free a pointer (.golang .cgo): C.free(fooPtr) 
+create a void pointer (.golang .cgo): nullPtr := unsafe.Pointer(nil)
+malloc a cstring (.golang .cgo): |
+    foo := C.malloc(C.ulong(10 * 10))
+    foop := unsafe.Pointer(foo)
+    fooc := C:GoString((*C.char)(foop))
+
 timeout for a goroutine (.golang .cncr .goroutine): |
     select {
     case <-time.After(3 * time.Second):
@@ -256,7 +264,7 @@ regex extract groups (.golang): |
     matches := rePattern.FindStringSubmatch(fname)
     // either returns [] if no match or [whole match, group1, group2, ...]
 
-print the type of a variable at runtime (.golang): fmt.Println(reflect.TypeOf(fooVar).String())
+print the type of a variable at runtime (.golang .reflection): fmt.Println(reflect.TypeOf(fooVar).String())
 string to int (.golang): |
     // for `int`
     i, err := strconv.Atoi("-42")
@@ -948,7 +956,7 @@ handle/trap ctrl-c (.sh .bash): |
 
 check if env variable is set (.sh .bash): '[[ -z "${MY_ENV}" ]]'
 
-check if application/program/command exists/is installed (.sh .bash): |
+check/test if application/program/command exists/is installed (.sh .bash): |
     ! command -v COMMAND &>/dev/null || die "can't find program: COMMAND"
 
 prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
@@ -1030,6 +1038,7 @@ arrays (.sh .bash): |
         echo $foo
     done
     myfunc "${fooList[@]}"
+    fooListLength=${#fooList[@]}
 
 count / number of arguments (.sh .bash): '"$#"'
 
