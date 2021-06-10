@@ -1,0 +1,31 @@
+#!/bin/bash
+
+COMMIT_MSG_FILE=$1
+
+added_trailers=
+
+empty_message=
+count_non_comment_non_diff_lines() {
+    non_comment_non_diff_lines_count=0
+
+    # use tmpfile as we don't have process substitution in POSIX-shell
+    tmpfile=$(mktemp)
+    cleanup_tmpfile() {
+        rm "$tmpfile"
+    }
+    trap 'cleanup_tmpfile' EXIT
+
+    git stripspace --strip-comments < "$COMMIT_MSG_FILE" > "$tmpfile"
+    while IFS= read -r line || [ -n "$line" ]; do
+        case $line in
+            "diff --git"*)
+                break
+                ;;
+        esac
+        non_comment_non_diff_lines_count=$((non_comment_non_diff_lines_count+1))
+    done < "$tmpfile"
+
+    if [ "$non_comment_non_diff_lines_count" -lt 1 ]; then
+        empty_message=1
+    fi
+}; count_non_comment_non_diff_lines

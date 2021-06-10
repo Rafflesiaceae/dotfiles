@@ -1,0 +1,40 @@
+#!/bin/bash
+
+COMMIT_MSG_FILE=$1
+COMMIT_SOURCE=$2
+SHA1=$3
+
+gerrit() {
+    if [[ ! $empty_message ]]; then
+        return # only run this if the msg file is empty
+    fi
+
+    if test ! -f "$COMMIT_MSG_FILE" ; then
+      echo "file does not exist: $COMMIT_MSG_FILE"
+      exit 1
+    fi
+
+    # Do not create a change id if requested
+    if test "false" = "`git config --bool --get gerrit.createChangeId`" ; then
+      exit 0
+    fi
+
+    # $RANDOM will be undefined if not using bash, so don't use set -u
+    random=$( (whoami ; hostname ; date; cat $COMMIT_MSG_FILE ; echo $RANDOM) | git hash-object --stdin)
+    dest="$1.tmp.${random}"
+
+    trap 'rm -f "${dest}"' EXIT
+    # Avoid the --in-place option which only appeared in Git 2.8
+    # Avoid the --if-exists option which only appeared in Git 2.15
+    if ! git -c trailer.ifexists=doNothing interpret-trailers \
+          --trailer "Change-Id: I${random}" < "$COMMIT_MSG_FILE" > "${dest}" ; then
+      echo "cannot insert change-id line in $COMMIT_MSG_FILE"
+      exit 1
+    fi
+
+    ((added_trailers++))
+    if ! mv "${dest}" "$COMMIT_MSG_FILE" ; then
+      echo "cannot mv ${dest} to $COMMIT_MSG_FILE"
+      exit 1
+    fi
+}; gerrit

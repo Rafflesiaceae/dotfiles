@@ -36,6 +36,10 @@ sources = {
         "linux": "./.config/Code - OSS/User/tasks.json"
     },
 
+    "./.githooks/prepare-commit-msg-common-end": "",
+    "./.githooks/prepare-commit-msg-common-start": "",
+    "./.githooks/prepare-commit-msg-gerrit-auto-change-id": "",
+
     "./.local/bin/add-breakpoint": { "linux": "" },
     "./.local/bin/agt": "",
     "./.local/bin/ahk-ezautocompl.ahk": { "windows": "" },
@@ -52,6 +56,7 @@ sources = {
     "./.local/bin/font-lookup-character": { "linux": "" },
     "./.local/bin/fstack": { "linux": "" },
     "./.local/bin/git-drop": "",
+    "./.local/bin/git-hookman": "",
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/gitup": "",

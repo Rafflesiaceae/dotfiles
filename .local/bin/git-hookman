@@ -1,0 +1,99 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    prefix_tab() { sed 's/^/\t/'; }
+    filter_cases() { sed -rn 's/\s+(.*)\)\s*# \{arg/\1/p' | sort | prefix_tab; }
+    echo "usage: <hook-template>"
+    [[ -f "./.git/hooks/installed" ]] && {
+        echo "found the following currently installed hooks:"
+        cat "./.git/hooks/installed" | sed 's/^/\t/'
+        echo ""
+    }
+    echo "all available hooks:"
+    cat "$0" | filter_cases
+    exit 0
+}
+
+hook_prepare_commit_msg=.git/hooks/prepare-commit-msg
+
+mkdirpf() {
+    file=$1
+    format=$2
+    [[ -f "$file" ]] && return
+    file=$(realpath "$file")
+    dir=$(dirname "$file")
+    mkdir -p "$dir"
+
+    case $format in
+        sh)
+            cat <<EOF >"$file"
+#!/bin/bash
+
+EOF
+            chmod +x "$file"
+            ;;
+        *)
+            touch "$file"
+            ;;
+    esac
+
+}
+
+added=
+find_or_add_line() {
+    target_line=$1
+    file=$2
+    newfile_format=$3
+
+    added=$((added+1))
+    mkdirpf "$file" "$newfile_format"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" == "$target_line" ]]; then
+            added=$((added-1))
+            return
+        fi
+    done < "$2"
+
+    echo "$target_line" >> "$file"
+}
+find_or_add_line_sh() { find_or_add_line "$1" "$2" "sh"; }
+add_hook_as_installed() { find_or_add_line "$1" "./.git/hooks/installed" ""; }
+
+if [[ ! -d ".git" ]]; then
+    die "not a git directory"
+fi
+
+gerrit() {
+    add_hook_as_installed "gerrit"
+
+    find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-common-start"' "$hook_prepare_commit_msg"
+    find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-gerrit-auto-change-id"' "$hook_prepare_commit_msg"
+    # find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-common-end"' "$hook_prepare_commit_msg"
+}
+
+if [[ "$#" -eq 0 ]]; then
+    usage
+fi
+
+for arg in "$@"; do
+    case $arg in
+        -h|--help)
+            usage
+            ;;
+        gerrit) # {arg
+            gerrit
+            ;;
+        *)
+            die "unknown hook-template"
+            ;;
+    esac
+done
+
+if [[ "$added" -eq 0 ]]; then
+    echo "nothing to do"
+fi

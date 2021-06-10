@@ -1,0 +1,6 @@
+#!/bin/bash
+
+if [[ $added_trailers -gt 0 ]]; then
+    sed -i '1i\\' "$COMMIT_MSG_FILE" # add empty line to beginning of file
+    :
+fi
