@@ -43,6 +43,7 @@ sources = {
     "./.local/bin/add-breakpoint": { "linux": "" },
     "./.local/bin/agt": "",
     "./.local/bin/ahk-ezautocompl.ahk": { "windows": "" },
+    "./.local/bin/asc": "",
     "./.local/bin/aurss": { "linux": "" },
     "./.local/bin/bell": "",
     "./.local/bin/cb": "",

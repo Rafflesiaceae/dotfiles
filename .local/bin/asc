@@ -1,0 +1,68 @@
+#!/bin/bash
+# asc v0.1 (2021-06-10) (614bcbf02c34a6fd)
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+qdie() { printf '%b\n' "$1" >&2; should_exit=1; }
+
+# ascii colors
+cred=$(     2>/dev/null tput setaf 1) || true
+cmagenta=$( 2>/dev/null tput setaf 5) || true
+cBred=$(    2>/dev/null tput setab 1) || true
+creset=$(   2>/dev/null tput sgr0) || true
+banner=${cmagenta}[${cred}asc${cmagenta}]${creset}
+
+check_dependencies() {
+    assert_command() { command -v "$1" &>/dev/null || qdie "can't find $1, please manually install it"; }
+    assert_command "asciinema"
+    assert_command "python"
+
+    if [[ "$(asciinema --version)" != asciinema\ 2.* ]]; then
+        qdie "your asciinema version is < 2.0.0, that's before the v2 file format, we don't support those"
+    fi
+
+    if [[ $should_exit ]]; then
+        exit 1
+    fi
+}; check_dependencies
+check_config() {
+    config_path=$HOME/.config/asciinema/config
+    if [[ ! -z "$XDG_CONFIG_HOME" ]]; then
+        config_path=$XDG_CONFIG_HOME/asciinema/config
+    fi
+
+    if [[ -f "$config_path" ]]; then
+        if grep -i '^\s*stdin\s*=\s*yes.*$' "$config_path" >/dev/null 2>&1; then
+            echo "${cBred}your asciinema config enables stdin-logging${creset}"
+            echo "this turns it into a key-logger that will log your sudo password, there's no way to explicitly turn stdin-logging off per asciinema invocation, so we stop right here instead"
+            exit 1
+        fi
+    fi
+}; check_config
+
+castf=/tmp/asciinema-"$(date +%s)".cast
+args=(
+    rec
+    "$castf"
+    --quiet
+    )
+
+# "cli"
+if [[ $# -eq 1 ]]; then
+    args+=( --command "$1" )
+else
+    die "I only accept 1 argument, that being the command to run"
+fi
+
+echo "${banner} ${cmagenta}recording to${cred}:${creset} $castf"
+
+tbefore="$(date +%s)" 
+asciinema "${args[@]}"
+tnow="$(date +%s)"
+
+# print time spent
+printf "%s ${cmagenta}time spent${cred}:${creset} " "${banner}"
+tdiff="(( $tnow - $tbefore ))"
+python -c "import datetime;print(datetime.timedelta(seconds=$tdiff))"
