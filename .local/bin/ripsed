@@ -22,8 +22,14 @@ def main():
     if sys.stdin.isatty(): # we invoke ripgrep
         args=sys.argv[1:]
 
-        if len(args) == 0 or len([a for a in args if a == "-h" or a == "--help"]):
+        if len(args) == 0 or any(a in ["-h","--help","-v","--version"] for a in args):
             print("""
+                  I turn ripgrep into a search-and-replace kinda deal, do
+                  you know ripgrep's -r/--replace ? it's a cool thing, but
+                  it doesnt edit files in place, ripgrep is intended by
+                  the author to never ever change your files, so instead I
+                  am here
+
                   do like a normal rg with -r to get the result that you
                   want and then just prefix me to the whole shell command,
                   I'll do the rest, you can also pass me the stdout of an
