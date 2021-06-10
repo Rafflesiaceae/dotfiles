@@ -1,6 +1,7 @@
 ---
 # cmd {{{1
 
+add empty line at beginning of file (.sed .cmd): sed -i '1i\\' FILE
 add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
 
 # https://unix.stackexchange.com/a/264977
