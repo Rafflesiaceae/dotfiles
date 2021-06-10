@@ -41,10 +41,10 @@ def main():
                   have a nice day
 
                   examples:
-                      ripsed rg "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**'
-                      ripsed "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**'
+                      ripsed rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
+                      ripsed "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
 
-                      rg "foobar-(.*)" -r "foo-\${1}" -g '!**.sh**' \\
+                      rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh' \\
                           --color never --context 0 --line-number \\
                           --max-columns 0 --no-column | ripsed
                   """)
