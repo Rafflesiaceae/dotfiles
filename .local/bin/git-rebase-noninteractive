@@ -1,0 +1,88 @@
+#!/bin/bash
+set -eo pipefail
+
+# NOTE: we don't support any non-default `rebase.instructionFormat`
+# NOTE: call like this `GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --drop 320ca660c7cd68481becd446a418b2ed39b6b1ab" git rebase -i HEAD@{1.months.ago}`
+
+die() {
+    printf 'ERROR: %s\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    echo "usage: [options] <git-rebase-todo-file> COMMIT..."
+    printf "@TODO parse options\n"
+    exit 1
+}
+
+# {{{1 cli
+comfile= # `git rebase -i` passes us this, aka <git-rebase-todo-file>
+commits_raw=()
+editor=
+gitcommand=pick
+log=
+for arg in "$@"; do
+    case $arg in
+        -h|--help) #{{{2 command [ show this help dialog ]
+            usage
+            ;;
+        -e|--editor) #{{{2 command [ invoke editor after making changes ]
+            editor=1
+            ;;
+        -l|--log) #{{{2 command [ log output ]
+            log=1
+            ;;
+        -p|--pick) #{{{2 git-command [ (default) ]
+            gitcommand=pick
+            ;;
+        -d|--drop) #{{{2 git-command
+            gitcommand=drop
+            ;;
+        -ed|--edit)  #{{{2 git-command
+            gitcommand=edit
+            ;;
+        -r|--reword) #{{{2 git-command
+            gitcommand=reword
+            ;;
+        -s|--squash) #{{{2 git-command
+            gitcommand=squash
+            ;;
+        *)
+            if [[ ! $comfile ]] && [[ -f "$arg" ]]; then
+                comfile="$arg" # first path that is a file is our comfile
+            else
+                if [[ "$arg" =~ [0-9a-zA-Z]+ ]]; then
+                    commits_raw+=("$arg")
+                else
+                    die "don't know this arg: $arg"
+                fi
+            fi
+            ;;
+    esac
+done
+
+printf "\nautomating rebase...\n" >/dev/tty
+[[ ! $comfile ]] && die "haven't been passed a comfile / git-rebase-todo-file"
+
+# {{{1 main
+# assemble commit short-ids
+commits=()
+for longarg in "${commits_raw[@]}"; do
+    arg=${longarg,,}   # lowercase
+    arg=${arg:0:7} # grab first 7 chars
+    commits+=("$arg")
+    commit_message=$(git rev-list --format=%s --max-count=1 "$longarg" | sed '1d')
+    printf "\t%s %s (%s)\n" "$gitcommand" "$arg" "$commit_message" >/dev/tty
+done
+
+# replace the command for the given commits
+commits_re=$(echo "${commits[*]}" | sed 's/\ /|/') # join commits with '|'
+sed -ri "s/^pick (${commits_re}) (.*)/${gitcommand} \1 \2/" "$comfile"
+
+if [[ $editor ]]; then
+    "$EDITOR" "$comfile"
+fi
+
+if [[ $log ]]; then
+    echo "==START $(date +%s)" >> /tmp/git-rebase-noninteractive.log
+    cat "$comfile" >> /tmp/git-rebase-noninteractive.log
+fi

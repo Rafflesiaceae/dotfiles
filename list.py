@@ -51,6 +51,8 @@ sources = {
     "./.local/bin/focuswindow": { "linux": "" },
     "./.local/bin/font-lookup-character": { "linux": "" },
     "./.local/bin/fstack": { "linux": "" },
+    "./.local/bin/git-drop": "",
+    "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/gitup": "",
     "./.local/bin/i3-chrome-open-url-in-mpv": { "linux": "" },

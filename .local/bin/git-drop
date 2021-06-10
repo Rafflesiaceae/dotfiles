@@ -1,0 +1,17 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+if [[ $# -gt 0 ]] && [[ $1 == "-" ]]; then
+    shift
+    commits="$(git rev-parse HEAD) $*" # default to latest commit
+elif [[ $# -gt 0 ]]; then
+    commits=$*
+else
+    die "pass me some commits, or '-' for HEAD/latest"
+fi
+GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --log --drop $commits" git rebase -i "HEAD@{2.weeks.ago}"
