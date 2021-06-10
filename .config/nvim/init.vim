@@ -497,7 +497,8 @@ autocmd FileType xml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 autocmd FileType jinja setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
 " Jenkinsfile
-autocmd FileType Jenkinsfile setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+autocmd FileType groovy setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+" autocmd BufRead,BufNewFile Jenkinsfile set filetype=groovy
 
 " JS
 autocmd FileType javascript setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
