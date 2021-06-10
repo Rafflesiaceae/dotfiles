@@ -130,6 +130,19 @@ executable('cex',
 EOF
         ;;
 
+        jsconfig) # {{{2
+            icat "jsconfig.json" <<'EOF'
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "experimentalDecorators": true
+  },
+  "include": ["src/**/*"]
+}
+EOF
+        ;;
+
         dockerfile) # {{{2
             icat "Dockerfile" <<'EOF'
 FROM debian:jessie
