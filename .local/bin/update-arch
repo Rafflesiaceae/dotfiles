@@ -18,14 +18,14 @@ sudo pacman -Syu --noconfirm
 
 echo {{{1 update yay
 tput bel # ring-bell
-pushd "$(mktemp -d)"
-TEMPDIRLOC=$PWD
+aurloc="$HOME/.aur"
+mkdir -p "$aurloc"
+mkdir -p "$aurloc/yay"
+pushd "$aurloc/yay"
 wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
-aunpack "yay.tar.gz" && cd yay
-makepkg --skippgpcheck
-sudo pacman -U --noconfirm ./*.pkg*
+tar xvfz "yay.tar.gz" -C ../
+makepkg -i --noconfirm --needed --skippgpcheck
 popd
-rm -rf "$TEMPDIRLOC"
 
 echo {{{1 update some AUR packages
 tput bel # ring-bell
