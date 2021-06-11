@@ -17,7 +17,6 @@ echo {{{1 update official packages
 sudo pacman -Syu --noconfirm
 
 echo {{{1 update yay
-tput bel # ring-bell
 aurloc="$HOME/.aur"
 mkdir -p "$aurloc"
 mkdir -p "$aurloc/yay"
@@ -28,7 +27,6 @@ makepkg -i --noconfirm --needed --skippgpcheck
 popd
 
 echo {{{1 update some AUR packages
-tput bel # ring-bell
 yay -S --answerdiff "None" --answerclean "None" \
     deadbeef-git
 
