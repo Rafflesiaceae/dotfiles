@@ -64,6 +64,7 @@ base=(
     gsmartcontrol
     gvfs
     gvfs-smb
+    gvfs-mtp
     gvim
     highlight
     htop
