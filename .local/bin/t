@@ -28,7 +28,7 @@ usage_and_die() {
 writtenFiles=()
 
 icat() {
-    [[ -f "$1" ]] && exit 0
+    [[ -f "$1" ]] && { echo "$1 already exists"; return 0; }
     mkdir -p "$(dirname "$1")" || true
     echo "+ $1"
     writtenFiles+=($1)
