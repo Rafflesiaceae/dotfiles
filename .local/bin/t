@@ -173,6 +173,69 @@ CMD ["/usr/bin/bash", "-c", "echo \"ASD\""]
 # vim: syntax=dockerfile
 EOF
         ;;
+
+        docker-compose|dockercompose|compose) # {{{2
+            icat "docker-compose.yaml" <<'EOF'
+version: '3.7'
+
+services:
+  jira:
+    depends_on:
+      - postgresql
+    image: atlassian/jira-software
+    networks:
+      - jiranet
+    volumes:
+      - jiradata:/var/atlassian/application-data/jira
+    ports:
+      - '8080:8080'
+    environment:
+      - 'JIRA_DATABASE_URL=jdbc:postgresql://postgresql:5432/jiradb'
+      - 'JIRA_DB_PASSWORD=bellyfish'
+      - 'SETENV_JVM_MINIMUM_MEMORY=2048m'
+      - 'SETENV_JVM_MAXIMUM_MEMORY=4096m'
+      - 'JIRA_PROXY_NAME='
+      - 'JIRA_PROXY_PORT='
+      - 'JIRA_PROXY_SCHEME='
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+
+  postgresql:
+    image: postgres:9.5-alpine
+    networks:
+      - jiranet
+    volumes:
+      - postgresqldata:/var/lib/postgresql/data
+    environment:
+      - 'POSTGRES_USER=jira'
+      - 'POSTGRES_PASSWORD=bellyfish'
+      - 'POSTGRES_DB=jiradb'
+      - 'POSTGRES_ENCODING=UNICODE'
+      - 'POSTGRES_COLLATE=C'
+      - 'POSTGRES_COLLATE_TYPE=C'
+    logging:
+      # limit logs retained on host to 25MB
+      driver: "json-file"
+      options:
+        max-size: "500k"
+        max-file: "50"
+
+volumes:
+  jiradata:
+    # external specifies that this volume has been created outside of Compose. docker-compose up does not attempt to create it, and raises an error if it doesn’t exist.
+    external: false
+  postgresqldata:
+    external: false
+
+networks:
+  jiranet:
+    driver: bridge
+EOF
+        ;;
     # }}}
     *)
     usage_and_die "ERROR: unknown template $1"
