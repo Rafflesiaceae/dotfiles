@@ -229,6 +229,8 @@ sudo pacman -S \
 echo "> install aur packages"
 aur=(
     deadbeef-git
+    nimbus-git
+    ttf-symbola
     ttf-vista-fonts
     )
 
