@@ -63,8 +63,9 @@ base=(
     gnome-keyring
     gsmartcontrol
     gvfs
-    gvfs-smb
     gvfs-mtp
+    gvfs-nfs
+    gvfs-smb
     gvim
     highlight
     htop
