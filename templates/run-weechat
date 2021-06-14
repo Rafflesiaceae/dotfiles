@@ -41,3 +41,9 @@ weechat_commands <<EOF
 /set irc.server.libera.autojoin "#curl,#jenkins,#jenkins-infra,#jenkins-release,#vim"
 /save
 EOF
+
+# hide join/part/quit messages https://weechat.org/files/doc/devel/weechat_faq.en.html#filter_irc_join_part_quit
+weechat_commands <<EOF
+/filter add joinquit * irc_join,irc_part,irc_quit *
+/save
+EOF
