@@ -111,6 +111,7 @@ base=(
     wine
     xdg-user-dirs
     youtube-dl
+    yq
     zip
     zsh
 )
