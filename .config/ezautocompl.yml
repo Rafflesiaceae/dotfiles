@@ -613,6 +613,15 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
+move a file (.python): |
+    import shutil
+    shutil.move(FROM, TO)
+
+check if file exists (.python): os.path.isfile(FILEPATH)
+read/get file size via stat (.python): os.stat(FILEPATH).st_size 
+
+remove prefix (.python): '"foo: bar".removeprefix("foo: ")'
+
 extract group from compiled regex (.python): |
     import re
     re_number_sep    = re.compile(r':([0-9]+):')
@@ -685,7 +694,7 @@ read a file (.python): |
     with open(foo_path) as f:
         contents = f.read()
 
-create directory with parents / mkdir -p (.python): os.mkdir(foo_path, parents=True, exist_ok=True)
+create directory with parents / mkdir -p (.python): os.makedirs(os.path.dirname(FILEPATH), exist_ok=True)
 
 run/exec a shell command/subprocess (.python): |
     import subprocess
