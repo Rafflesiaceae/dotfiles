@@ -16,12 +16,12 @@ xmodmap "$HOME/.Xmodmap"
 xset r rate 200 50
 
 # autostart
+numlockx &
 parcellite -d &
-cbatticon &
-redshift -l "48.20849:16.37208" &
-show-no-connman-con --font "/usr/share/fonts/microsoft/consola.ttf" &
+# redshift -l "48.20849:16.37208" &
+# show-no-connman-con --font "/usr/share/fonts/microsoft/consola.ttf" &
 
 # hack restart gvfs
-{ sleep 5 && pkill "gvfs*";} &
+{ sleep 3 && pkill "gvfs*";} &
 
 exec dbus-launch "$1"

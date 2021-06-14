@@ -128,6 +128,7 @@ x11=(
     libinput
     lightdm
     lightdm-gtk-greeter
+    numlockx
     parcellite
     rofi
     seahorse
