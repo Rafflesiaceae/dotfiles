@@ -1,0 +1,43 @@
+#!/bin/bash
+set -eo pipefail
+
+# CMDS
+#   REGISTER NICKSERV
+# /msg NickServ REGISTER <password> <e-mail>
+
+# KEYS
+# ctrl-x   --  switch core/server buffers
+
+function weechat_commands { 
+    readarray -t commands
+    local IFS=";" # effectively join
+    weechat --run-command "${commands[*]}"
+}
+
+weechat_commands <<EOF
+/set irc.server_default.autoconnect on
+/set irc.server_default.nicks "TODO_USERNAME1,TODO_USERNAME2"
+/set irc.server_default.proxy "pia"
+/set irc.server_default.ssl on
+/set irc.server_default.username "TODO_USERNAME"
+/save
+EOF
+
+weechat_commands <<EOF
+/proxy add pia socks5 proxy-nl.privateinternetaccess.com 1080 TODO_PIAUSER TODO_PIAPASS
+/server add libera irc.libera.chat/6697 -ssl
+/server add oftc   irc.oftc.net/6697 -ssl
+/save
+EOF
+
+weechat_commands <<EOF
+/set irc.server.oftc.command "/msg nickserv identify TODO_OFTCPASS
+/set irc.server.libera.command "/msg nickserv identify TODO_LIBERAPASS
+/save
+EOF
+
+weechat_commands <<EOF
+/set irc.server.oftc.autojoin   "#ceph,#alpine-linux"
+/set irc.server.libera.autojoin "#curl,#jenkins,#jenkins-infra,#jenkins-release,#vim"
+/save
+EOF
