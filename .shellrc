@@ -19,6 +19,10 @@ esac
 
 # - - -
 
+alias d="docker"
+alias dco="docker-compose"
+alias dri="docker run -i --rm"
+alias drt="docker run -it --rm"
 alias gf="git fetch"
 alias ws="cd ~/workspace"
 
