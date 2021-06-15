@@ -613,6 +613,7 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
+get environment variable (.python): os.environ["PATH"]
 move a file (.python): |
     import shutil
     shutil.move(FROM, TO)
@@ -811,6 +812,11 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+join/replace newlines in file with a new char/separator (.sh .bash): |
+    function join_array { local IFS="$1"; shift; echo "$*"; }
+    readarray -t ARRAY < FILE
+    join_array "," "${ARRAY[@]}"
+
 ascii terminal colours / bold/italic/underline tput (.sh .bash): |
     cblack=$(   2>/dev/null tput setaf 0) || true
     cred=$(     2>/dev/null tput setaf 1) || true
