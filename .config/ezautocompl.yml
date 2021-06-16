@@ -178,6 +178,12 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+repeat a string x times (.golang): strings.Repeat(".", 4)
+create a temporary file (.golang): |
+    of, err := ioutil.TempFile("", "testapp")
+    defer os.Remove(of.Name())
+    defer os.Close(of.Name())
+
 check if error is type/subtype of an error type (.golang): |
     switch err.(type) {
     case *fs.PathError:
@@ -972,7 +978,7 @@ handle/trap ctrl-c (.sh .bash): |
 check if env variable is set (.sh .bash): '[[ -z "${MY_ENV}" ]]'
 
 check/test if application/program/command exists/is installed (.sh .bash): |
-    ! command -v COMMAND &>/dev/null || die "can't find program: COMMAND"
+    command -v COMMAND &>/dev/null || die "can't find program: COMMAND"
 
 prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
     prompt_continue() {
@@ -1100,11 +1106,11 @@ die usage usage_and_die (.sh .bash): |
     }
     usage() {
         echo "usage: [-h|--help] <file>"
-        exit 1
+        exit "${1-0}"
     }
     usage_and_die() {
         printf '%b\n' "$1" >&2
-        usage
+        usage "${2-1}"
     }
 
 foreach argument (.sh .bash): |
