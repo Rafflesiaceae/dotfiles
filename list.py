@@ -50,6 +50,7 @@ sources = {
     "./.local/bin/cfp": { "linux": "" },
     "./.local/bin/cmake-quickbuild": "",
     "./.local/bin/debug-caller": { "linux": "" },
+    "./.local/bin/drb": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
     "./.local/bin/find-upwards": "",

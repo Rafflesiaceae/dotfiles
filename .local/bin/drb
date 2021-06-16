@@ -1,0 +1,18 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    echo "usage: <image> <bash-script>/<bash-command>"
+    exit 1
+}
+
+img=$1; shift || usage
+inp=$1; shift || usage
+if [[ -f "$inp" ]]; then
+    cat "$inp" | docker run -i "$img" bash -l
+else
+    docker run -it "$img" bash -cl "$inp"
+fi
