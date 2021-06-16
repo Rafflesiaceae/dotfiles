@@ -23,45 +23,52 @@ prefix() {
 if [ "$res" == "720" ]; then
 # 720
 set -ex
+in=$1; shift
 ffmpeg \
-	-i "$1" \
+	-i "$in" \
 	-map 0             `#use all subtitles/audio/videos` \
 	-vf "scale=-2:720" `#use height 720 and an aspect-ratio matching width as a multiple of 2` \
 	-sws_flags lanczos+accurate_rnd `#use lanczos for downscaling instead of bicubic` \
 	-c:v libx264 -crf 20 -preset slow \
 	-c:a aac -b:a 128k `#use 128kbs aac audio` \
 	-ac 2              `#map audio to stereo` \
+    $* \
     -y "$(prefix "$1" 720_ mp4)" 
 elif [ "$res" == "480" ]; then
 # 480
 set -ex
+in=$1; shift
 ffmpeg \
-	-i "$1" \
+	-i "$in" \
 	-map 0             `#use all subtitles/audio/videos` \
 	-vf "scale=-2:480" `#use height 720 and an aspect-ratio matching width as a multiple of 2` \
 	-sws_flags lanczos+accurate_rnd `#use lanczos for downscaling instead of bicubic` \
 	-c:v libx264 -crf 18 -preset slow \
 	-c:a aac -b:a 128k `#use 128kbs aac audio` \
 	-ac 2              `#map audio to stereo` \
+    $* \
     -y "$(prefix "$1" 480_ mp4)" 
 elif [ "$res" == "yt" ]; then
 # yt
 if [ "$#" == 1 ]; then
 	set -ex
+    in=$1; shift
 	ffmpeg \
-		-i "$1" \
+		-i "$in" \
 		-filter_complex "[0:v]scale=640:-2:flags=lanczos+accurate_rnd" \
 		-c:v libx264 -crf 20 -preset slow \
 		-pix_fmt yuv420p  `#dont use funky color-spaces` \
 		-c:a aac -b:a 64k `#use 64kbs aac audio` \
 		-ac 1             `#map audio to mono` \
+        $* \
 		-y "yt_$(date +%s).mp4"
 else
-	from=$2
-	to=$3
+    in=$1; shift
+	from=$1; shift
+	to=$1; shift
 	set -ex
 	ffmpeg \
-		-i "$1" \
+		-i "$in" \
 		-filter_complex "[0:v]scale=640:-2:flags=lanczos+accurate_rnd" \
 		-c:v libx264 -crf 20 -preset slow \
 		-pix_fmt yuv420p  `#dont use funky color-spaces` \
@@ -69,6 +76,7 @@ else
 		-ac 1             `#map audio to mono` \
 		-ss "$from" \
 		-to "$to" \
+        $* \
 		-y "yt_$(date +%s).mp4"
 fi;
 else
@@ -80,6 +88,7 @@ else
             -c:v libx264 -crf 20 -preset slow \
             -c:a aac -b:a 128k `#use 128kbs aac audio` \
             -ac 2              `#map audio to stereo` \
+            $* \
             -y "$(prefix "$res" smol_ mp4)" 
 
     else 
