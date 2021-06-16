@@ -65,6 +65,11 @@ set t_kB=^[[Z " makes Shift+Tab work?!
 
 let s:os = substitute(system('uname'), "\n", "", "")
 
+" this should not do weird autothings with maxlinelen and instead only use it
+" for `gq`
+set formatoptions-=t
+set textwidth=80
+
 " Configurations
 " {{{ YouCompleteMe
 let g:ycm_confirm_extra_conf = 0 " don't ask for confirmation
