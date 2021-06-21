@@ -824,6 +824,27 @@ if main (.js .node .ts): |
 
 # bash {{{1
 remove/delete first line (.sh .bash): tail -n +2
+echo/print/extract contents from-to/between 2 matches/lines (.bash): |
+    between_2_lines() { 
+        local found_begin=
+        local found_end=
+        while read -r line; do
+            if [[ $found_end ]]; then
+                : # skip silently, without breaking pipe
+            elif [[ ! $found_begin ]]; then
+                if [[ $line =~ $1 ]]; then
+                    found_begin=1
+                fi                                                                          
+            else
+                if [[ $line =~ $2 ]]; then
+                    found_end=1
+                else
+                    echo "$line"
+                fi                                                                          
+            fi
+        done
+    }
+
 join/replace newlines in file with a new char/separator (.sh .bash): |
     function join_array { local IFS="$1"; shift; echo "$*"; }
     readarray -t ARRAY < FILE
