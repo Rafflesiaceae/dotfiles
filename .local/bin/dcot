@@ -1,0 +1,20 @@
+#!/bin/bash
+set -eo pipefail
+# runs a shell in the first docker-container/service via docker-compose
+
+find_docker_compose() {
+    while [[ $PWD != '/' ]]; do
+        result=$PWD/docker-compose.yml
+        if [[ -f "$result" ]]; then
+            echo "$result"
+            return 0
+        fi
+        cd ..
+    done
+    echo "could not find docker-compose.yml file" >&2; return 1
+}
+
+docker_compose_file=$(find_docker_compose)
+service=$(yq '.services | to_entries | .[].key' -r < "$docker_compose_file"  )
+
+docker-compose exec "${2:-$service}" "${1:-bash}"
