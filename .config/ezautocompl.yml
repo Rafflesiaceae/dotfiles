@@ -1,6 +1,7 @@
 ---
 # cmd {{{1
 
+remove/delete all lines matching (.sed .cmd): sed -i '/PATTERN/d' FILE 
 add empty line at beginning of file (.sed .cmd): sed -i '1i\\' FILE
 add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
 
@@ -605,6 +606,10 @@ main (.golang): |
         fmt.Printf("%s\n", "Main here")
     }
 
+# groovy {{{1
+new custom exception (.groovy): |
+    public class MyCustomException extends Exception { ... }
+
 # lua {{{1
 hello world / main (.lua): |
   print("Hello World")
@@ -818,6 +823,7 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+remove/delete first line (.sh .bash): tail -n +2
 join/replace newlines in file with a new char/separator (.sh .bash): |
     function join_array { local IFS="$1"; shift; echo "$*"; }
     readarray -t ARRAY < FILE
