@@ -48,6 +48,7 @@ sources = {
     "./.local/bin/bell": "",
     "./.local/bin/cb": "",
     "./.local/bin/cfp": { "linux": "" },
+    "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/cmake-quickbuild": "",
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",

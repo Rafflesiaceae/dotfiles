@@ -1,0 +1,18 @@
+#!/bin/bash
+set -eo pipefail
+
+dirs="$HOME/.cache/zsh/dirs"
+
+tmpfile=$(mktemp)
+cleanup_tmpfile() {
+    rm "$tmpfile"
+}; trap 'cleanup_tmpfile' EXIT
+
+cp "$dirs" "$tmpfile"
+
+echo "" > "$dirs"
+while IFS= read -r line || [[ -n "$line" ]]; do
+    if [[ -d $line ]]; then
+        echo "$line" >> "$dirs"
+    fi
+done < "$tmpfile"
