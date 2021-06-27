@@ -79,7 +79,7 @@ indent_style = tab
 indent_style = tab
 indent_size = 2
 
-[*.yaml]
+[*.{yaml,yml}]
 indent_style = space
 indent_size = 2
 
@@ -175,7 +175,7 @@ EOF
         ;;
 
         docker-compose|dockercompose|compose) # {{{2
-            icat "docker-compose.yaml" <<'EOF'
+            icat "docker-compose.yml" <<'EOF'
 version: '3.7'
 
 services:
