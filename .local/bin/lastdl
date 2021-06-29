@@ -3,15 +3,19 @@
 unset -v latest
 
 usage() {
-    echo "usage: [-m|--move]"
+    echo "usage: [-m|--move][-e|--edit]"
     exit 1
 }
 
+cli_edit=
 cli_move=
 while :; do
     case $1 in
         -h|-\?|--help)
             usage; exit ;;
+        -e|--edit)
+            cli_edit=1
+            ;;
         -m|--move)
             cli_move=1
             ;;
@@ -32,7 +36,9 @@ for file in "$HOME/Downloads"/*; do
 done
 
 # find latest file
-if [[ $cli_move ]]; then
+if [[ $cli_edit ]]; then
+    "$EDITOR" "$latest"
+elif [[ $cli_move ]]; then
     ( set -x; mv "$latest" "$PWD" )
 else
     echo "$latest"
