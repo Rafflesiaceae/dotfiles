@@ -1,0 +1,2 @@
+#!/bin/sh
+find "$(pwd -P)" -name "*.*" > /tmp/polyfill-tree-out

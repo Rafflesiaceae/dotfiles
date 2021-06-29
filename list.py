@@ -81,6 +81,7 @@ sources = {
     "./.local/bin/npmis":  { "linux": "" },
     "./.local/bin/npmisd": { "linux": "" },
     "./.local/bin/num-set-desc": { "linux": "" },
+    "./.local/bin/polyfill-tree": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/rcb": "",
     "./.local/bin/reconnman": { "linux": "" },
