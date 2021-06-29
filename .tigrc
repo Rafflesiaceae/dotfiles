@@ -31,11 +31,13 @@ bind main ! !git revert %(commit)
 
 bind generic C !git commit
 bind main C !git commit
+bind main A !git commit --amend
 
 bind main c !?git checkout %(commit)
 bind main p ?git cherry-pick %(commit)
 
 bind status D !@?rm %(file)
+bind stage U @!git stage %(file)
 
 bind refs D !?git push %(remote) --delete %(branch)
 
