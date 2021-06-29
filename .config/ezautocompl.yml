@@ -624,6 +624,23 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
+define custom exception (.python): |
+    class CustomException(Exception):
+        pass
+
+die usage usage_and_die (.python): |
+    def die(*msgs, exit_status=1):
+        print(*msgs, file=sys.stderr)
+        exit(exit_status)
+
+check/test if application/program/command exists/is installed (.python): |
+    from shutil import which
+    secret_tool = which("secret-tool")
+    if secret_tool == None:
+        print("oh no")
+    else:
+        print(f"absolute path to bin: {secret_tool}")
+
 get environment variable (.python): os.environ["PATH"]
 move a file (.python): |
     import shutil
