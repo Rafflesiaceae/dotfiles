@@ -7,6 +7,27 @@ die() {
 cat_wo_null_bytes() { sed 's/\x0/\t/g' < "$1"; }
 add_content() { read -r -d '' content || true; }
 
+if [[ $# -eq 1 ]]; then
+    case $1 in
+        jenkins-job-dsl)
+            xdotool key ctrl+l
+            sleep 0.04
+            xdotool key ctrl+c
+            sleep 0.04
+            clip_prim=$(xclip -o)
+            if [[ "$clip_prim" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
+                url_prefix="${BASH_REMATCH[1]}"
+            fi
+            echo "${url_prefix}/plugin/job-dsl/api-viewer/index.html" | cb
+            sleep 0.04
+            xdotool key ctrl+v
+            sleep 0.04
+            xdotool key Return
+            ;;
+    esac
+    exit 0
+fi
+
 win=$X11_ACTIVEWINDOW
 [[ -z $win ]] && die "did not find window in \$X11_ACTIVEWINDOW"
 
@@ -19,13 +40,22 @@ add_content <<EOF
 $content
 EOF
 
-if [[ $cmdline == *chromium* ]] && [[ $winname == *YouTube* ]]; then
-    add_content <<EOF
+if [[ $cmdline == *chromium* ]]; then
+    if [[ $winname == *YouTube* ]]; then
+        add_content <<EOF
 $content
 chrome open in youtube:
     cmd: i3-chrome-open-url-in-mpv
     copy-to-clipboard: false
 EOF
+    elif [[ $winname == *[Jenkins]* ]]; then
+        add_content <<EOF
+$content
+jenkins job dsl:
+    cmd: [bash, -c, "smart-context jenkins-job-dsl"]
+    copy-to-clipboard: false
+EOF
+    fi
 fi
 
 # @TODO check if is i3 floating window
