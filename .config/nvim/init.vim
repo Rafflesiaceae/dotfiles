@@ -503,6 +503,7 @@ autocmd FileType jinja setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
 " Jenkinsfile
 autocmd FileType groovy setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+autocmd FileType Jenkinsfile setlocal commentstring=//\ %s
 " autocmd BufRead,BufNewFile Jenkinsfile set filetype=groovy
 
 " JS
