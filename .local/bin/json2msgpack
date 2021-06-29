@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import binascii
+import json
+import sys
+
+import msgpack
+
+out = binascii.hexlify(msgpack.packb(json.load(sys.stdin), use_bin_type=True)).decode()
+for i in range(0,len(out),2):
+    sys.stdout.write("\\x")
+    sys.stdout.write(out[i])
+    sys.stdout.write(out[i+1])
+sys.stdout.flush()
