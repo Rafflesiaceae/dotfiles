@@ -90,6 +90,8 @@ sources = {
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/scan-brother": "",
+    "./.local/bin/secret-lookup": "",
+    "./.local/bin/secret-store": "",
     "./.local/bin/show-no-connman-con": { "linux": "" },
     "./.local/bin/showcqt": "",
     "./.local/bin/smart-context": { "linux": "" },
