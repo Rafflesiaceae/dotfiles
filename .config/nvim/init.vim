@@ -634,6 +634,13 @@ augroup END
 " }}}
 
 " {{{ Custom Functions
+function! s:GetLink()
+    let pos = getcurpos()
+    echom system("get-link \"".expand("%:p")."\" \"".pos[1]."\"")
+endfunction
+com! GetLink call s:GetLink()
+nmap <leader>gl :GetLink<CR>
+
 function! CopyCurrentFullTag()
     let @+=tagbar#currenttag("%s", "", "f")
 endfunction
