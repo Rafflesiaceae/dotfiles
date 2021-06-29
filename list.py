@@ -50,6 +50,7 @@ sources = {
     "./.local/bin/cfp": { "linux": "" },
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/cmake-quickbuild": "",
+    "./.local/bin/cpwd": "",
     "./.local/bin/dcot": "",
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",
