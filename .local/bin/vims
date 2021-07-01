@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eo pipefail
+mkdir -p /tmp/viml/
+\nvim "$@" --listen /tmp/viml/${RANDOM}

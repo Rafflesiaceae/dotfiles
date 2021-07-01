@@ -108,10 +108,12 @@ sources = {
     "./.local/bin/update-arch-android": { "linux": "" },
     "./.local/bin/update-numdots": "",
     "./.local/bin/vimdirdiff": { "linux": "" },
+    "./.local/bin/vims": "",
     "./.local/bin/vtt-extract": "",
     "./.local/bin/watch-build": { "linux": "" },
     "./.local/bin/watch-go": { "linux": "" },
     "./.local/bin/watch-single": { "linux": "" },
+    "./.local/bin/watch-vims": "",
     "./.local/bin/xprofile": { "linux": "" },
     "./.local/bin/zoom-share-bar-hide": "",
 

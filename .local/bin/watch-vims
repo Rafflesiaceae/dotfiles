@@ -1,0 +1,36 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+check_command() { command -v "$1" &>/dev/null || die "can't find $1"; }
+check_command socat
+check_command entr
+
+if [[ $1 == "--notify-viml-instances" ]]; then
+
+    # [ 0, 8391382, "nvim_command", [":e!"] ]
+    ex_ebang() { printf "%b" '\x94\x00\xce\x00\x80\x0a\xd6\xac\x6e\x76\x69\x6d\x5f\x63\x6f\x6d\x6d\x61\x6e\x64\x91\xa3\x3a\x65\x21'; }
+
+    # see https://neovim.io/doc/user/api.html
+    # see https://github.com/msgpack-rpc/msgpack-rpc/blob/master/spec.md
+    # see https://gist.github.com/Rafflesiaceae/0c77d7f4291a04e119d0d765aeada5a6
+    notified_at_least_once=
+    for path in /tmp/viml/*; do
+        [[ -S $path ]] || continue
+        echo "notifying $path ..."
+        result=$(ex_ebang | socat - UNIX-CONNECT:"$path")
+        if [[ -n $result ]]; then
+            echo "$result"
+            echo ""
+        fi
+        notified_at_least_once=1
+    done
+
+    [[ $notified_at_least_once ]] || echo "no running instances"
+else
+    echo "$@" | entr -c "$0" "--notify-viml-instances"
+fi
+
