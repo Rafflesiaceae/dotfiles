@@ -94,6 +94,7 @@ base=(
     rsync
     shellcheck
     smbclient
+    socat
     sudo
     tesseract
     tesseract-data-deu
