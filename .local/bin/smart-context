@@ -4,30 +4,67 @@ die() {
     exit "${2-1}"
 }
 
-cat_wo_null_bytes() { sed 's/\x0/\t/g' < "$1"; }
-add_content() { read -r -d '' content || true; }
+# @TODO check if is i3 floating window
+# @TODO make i3-toggle-sticky
 
+add_content() { read -r -d '' content || true; }
+cat_wo_null_bytes() { sed 's/\x0/\t/g' < "$1"; }
+
+clip_in()  { xclip -i -sel clip >/dev/null; }
+clip_out() { xclip -o -sel clip </dev/null; }
+clip_restore() { xclip -i -sel clip < /tmp/xclip_store >/dev/null; rm /tmp/xclip_store; }
+clip_store()   { xclip -o -sel clip > /tmp/xclip_store </dev/null; }
+xkey() { xdotool key --clearmodifiers --window "$win" "$@"; sleep 0.01; }
+
+chromium_get_url() {
+    [[ -z $win ]] && die "I assume a \$win global"
+    clip_store
+    cur=$(xdotool getactivewindow)
+    xdotool windowfocus --sync "$win"
+    xkey ctrl+l
+    xkey ctrl+c
+    xclip -o -sel clip
+    clip_restore
+    xdotool windowfocus --sync "$cur"
+}
+
+# {{{1 self-invocation
 if [[ $# -eq 1 ]]; then
     case $1 in
-        jenkins-job-dsl)
-            xdotool key ctrl+l
-            sleep 0.04
-            xdotool key ctrl+c
-            sleep 0.04
-            clip_prim=$(xclip -o)
-            if [[ "$clip_prim" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
-                url_prefix="${BASH_REMATCH[1]}"
+        github-gists)
+            win=$(xdotool getactivewindow)
+            url=$chromium_url
+            if [[ "$url" =~ ^[^\/]+\/\/github\.com\/([^\/]+) ]]; then
+                username="${BASH_REMATCH[1]}"
+
+                clip_store
+                echo "https://gist.github.com/$username" | clip_in
+                xkey ctrl+v
+                sleep 0.1
+                xkey Return
+                clip_restore
             fi
-            echo "${url_prefix}/plugin/job-dsl/api-viewer/index.html" | cb
-            sleep 0.04
-            xdotool key ctrl+v
-            sleep 0.04
-            xdotool key Return
+            ;;
+        jenkins-job-dsl)
+            win=$(xdotool getactivewindow)
+            url=$(chromium_get_url)
+            if [[ "$url" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
+                url_prefix="${BASH_REMATCH[1]}"
+
+                clip_store
+                echo "${url_prefix}/plugin/job-dsl/api-viewer/index.html" | clip_in
+                xkey ctrl+v
+                xkey Return
+                clip_restore
+            fi
+            ;;
+        chromium_general_url)
             ;;
     esac
     exit 0
 fi
 
+# {{{1 ezautocompl
 win=$X11_ACTIVEWINDOW
 [[ -z $win ]] && die "did not find window in \$X11_ACTIVEWINDOW"
 
@@ -35,12 +72,13 @@ pid=$(xdotool getwindowpid "$X11_ACTIVEWINDOW") || die "failed to get window pid
 cmdline=$(cat_wo_null_bytes "/proc/$pid/cmdline") || die "couldnt read cmdline of pid $pid"
 winname=$(xdotool getwindowname "$win")
 
-
 add_content <<EOF
 $content
 EOF
 
+# {{{1 [chromium
 if [[ $cmdline == *chromium* ]]; then
+    # {{{1 [chromium - youtube]
     if [[ $winname == *YouTube* ]]; then
         add_content <<EOF
 $content
@@ -48,19 +86,29 @@ chrome open in youtube:
     cmd: i3-chrome-open-url-in-mpv
     copy-to-clipboard: false
 EOF
-    elif [[ $winname == *[Jenkins]* ]]; then
+    # {{{1 [chromium - jenkins]
+    elif [[ $winname == *\[Jenkins\]* ]]; then
         add_content <<EOF
 $content
 jenkins job dsl:
     cmd: [bash, -c, "smart-context jenkins-job-dsl"]
     copy-to-clipboard: false
 EOF
+    # {{{1 [chromium - URL dependent]
+    else
+        export chromium_url=$(chromium_get_url)
+        if [[ $chromium_url =~ .*\/\/github.com.* ]]; then
+            add_content <<EOF
+$content
+gists:
+    cmd: [bash, -c, "smart-context github-gists"]
+    copy-to-clipboard: false
+EOF
+        fi
     fi
 fi
 
-# @TODO check if is i3 floating window
-# @TODO make i3-toggle-sticky
-
+# {{{1 mpv
 if [[ $cmdline == mpv* ]]; then
     add_content <<EOF
 $content
@@ -71,53 +119,9 @@ make sticky:
 EOF
 fi
 
-echo "$content" | ezautocompl
-# sleep 1
-
-# Available commands:
-#   getactivewindow
-#   getwindowfocus
-#   getwindowname
-#   getwindowpid
-#   getwindowgeometry
-#   getdisplaygeometry
-#   search
-#   selectwindow
-#   help
-#   version
-#   behave
-#   behave_screen_edge
-#   click
-#   getmouselocation
-#   key
-#   keydown
-#   keyup
-#   mousedown
-#   mousemove
-#   mousemove_relative
-#   mouseup
-#   set_window
-#   type
-#   windowactivate
-#   windowfocus
-#   windowkill
-#   windowclose
-#   windowmap
-#   windowminimize
-#   windowmove
-#   windowraise
-#   windowreparent
-#   windowsize
-#   windowunmap
-#   set_num_desktops
-#   get_num_desktops
-#   set_desktop
-#   get_desktop
-#   set_desktop_for_window
-#   get_desktop_for_window
-#   get_desktop_viewport
-#   set_desktop_viewport
-#   exec
-#   sleep
-
-
+# {{{1 run
+if [[ -z "$content" ]]; then
+    notify-send --urgency=low "smart-context" "not available"
+else
+    echo "$content" | ezautocompl
+fi
