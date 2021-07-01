@@ -624,6 +624,16 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
+sh subprocess capture stdout no check / more control (.python): |
+
+    import subprocess
+    from subprocess import PIPE,DEVNULL,STDOUT
+
+    def sh(*args, check=False, timeout=None, shell=False, **kwargs):
+        if shell: args = args[0]
+        cp = subprocess.run(args, stdout=PIPE, check=check, timeout=timeout, shell=shell, **kwargs)
+        return cp.stdout.decode(), cp
+
 define custom exception (.python): |
     class CustomException(Exception):
         pass
