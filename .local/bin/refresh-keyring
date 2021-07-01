@@ -1,0 +1,13 @@
+#!/bin/bash
+
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"
+
+gnome-keyring-daemon >/dev/null 2>&1
+
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"
+pkill "gnome-keyring-d"

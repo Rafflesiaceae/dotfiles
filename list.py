@@ -88,6 +88,7 @@ sources = {
     "./.local/bin/reconnman": { "linux": "" },
     "./.local/bin/record-screen": "",
     "./.local/bin/refresh-keyboard": { "linux": "" },
+    "./.local/bin/refresh-keyring": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/scan-brother": "",
