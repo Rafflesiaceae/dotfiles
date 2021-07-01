@@ -624,16 +624,17 @@ subprocess / spawn / communicate (.lua): |
 
 # python {{{1
 
-sh subprocess capture stdout no check / more control (.python): |
+sh subprocess capture stdout no check / flexible/complex (.python): |
 
     import subprocess
     from subprocess import PIPE,DEVNULL,STDOUT
 
-    def sh(*args, check=False, timeout=None, shell=False, **kwargs):
+    def sh(*args, check=True, timeout=None, shell=False, **kwargs):
         if shell: args = args[0]
         cp = subprocess.run(args, stdout=PIPE, check=check, timeout=timeout, shell=shell, **kwargs)
         return cp.stdout.decode(), cp
 
+    print(sh("echo err >&2", shell=True, stderr=STDOUT)[0])
 define custom exception (.python): |
     class CustomException(Exception):
         pass
@@ -726,7 +727,6 @@ print to stderr (.python): |
 read stdin (.python): contents = sys.stdin.read()
 
 get args (.python): |
-    import sys
     print(sys.argv)
 
 read a file (.python): |
