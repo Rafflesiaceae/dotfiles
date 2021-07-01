@@ -74,6 +74,7 @@ sources = {
     "./.local/bin/i3-swap-workspaces": { "linux": "" },
     "./.local/bin/i3-type-mark": { "linux": "" },
     "./.local/bin/install-local-bin": { "linux": "" },
+    "./.local/bin/jenkins-listen-last-job": "",
     "./.local/bin/json2msgpack": "",
     "./.local/bin/lastdl": "",
     "./.local/bin/mark-code": "",
