@@ -610,6 +610,10 @@ main (.golang): |
 new custom exception (.groovy): |
     public class MyCustomException extends Exception { ... }
 
+# jenkins {{{1
+print/list contents of workspace (.jenkins): |
+    sh 'find . -name "*"'
+
 # lua {{{1
 hello world / main (.lua): |
   print("Hello World")
