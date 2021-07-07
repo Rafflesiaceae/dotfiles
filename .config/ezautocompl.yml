@@ -608,7 +608,7 @@ main (.golang): |
 
 # groovy {{{1
 new custom exception (.groovy): |
-    public class MyCustomException extends Exception { ... }
+    public class MyCustomException extends Exception { MyCustomException(String msg){super(msg)} }
 
 # jenkins {{{1
 print/list contents of workspace (.jenkins): |
