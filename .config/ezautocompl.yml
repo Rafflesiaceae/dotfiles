@@ -179,6 +179,18 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+open/read bytes a file (.golang): |
+    f, err := os.Open(FILEPATH)
+    if err != nil {
+        log.Fatal(err)
+    }
+    buf := new(bytes.Buffer)
+    _, err = buf.ReadFrom(f)
+    if err != nil {
+        log.Fatal(err)
+    }
+    f.Close()
+
 repeat a string x times (.golang): strings.Repeat(".", 4)
 create a temporary file (.golang): |
     of, err := ioutil.TempFile("", "testapp")
@@ -1183,6 +1195,10 @@ echo heredoc (.sh .bash): |
 
 # https://mywiki.wooledge.org/BashFAQ/035
 cli, parseargs argument parsing cli (.sh .bash): |
+    usage() {
+        echo "usage: [-h|--help] <file>"
+        exit "${1-0}"
+    }
     while :; do
         case $1 in
             -h|-\?|--help)
