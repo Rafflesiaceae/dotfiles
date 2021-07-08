@@ -1,4 +1,4 @@
 #!/bin/bash
 set -eo pipefail
 mkdir -p /tmp/viml/
-\nvim "$@" --listen /tmp/viml/${RANDOM}
+\nvim "$@" -c 'set so=999' --listen /tmp/viml/${RANDOM}
