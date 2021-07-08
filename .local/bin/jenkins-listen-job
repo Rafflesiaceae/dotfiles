@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+# jenkins-listen-job 
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import threading
+import time
+
+from dataclasses import dataclass
+from queue import Queue
+from subprocess import PIPE,DEVNULL,STDOUT
+from typing import *
+
+import requests
+
+# @TODO parse stuff, if "Starting building ...", get that job and track it
+# too with a filescheme path and write the relative file to the buffer as
+# well to support vim's `gf`
+
+# @TODO add a vim syntax highlighting file
+
+# @TODO add autocommand for vim to use yaml ft
+
+def shr(*args, check=True, timeout=None, shell=False, **kwargs):
+    if shell: args = args[0]
+    cp = subprocess.run(args, stdout=PIPE, check=check, timeout=timeout, shell=shell, **kwargs)
+    return cp.stdout, cp
+def sh(*args, check=True, timeout=None, shell=False, **kwargs):
+    out, cp = shr(*args, check=check, timeout=timeout, shell=shell, **kwargs)
+    return out.decode(), cp
+
+def secret_lookup():
+    return sh()[0]
+
+def infolog(letter):
+    sys.stderr.write(letter)
+    sys.stderr.flush()
+
+def notify_send(level, title, body):
+    # sh( "notify-send", f"--urgency={level}", title, body)
+    icon_path = os.path.expanduser("~/.icon.jenkins.png")
+    sh( "dunstify", f"--raw_icon={icon_path}", f"--urgency={level}", title, body)
+
+@dataclass
+class JenkinsJob:
+    base_url: str
+    file_out: str
+    # user: str
+    # passw: str
+
+    # log_read_bytes: int = 78395
+    log_read_bytes: int = 0
+    buffer: bytearray = b''
+
+    req: requests.Session = requests.Session()
+    status: any = None
+    real_base_url: str = ""
+
+    def reset(self):
+        self.log_read_bytes = 0
+        self.buffer = b''
+        self.real_base_url = self.base_url
+
+    def register_auth(self, username, password):
+        self.req.auth = ( username, password )
+
+    def fetch_status(self):
+        try:
+            resp = self.req.get(f"{self.real_base_url}/api/json")
+            self.status = json.loads(resp.text)
+        except json.decoder.JSONDecodeError as e:
+            print(resp)
+            raise e
+
+        if "lastBuild" in self.base_url:
+            self.real_base_url = self.real_base_url.replace("lastBuild", self.status["id"])
+
+
+    def fetch_log(self):
+        try:
+            resp = self.req.get(f"{self.real_base_url}/logText/progressiveText?start={self.log_read_bytes}")
+
+            read_text_size = int(resp.headers["X-Text-Size"])
+            self.log_read_bytes = read_text_size
+            self.buffer += resp.content
+
+            return read_text_size
+        except:
+            return 0
+
+    def write(self):
+        with open(self.file_out, "w") as f:
+            json.dump(self.status, f, indent=4)
+            f.write(
+                "\n\n\n"+
+                self.buffer.decode().
+                    replace('\r\n','\n')
+            )
+
+def smart_threaded_run(jj: JenkinsJob):
+    """
+    """
+
+    def task_poll_log(jj: JenkinsJob, result_queue: Queue):
+        while True:
+            if not result_queue.empty():
+                return
+
+            infolog("l")
+            read = jj.fetch_log()
+            if read > 0:
+                jj.write()
+
+            time.sleep(1)
+
+    def task_poll_status(jj: JenkinsJob, result_queue: Queue):
+        while True:
+            jj.fetch_status()
+            if jj.status["building"] == False:
+                result = jj.status["result"]
+                if result == None or result == "FAILURE":
+                    notify_send("critical", "jenkins", "FAILURE")
+                else:
+                    notify_send("low", "jenkins", result)
+
+
+                result_queue.put("abort")
+                return
+
+            time.sleep(3)
+
+    def deamonize(th):
+        th.daemon = True
+        th.start()
+
+    while True:
+        infolog("r")
+        jj.reset()
+        jj.fetch_status()
+
+        if jj.status["building"] == False:
+            time.sleep(2)
+            continue
+
+        qcs = Queue() # to signal from thread_poll_status
+        qlp = Queue() # to signal to   thread_log_poll
+
+        thread_poll_log    = threading.Thread(target=task_poll_log,    args=(jj,qlp,))
+        thread_poll_status = threading.Thread(target=task_poll_status, args=(jj,qcs,))
+
+        deamonize(thread_poll_log)
+        deamonize(thread_poll_status)
+
+        qlp.put(qcs.get())     # wait for thread_poll_status to signal a refresh to thread_poll_log
+        thread_poll_log.join() # wait for thread_poll_log to finish
+
+if __name__ == "__main__":
+    def main():
+        parser = argparse.ArgumentParser(description="continuously polls a jenkins job's console")
+
+        parser.add_argument("url", type=str, help="url to poll")
+
+        parser.add_argument("-f", "--file", dest="file",type=str, default="/tmp/jenkins-listen", help="file to output to")
+        parser.add_argument("-su", "--secret-user", dest="secret_user",type=str, default="", help="secret-tool id for username")
+        parser.add_argument("-sp", "--secret-pass", dest="secret_pass",type=str, default="", help="secret-tool id for password")
+
+        args = parser.parse_args()
+
+        # resolve username/password
+        secret_user = None
+        secret_pass = None
+
+        cfg_path = os.path.expanduser("~/.config/jenkins-listen-job.json")
+        if os.path.isfile(cfg_path):
+            with open(cfg_path) as f:
+                cfg = json.load(f)
+            secret_user = cfg["secret-user"]
+            secret_pass = cfg["secret-pass"]
+
+        if args.secret_user:
+            secret_user = args.secret_user
+        if args.secret_pass:
+            secret_pass = args.secret_pass
+
+        if secret_user == None:
+            secret_user = "dockers.jenkins.username"
+        if secret_pass == None:
+            secret_pass = "dockers.jenkins.password"
+
+        user  = sh("secret-lookup", secret_user)[0]
+        passw = sh("secret-lookup", secret_pass)[0]
+
+        # start
+        jj = JenkinsJob(
+            base_url=args.url,
+            file_out=args.file,
+        )
+        jj.register_auth(user, passw)
+
+        smart_threaded_run(jj)
+    main()
