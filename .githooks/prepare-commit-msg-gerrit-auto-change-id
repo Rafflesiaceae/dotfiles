@@ -5,6 +5,13 @@ COMMIT_SOURCE=$2
 SHA1=$3
 
 gerrit() {
+
+    # remove the commit-msg hook in case it exists, this is created by `git-review`
+    # constantly and can't be disable. it breaks using an editor to write a
+    # commit message, so we remove it if we find it every single time
+    gitdir=$(git rev-parse --show-toplevel 2>/dev/null)/.git
+    rm "$gitdir/hooks/commit-msg" 2>/dev/null || true
+
     if [[ ! $empty_message ]]; then
         return # only run this if the msg file is empty
     fi
