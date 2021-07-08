@@ -1,0 +1,145 @@
+#!/bin/bash
+# gitpseudfuse v0.8 (2021-07-05) (6a5cc9a0945cd9ef)
+#
+# pass the path to a json file that contains a plain object that maps
+# "from"-dirs, that you want to have reflected in a git-repo, to "to"-dirs a
+# location which will be an autoupdated bare git dir 
+#
+# CAVEAT dotfiles are currently not automatically committed, see
+# https://github.com/eradman/entr/issues/77
+die() {
+    printf "${cred}ERROR${creset} %b\n" "$1" >&2
+    exit "${2-1}"
+}
+info() { printf "[+] %b\n" "$1"; }
+
+ccolors=( # for inputs
+    "$(2>/dev/null tput setaf 2)" # cgreen
+    "$(2>/dev/null tput setaf 3)" # cyellow
+    "$(2>/dev/null tput setaf 4)" # cblue
+    "$(2>/dev/null tput setaf 5)" # cmagenta
+    "$(2>/dev/null tput setaf 6)" # ccyan
+)
+cred=$(2>/dev/null tput setaf 1)
+creset=$(2>/dev/null tput sgr0)
+
+ego=$(realpath "$0")
+
+[[ $# -ne 1 ]] && [[ $# -ne 3 ]] && die "pass me a json file fam"
+
+# {{{1 autocommit (script starts itself on file changes)
+if [[ $# -eq 3 ]]; then
+    [[ $1 != "--autocommit" ]] && die "if you give me 3 args fam, 1st must be '--autocommit', but the script calls itself that way so why are you doing this manually anyway"
+    in=$2
+    out=$3
+    info() { printf "[${ccolors[$GITPSEUDFUSE_INDEX]}+${creset}] %b\n" "$1"; }
+    autocommit() {
+        [[ ! -d "$in" ]] && die "in dir doesnt exist $in"
+
+        init=
+        if [[ ! -d "$out" ]]; then
+            init=1
+            info "setting up $out"
+            mkdir -p "$out"
+            cd "$out" || die "couldnt cd into $out"
+            git init . --bare --initial-branch=main || die "couldn't init git dir"
+        fi
+
+        cd "$in" || die "couldnt cd into $in"
+        info "$PWD"
+
+        if [[ ! -d "$in/.git" ]]; then
+            git init . --initial-branch=main
+            git remote add origin "$out"
+            git config user.name "GITPSEUDFUSE"
+            git config user.email "git@pseud.fuse"
+        fi
+
+        if [[ $init ]]; then
+            git commit --allow-empty -m "initial commit"
+            git push --set-upstream origin main
+        fi
+
+        git remote set-url origin "$out" # just to be safe
+
+        git add -A || die "couldn't git-add"
+
+        staged_files=$(git diff --staged --name-status)
+        if [[ -n "$staged_files" ]]; then
+            info "staged-files:\n$staged_files"
+            git commit -m "AUTO" || die "couldn't git-commit"
+            git push             || die "could't git-push"
+        fi
+
+        info "done"
+    }; autocommit "$in" "$out"
+    exit 0
+fi
+
+# {{{1 read input json, watch for changes and then run autocommit
+inpf=$1
+readarray -t ins  < <(jq '.. | objects | to_entries | .[] | .key'   "$inpf" -r)
+readarray -t outs < <(jq '.. | objects | to_entries | .[] | .value' "$inpf" -r)
+
+tmpfiles=()
+bgjobs=()
+cleanup_exit() {
+    for tmpfile in "${tmpfiles[@]}"; do
+        rm "$tmpfile"
+    done
+    for bgjob in "${bgjobs[@]}"; do
+        kill -9 "$bgjob"
+    done
+}; trap 'cleanup_exit' EXIT
+
+watch_and_autocommit() {
+    in=$1
+    out=$2
+
+    {
+        local tmpfile
+        tmpfile=$(mktemp)
+        tmpfiles+=("$tmpfile")
+
+        pushd "$in" >/dev/null || die "couldn't enter $1 that you gave me in your json input file fam"
+        info "watching $in => $out"
+        while true; do
+            find . -type d > "$tmpfile"
+            find . -name "*" >> "$tmpfile"
+            find . -name "*.*" >> "$tmpfile" # dotfiles
+            sed -i '/.git/d' "$tmpfile"
+            cp "${tmpfile}" "${tmpfile}_tmp"
+            sort -u "${tmpfile}_tmp" > "$tmpfile"
+            rm "${tmpfile}_tmp"
+            # cat "$tmpfile"
+            cat "$tmpfile" \
+                | entr -pds "\"$ego\" \"--autocommit\" \"$in\" \"$out\""
+        done
+        popd >/dev/null || die "couldn't pop out from $1, wait what"
+    } &
+    bgjobs+=($!)
+}
+
+for_inputs() {
+    for (( i = 0; i < ${#ins[@]}; i++ )); do
+        in=${ins[$i]}
+        out=${outs[$i]}
+
+        in=$(realpath "$in")
+        out=$(realpath "$out")
+        info "$in => $out"
+
+        export GITPSEUDFUSE_INDEX=$i
+        eval "$1"
+    done
+}
+
+
+info "sequential init first"
+for_inputs '$ego "--autocommit" "$in" "$out"'
+
+echo ""
+info "watching parallely"
+for_inputs 'watch_and_autocommit "$in" "$out"'
+
+wait
