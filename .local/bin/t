@@ -130,6 +130,35 @@ executable('cex',
 EOF
         ;;
 
+        mpv-debug) # {{{2
+            icat "$HOME/.config/mpv/scripts/debug.lua" <<'EOF'
+require 'mp'
+
+# see
+# https://mpv.io/manual/master/#properties
+# https://mpv.io/manual/master/#list-of-events
+
+local function debugprop(arg)
+    local res = mp.get_property(arg)
+    if res ~= nil then
+        print(arg..": "..res)
+    end
+end
+
+local function debughere()
+    debugprop("video-format")
+    debugprop("video")
+    debugprop("path")
+    debugprop("stream-path")
+    debugprop("media-title")
+    debugprop("filename")
+    debugprop("file-size")
+end
+
+mp.register_event("file-loaded", debughere)
+EOF
+            ;;
+
         jsconfig) # {{{2
             icat "jsconfig.json" <<'EOF'
 {
