@@ -810,6 +810,23 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+keys in object (.js): Object.keys(SOMEOBJ)
+sleep (.js): |
+    async function sleep(ms) {
+        return new Promise((succ) => {
+            setTimeout(succ, ms);
+        });
+    } 
+
+get path to local file relative to script path/dir (.js .node): |
+    `${__dirname}/FILE`
+capture a regex group (.js): |
+    const imageDescription = 'This image has a resolution of 1440×900 pixels.';
+    const regexpSize = /([0-9]+)×([0-9]+)/;
+    const match = imageDescription.match(regexpSize);
+    console.log(`Width: ${match[1]} / Height: ${match[2]}.`);
+
+move a file (.js .node): fs.renameSync(BEFORE, AFTER)
 read whole stdin synchronously (.js .node): |
 
 read line by line from stdin async (.js .node): |
@@ -850,6 +867,8 @@ for each line in string (.js .ts): |
             i = j + 1;
         }
     }
+
+    INPUTSTR.split("\n")
 
 create directory with parents / mkdir -p (.js .node .ts): |
     fs.mkdirSync(fooPath, { recursive: true })
