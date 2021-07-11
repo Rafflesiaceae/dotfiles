@@ -118,6 +118,7 @@ sources = {
     "./.local/bin/watch-single": { "linux": "" },
     "./.local/bin/watch-vims": "",
     "./.local/bin/xprofile": { "linux": "" },
+    "./.local/bin/xsleep": "",
     "./.local/bin/zoom-share-bar-hide": "",
 
     "./.local/bin_override/gimp": { "linux": "" },
