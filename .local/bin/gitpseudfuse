@@ -46,7 +46,7 @@ if [[ $# -eq 3 ]]; then
         fi
 
         cd "$in" || die "couldnt cd into $in"
-        info "$PWD"
+        info "$PWD ${ccolors[1]}($(date +"%d.%m.%Y %T"))$creset"
 
         if [[ ! -d "$in/.git" ]]; then
             git init . --initial-branch=main
