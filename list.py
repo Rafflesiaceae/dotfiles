@@ -87,6 +87,7 @@ sources = {
     "./.local/bin/polyfill-tree": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/rcb": "",
+    "./.local/bin/re2sed": "",
     "./.local/bin/reconnman": { "linux": "" },
     "./.local/bin/record-screen": "",
     "./.local/bin/refresh-keyboard": { "linux": "" },
