@@ -23,6 +23,7 @@ bind generic h back
 bind generic l view-next
 bind generic H view-help
 bind generic <C-R> refresh
+bind generic f refresh
 
 bind main R !git rebase -i %(commit)^
 bind diff R !git rebase -i %(commit)^
