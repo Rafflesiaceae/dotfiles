@@ -141,7 +141,7 @@ unset color_foreground
 unset color_background
 unset color_cursor
 # }}}
-# {{{ edit command line with <C-e>
+# {{{ edit command line with <C-k>
 autoload edit-command-line; zle -N edit-command-line
 bindkey "^k" edit-command-line
 # }}}
