@@ -421,6 +421,9 @@ function argcomplete() {
     complete -o nospace -o default -o bashdefault -F _python_argcomplete $*
 }
 
+# autocompletion for q
+complete -C "q --list" q
+
 # manage your list of argcomplete supported commands in your ~/.zshrc.local with entries like this:
 # argcomplete "my-cool-script" "my-other-cool-script"
 # }}}

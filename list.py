@@ -86,6 +86,7 @@ sources = {
     "./.local/bin/num-set-desc": { "linux": "" },
     "./.local/bin/polyfill-tree": "",
     "./.local/bin/pushtonumstash": "",
+    "./.local/bin/q": "",
     "./.local/bin/rcb": "",
     "./.local/bin/re2sed": "",
     "./.local/bin/reconnman": { "linux": "" },

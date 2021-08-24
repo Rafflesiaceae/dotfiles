@@ -1,0 +1,41 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+prefix_tab() { sed 's/^/\t/'; }
+filter_cases() { sed -rn 's/\s+(.*)\)\s*# \{\{\{2/\1/p' | sort | prefix_tab; }
+list() {
+    filter_cases < "$0" | sed -e 's/^[[:space:]]*//' | tr '\n' ' '
+    exit 0
+}
+usage() {
+    echo "usage: <template> | <target> <ft-template>"
+    echo "quicks:"
+    filter_cases < "$0"
+
+    exit 1
+}
+usage_and_die() {
+    printf '%s\n' "$1" >&2
+    usage
+}
+
+if [[ $# -eq 0 ]]; then
+    usage
+else
+    case "$1" in
+        empty-example) # {{{2
+        ;;
+    # }}}
+    -l|--list)
+        list
+        ;;
+    *)
+    usage_and_die "ERROR: unknown quickbatch $1"
+        ;;
+    esac
+fi
