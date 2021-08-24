@@ -1,2 +1,6 @@
 #!/bin/bash
-pwd | tr -d '\n' | cb 
+if [[ $# -gt 0 ]]; then
+    realpath "$1" | tr -d '\n' | cb  
+else
+    pwd | tr -d '\n' | cb 
+fi

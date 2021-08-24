@@ -50,6 +50,8 @@ elif  [[ $cli_in ]]; then
     clip_in
 elif  [[ $cli_str ]]; then
     printf "%s" "$1" | clip_in
+elif  [[ -f $1 ]]; then
+    cb < "$1"
 else
     if [ -t 0 ]; then
         clip_out
