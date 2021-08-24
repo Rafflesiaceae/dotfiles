@@ -12,7 +12,7 @@ usage() {
 img=$1; shift || usage
 inp=$1; shift || usage
 if [[ -f "$inp" ]]; then
-    cat "$inp" | docker run -i "$img" bash -l
+    docker run "$@" -i "$img" bash -l < "$inp"
 else
-    docker run -it "$img" bash -cl "$inp"
+    docker run "$@" -it "$img" bash -cl "$inp"
 fi
