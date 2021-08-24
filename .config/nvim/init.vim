@@ -216,7 +216,7 @@ let g:UltiSnipsUsePythonVersion = 2
 let g:EclimCompletionMethod = 'omnifunc'
 " let g:EclimPhpIndentDisabled = 1
 " }}}
-" " {{{ Ack / G
+" {{{ Ack / G
 " chdir to git-project root before Acking
 cnoreabbrev ag Gcd <bar> Ack!
 if executable("ag")
@@ -230,8 +230,11 @@ if executable("ag")
     autocmd QuickFixCmdPost *grep* cwindow
 endif
 let g:ack_use_dispatch = 1
-" " }}}
-" " {{{ Ctrlsf
+" }}}
+" {{{ Colorizer
+let g:colorizer_auto_filetype='css,html,text'
+" }}}
+" {{{ Ctrlsf
 let g:ctrlsf_mapping = {
     \ "next": "m",
     \ "prev": "M",
@@ -244,12 +247,12 @@ let g:ctrlsf_auto_focus = {
     \ "duration_less_than": 4000
     \ }
 let g:ctrlsf_ackprg = 'rg'
-" " }}}
-" " {{{ delimitMate
+" }}}
+" {{{ delimitMate
 let g:delimitMate_expand_space = 1
 let g:delimitMate_expand_cr = 1
-" " }}}
-" " {{{ ctrlp
+" }}}
+" {{{ ctrlp
 let g:ctrlp_cache_dir = $HOME.'/.cache/ctrlp'
 let g:ctrlp_user_command = ['.git', 'cd %s && git ls-files . -co --exclude-standard', 'find %s -type f']
 
@@ -259,7 +262,7 @@ endif
 
 " let g:ctrlp_match_window = 'bottom,order:btt,min:1,max:10,results:0'
 " let g:ctrlp_match_window = 'max:10,results:0'
-" " }}}
+" }}}
 " {{{ fzf
 map <C-p> :FZF<CR>
 " }}}
@@ -342,7 +345,6 @@ au BufRead,BufNewFile *.gd set filetype=gdscript
 " au BufRead,BufNewFile *.usher set filetype=gdscript
 au FileType gdscript set list
 " }}}
-" {{{ ocaml
 
 
 inoremap <M-o> <ESC>o
