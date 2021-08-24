@@ -53,6 +53,8 @@ set diffopt+=iwhite
 set guicursor=n-v-c:block-Cursor/lCursor-blinkon0,i-ci:ver25-Cursor/lCursor,r-cr:hor20-Cursor/lCursor
 set iskeyword=@,48-57,_,192-255
 
+set scrollback=100000
+
 highlight DiffChange cterm=none ctermfg=16 ctermbg=18 gui=none guifg=bg guibg=Red
 autocmd FilterWritePre * if &diff | setlocal wrap< | endif
 
