@@ -46,6 +46,7 @@ bind generic S ?git format-patch -1 -N %(commit)
 
 # copy commit ID to clipboard
 bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
+bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
 
 bind generic E !@code -g %(file):%(lineno)
 
