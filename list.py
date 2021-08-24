@@ -51,6 +51,7 @@ sources = {
     "./.local/bin/cb": "",
     "./.local/bin/cfp": { "linux": "" },
     "./.local/bin/clean-zsh-dirstack": "",
+    "./.local/bin/clipdiff": "",
     "./.local/bin/cmake-quickbuild": "",
     "./.local/bin/cpwd": "",
     "./.local/bin/dcot": "",
