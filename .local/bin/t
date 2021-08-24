@@ -281,6 +281,19 @@ set -eo pipefail
 
 EOF
             ;;
+        js|javascript|node) # {{{2
+            xicat "$1" <<'EOF'
+#!/usr/bin/env node
+function main(args) {
+    console.log(`hello world! I see you passed me ${args}, how nice of you!`);
+    return 0;
+}
+
+if (typeof require !== 'undefined' && require.main === module) {
+    process.exitCode = main(process.argv.slice(2));
+}
+EOF
+            ;;
         py|python|.py) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env python3
