@@ -67,4 +67,7 @@ for arg in "$@"; do
     shift
 done
 
-nvim -c "terminal rg ${rg_preargs[*]} \"$search_phrase\" ${rg_moresearches[*]}--no-ignore --color always --line-number --ignore-case ${rg_postargs[*]}"
+# set -x
+echo "$search_phrase" >/tmp/agt-query
+rg "${rg_preargs[@]}" "$search_phrase" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt || die "no matches"
+vi /tmp/agt
