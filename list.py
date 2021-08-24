@@ -66,6 +66,7 @@ sources = {
     "./.local/bin/git-delete-remote-branch": "",
     "./.local/bin/git-drop": "",
     "./.local/bin/git-hookman": "",
+    "./.local/bin/git-list-changed-files-in-commit": "",
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/git-submodule-apply": "",
