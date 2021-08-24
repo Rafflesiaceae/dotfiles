@@ -1,0 +1,24 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+prompt_continue() {
+    tput sc
+    while true; do
+        read -p "Continue? (y/n) " -n 1 -r yn
+        case $yn in
+            [Yy]*) break;;
+            [Nn]*) printf "\n"; exit 1;;
+            *) tput el1; tput rc ;;
+        esac
+    done
+    printf "\n"
+}
+
+[[ $# -ne 1 ]] && die "pass me a branch"
+
+echo $ git push origin --delete "$1"
+prompt_continue
+git push origin --delete "$1"

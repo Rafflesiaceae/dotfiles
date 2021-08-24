@@ -62,6 +62,7 @@ sources = {
     "./.local/bin/focuswindow": { "linux": "" },
     "./.local/bin/font-lookup-character": { "linux": "" },
     "./.local/bin/fstack": { "linux": "" },
+    "./.local/bin/git-delete-remote-branch": "",
     "./.local/bin/git-drop": "",
     "./.local/bin/git-hookman": "",
     "./.local/bin/git-rebase-noninteractive": "",
