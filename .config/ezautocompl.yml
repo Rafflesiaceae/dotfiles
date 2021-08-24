@@ -1,7 +1,7 @@
 ---
 # cmd {{{1
 
-remove/delete all lines matching (.sed .cmd): sed -i '/PATTERN/d' FILE 
+remove/delete all lines matching (.sed .cmd): sed -i '/PATTERN/d' FILE
 add empty line at beginning of file (.sed .cmd): sed -i '1i\\' FILE
 add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
 
@@ -205,9 +205,9 @@ check if error is type/subtype of an error type (.golang): |
         panic(err)
     }
 
-reflect/print/determine type of pointer during runtime (.golang): println(reflect.ValueOf(err).Type().String()) 
+reflect/print/determine type of pointer during runtime (.golang): println(reflect.ValueOf(err).Type().String())
 
-free a pointer (.golang .cgo): C.free(fooPtr) 
+free a pointer (.golang .cgo): C.free(fooPtr)
 create a void pointer (.golang .cgo): nullPtr := unsafe.Pointer(nil)
 malloc a cstring (.golang .cgo): |
     foo := C.malloc(C.ulong(10 * 10))
@@ -652,8 +652,7 @@ sh subprocess capture stdout no check / flexible/complex (.python): |
 
     print(sh("echo err >&2", shell=True, stderr=STDOUT)[0])
 define custom exception (.python): |
-    class CustomException(Exception):
-        pass
+    class CustomException(Exception): pass
 
 die usage usage_and_die (.python): |
     def die(*msgs, exit_status=1):
@@ -674,7 +673,7 @@ move a file (.python): |
     shutil.move(FROM, TO)
 
 check if file exists (.python): os.path.isfile(FILEPATH)
-read/get file size via stat (.python): os.stat(FILEPATH).st_size 
+read/get file size via stat (.python): os.stat(FILEPATH).st_size
 
 remove prefix (.python): '"foo: bar".removeprefix("foo: ")'
 
@@ -767,7 +766,7 @@ regex capture groups (.python): |
 
 get current date / timestamp / unix/posix-time (.python): |
     from datetime import datetime, timezone
-    now_iso_8601 = datetime.now(timezone.utc).astimezone().isoformat() 
+    now_iso_8601 = datetime.now(timezone.utc).astimezone().isoformat()
     now_posix = datetime.now().timestamp()
 
 if main (.python): |
@@ -810,13 +809,50 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+sh subprocess capture stdout no check / flexible/complex (.js .ts .node): |
+    const childProcess = require("child_process");
+
+    /** Flexible child_process spawn-wrapper. */
+    function sh(options={}, cmd, ...args) {
+        options = {
+            check: true,
+            encoding: "utf-8",
+            shell: false,
+            stdio: ['inherit', 'pipe', 'pipe'],
+            timeout: undefined,
+            trimFinalNewline: true,
+            ...options,
+        }
+
+        const result = childProcess.spawnSync(cmd, args, {
+            encoding: options.encoding,
+            shell: options.shell,
+            stdio: options.stdio,
+            timeout: options.timeout,
+        });
+
+        if (options.check && result.error) {
+            throw result.error;
+        }
+
+        if (options.trimFinalNewline && result.stdout.length >= 2) {
+            result.stdout = (result.stdout[result.stdout.length-2] === '\r') ?
+                result.stdout.slice(0, -2) : result.stdout.slice(0, -1)
+        }
+
+        return [ result.stdout, result ];
+    }
+
+    const res = sh({}, cmd, "args")[0];
+    console.log(res);
+
 keys in object (.js): Object.keys(SOMEOBJ)
 sleep (.js): |
     async function sleep(ms) {
         return new Promise((succ) => {
             setTimeout(succ, ms);
         });
-    } 
+    }
 
 get path to local file relative to script path/dir (.js .node): |
     `${__dirname}/FILE`
@@ -859,16 +895,9 @@ read a file (.js .node .ts): |
     fs.readFileSync(file, "utf8");
 
 for each line in string (.js .ts): |
-    { // for each line
-        let i = 0;
-        let j = 0;
-        while ((j = INPUTSTR.indexOf("\n", i)) !== -1) {
-            const line = INPUTSTR.substring(i, j);
-            i = j + 1;
-        }
+    for (const line of INPUTSTR.split("\n")) {
+        console.log(line+"<>");
     }
-
-    INPUTSTR.split("\n")
 
 create directory with parents / mkdir -p (.js .node .ts): |
     fs.mkdirSync(fooPath, { recursive: true })
@@ -885,9 +914,11 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+split a variable by character into an array (.bash): |
+    IFS='€' read -ra stat <<< "$variable"
 remove/delete first line (.sh .bash): tail -n +2
 echo/print/extract contents from-to/between 2 matches/lines (.bash): |
-    between_2_lines() { 
+    between_2_lines() {
         local found_begin=
         local found_end=
         while read -r line; do
@@ -896,13 +927,13 @@ echo/print/extract contents from-to/between 2 matches/lines (.bash): |
             elif [[ ! $found_begin ]]; then
                 if [[ $line =~ $1 ]]; then
                     found_begin=1
-                fi                                                                          
+                fi
             else
                 if [[ $line =~ $2 ]]; then
                     found_end=1
                 else
                     echo "$line"
-                fi                                                                          
+                fi
             fi
         done
     }
