@@ -69,6 +69,7 @@ sources = {
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/git-submodule-apply": "",
     "./.local/bin/gitpseudfuse": "",
+    "./.local/bin/gitr": "",
     "./.local/bin/gitup": "",
     "./.local/bin/i3-chrome-open-url-in-mpv": { "linux": "" },
     "./.local/bin/i3-ctrlc": { "linux": "" },
