@@ -44,6 +44,7 @@ sources = {
     "./.local/bin/agt": "",
     "./.local/bin/agt-all-branches": "",
     "./.local/bin/ahk-ezautocompl.ahk": { "windows": "" },
+    "./.local/bin/ansiclean": "",
     "./.local/bin/asc": "",
     "./.local/bin/aurss": { "linux": "" },
     "./.local/bin/bell": "",
