@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eo pipefail
+echo "$@" > /tmp/agt-query
+git branch -a | tr -d \* | sed '/->/d' | xargs git grep -n "$@" | {
+    while read -r l ; do
+        if [[ ${#l} -gt 160 ]]; then 
+            echo "${l:0:157}"... # trim lines >160 chars
+        else
+            echo "$l"
+        fi
+    done
+} >/tmp/agt
+"$EDITOR" "/tmp/agt"
