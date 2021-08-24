@@ -96,6 +96,7 @@ sources = {
     "./.local/bin/record-screen": "",
     "./.local/bin/refresh-keyboard": { "linux": "" },
     "./.local/bin/refresh-keyring": "",
+    "./.local/bin/riprep": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/scan-brother": "",

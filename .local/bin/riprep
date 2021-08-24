@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+from dataclasses import dataclass
+from io import StringIO
+from typing import *
+from typing.io import *
+
+import argparse
+import copy
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+import yaml
+
+# @XXX @NOTE: we don't support all possible cases of weird filenames, as
+# ripgrep doesn't do any escaping, if you have ':[0-9]+:' as part of any
+# filename, we will break for sure
+#
+# once https://github.com/BurntSushi/ripgrep/issues/1872 goes through we
+# can swap over to parsing the '--json' output and then this issue will be
+# fixed
+
+import re
+re_number_sep = re.compile(r':([0-9]+):')
+
+from typing import *
+
+@dataclass
+class Replacement:
+    """structure that holds a replacement to be made"""
+    start_line: int
+    search_line_count: int
+    content: List[str]
+@dataclass
+class Task:
+    replace: List[str]
+    search: List[str]
+
+    # @TODO support tab=>space conversion
+    first_match_indent: str = ""
+    is_within_match: bool = False
+    line_i: int = 0
+    line_start: int = 0
+    lines_left: int = 0
+
+    def reset(self):
+        self.first_match_indent = ""
+        self.is_within_match = False
+        self.line_i = 0
+        self.line_start = 0
+        self.lines_left = len(self.search)
+
+    def advance(self):
+        self.line_i += 1
+        self.lines_left -= 1
+
+def ensure_newline_at_end_of_string(s):
+    if s[:-1] != ["\n"]:
+        return s + "\n"
+    return s
+
+def iterate_replaces(replaces: List[Replacement]):
+    for replace in replaces:
+        for li, line in enumerate(replace.content):
+            yield (replace.start_line + li, line)
+
+def cli():
+    description = """
+                @TODO
+                  I turn ripgrep into a search-and-replace kinda deal, do
+                  you know ripgrep's -r/--replace ? it's a cool thing, but
+                  it doesnt edit files in place, ripgrep is intended by
+                  the author to never ever change your files, so instead I
+                  am here
+
+                  do like a normal rg with -r to get the result that you
+                  want and then just prefix me to the whole shell command,
+                  I'll do the rest, you can also pass me the stdout of an
+                  rg command as long as it's piped, but I expect a
+                  specific format from ripgrep, check 'clean_args' in my
+                  source if you want to do that, I'll also add them to the
+                  last example
+
+                  have a nice day
+
+                  examples:
+                      ripsed rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
+                      ripsed "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
+
+                      rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh' \\
+                          --color never --context 0 --line-number \\
+                          --max-columns 0 --no-column | ripsed"""
+
+    parser = argparse.ArgumentParser(description=description)
+
+    parser.add_argument("path", type=str, help="path to plan/.yaml to read")
+
+    # parser.add_argument("-e", "--any-enum", dest="any_enum", type=str, choices=["lf", "cr", "crlf"], default="cr", help="Some enums")
+    # parser.add_argument("-f", "--any-flag", dest="any_flag",action="store_true", help="A flag")
+    # parser.add_argument("-s", "--any-string", dest="any_string",type=str, default="default", help="A string")
+    # parser.add_argument("-ss", "--any-strings", dest="any_strings", type=str, nargs="?", help="Multiple strings")
+    parser.add_argument("-rg-ap", "--rg-args-post", dest="rg_args_post", type=str, nargs="?", default=[], help="arguments passed to ripgrep (post)")
+
+    # parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
+
+    args = parser.parse_args()
+    main(args)
+
+def main(args):
+    # args=sys.argv[1:]
+
+    # if sys.stdin.isatty(): # we invoke ripgrep
+    #     sys.stderr.write("pass ripgrep output to stdin\n")
+    #     quit(1)
+
+
+    #     if len(args) == 0 or any(a in ["-h","--help"] for a in args):
+    #         print()
+    #         sys.exit(0)
+
+    #     if args[0] == 'rg':
+    #         args.pop(0)
+
+    #     rg_out = subprocess.check_output([ "rg", *args, "--json" ]).decode("utf-8").splitlines(True)
+    # else: # we use ripgrep output from stdin
+    #     rg_out=sys.stdin.readlines()
+
+    # load plan
+    with open(args.path, "r") as f:
+        try:
+            plan = yaml.safe_load(f)
+        except yaml.YAMLError as exc:
+            raise exc
+
+    # get list of files
+    affected_files = subprocess.check_output(["rg", *args.rg_args_post, "--files" ]).decode("utf-8").splitlines(False)
+
+
+    queue: List[any] = []
+    entry_i_line_number=0
+    entry_i_newtext=1
+    buckets: Dict[str, List[any]] = {} # path => entry
+
+    # compose tasks
+    tasks: List[Task] = []
+    for task in plan["tasks"]:
+        new_task = Task(
+            search  = task["search"].splitlines(True),
+            replace = task["replace"].splitlines(True),
+        )
+
+        # in case of single strings, make sure they end with a newline
+        if len(new_task.search) == 1:
+            new_task.search = [ensure_newline_at_end_of_string(
+                new_task.search[0]
+            )]
+        if len(new_task.replace) == 1:
+            new_task.replace = [ensure_newline_at_end_of_string(
+                new_task.replace[0]
+            )]
+
+        new_task.reset()
+        tasks.append(new_task)
+        # print(new_task)
+
+    for affected_file in affected_files:
+        # skip riprep-*.yml plans
+        if "riprep-" in affected_file and \
+                (".yaml" in affected_file or
+                 ".yml" in affected_file):
+            continue
+
+        # reset tasks
+        for task in tasks:
+            task.reset()
+
+        # collect replaces
+        replaces: List[Replacement] = []
+        with open(affected_file) as f:
+                for line_nr, raw_line in enumerate(f.readlines()):
+
+                    # determine indent string prefixed to the raw_line
+                    ii=0
+                    for c in raw_line:
+                        if c == " ":
+                            ii+=1
+                        else:
+                            break
+                    line_indent = raw_line[0:ii]
+                    line = raw_line[ii:]
+
+                    # print("+",line)
+                    for task in tasks:
+                        task_line = task.search[task.line_i]
+
+                        if not task.is_within_match and task_line == line:
+                            # print(line)
+                            task.is_within_match = True
+                            task.first_match_indent = line_indent
+                            task.line_start = line_nr
+
+                        if task.is_within_match:
+                            rel_line = raw_line[len(task.first_match_indent):]
+                            if task_line == rel_line:
+                                if task.lines_left == 1:
+                                    # done
+                                    replaces.append(Replacement(
+                                        search_line_count = len(task.search),
+                                        start_line = task.line_start,
+                                        content = [
+                                            task.first_match_indent+rl for rl in task.replace
+                                        ],
+                                    ))
+                                    for task in tasks:
+                                        task.reset()
+
+                                else:
+                                    task.advance()
+                            else:
+                                # reset
+                                task.reset()
+
+        # @TODO assert that replaces dont overlap
+
+        if not len(replaces) > 0:
+            continue
+
+        print("(c)", affected_file)
+
+        replaces = (r for r in sorted(replaces, key=lambda r: r.start_line))
+
+        replace = next(replaces, None)
+        skip_lines = 0
+        with open(affected_file) as af:
+            with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
+                for i, line in enumerate(af.readlines()):
+                    if skip_lines > 0:
+                        skip_lines -= 1
+                        continue
+
+                    if replace != None:
+                        if i == replace.start_line:
+                            skip_lines = replace.search_line_count-1
+                            # write the whole replace block at once
+                            for line in replace.content:
+                                temp_file.write(line)
+
+                            replace = next(replaces, None)
+                        else:
+                            temp_file.write(line)
+                    else:
+                        temp_file.write(line)
+
+                # swap out files
+                temp_file.flush()
+                shutil.move(temp_file.name, affected_file)
+
+if __name__ == "__main__":
+    cli()
