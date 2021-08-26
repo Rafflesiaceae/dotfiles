@@ -1,4 +1,17 @@
 #!/bin/bash
 set -eo pipefail
-gitup
-git subu
+do_the_deed() { 
+    gitup
+    git subu
+}
+if [[ $# -gt 0 ]]; then
+    current_branch_full=$(git symbolic-ref HEAD)
+    current_branch=${current_branch_full#"refs/heads/"}
+    for arg in "$@"; do
+        git co "$arg"
+        do_the_deed
+    done
+    git co "$current_branch"
+else
+    do_the_deed
+fi
