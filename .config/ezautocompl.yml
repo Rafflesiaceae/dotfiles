@@ -1,6 +1,13 @@
 ---
 # cmd {{{1
 
+xargs for each line (.cmd .xargs): xargs -L 1
+xargs for each line w args (.cmd .xargs): xargs -I '{}' echo "{}"
+
+get current branch (.git .cmd): |
+    current_branch_full=$(git symbolic-ref HEAD)
+    current_branch=${current_branch_full#"refs/heads/"}
+
 remove/delete all lines matching (.sed .cmd): sed -i '/PATTERN/d' FILE
 add empty line at beginning of file (.sed .cmd): sed -i '1i\\' FILE
 add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
@@ -1104,7 +1111,7 @@ prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
     prompt_continue() {
         tput sc
         while true; do
-            read -p "Continue? (y/n) " -n 1 -r yn
+            read -p "${1:-Continue?} (y/n) " -n 1 -r yn
             case $yn in
                 [Yy]*) break;;
                 [Nn]*) printf "\n"; exit 1;;
