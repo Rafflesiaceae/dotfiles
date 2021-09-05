@@ -1211,6 +1211,7 @@ defer exit (.sh .bash): |
     }
     trap 'cleanup' EXIT
 
+date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T
 date-posix (.cmd .sh .bash): date +%s
 
 # https://stackoverflow.com/a/35638712
