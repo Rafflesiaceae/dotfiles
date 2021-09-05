@@ -24,10 +24,60 @@ usage_and_die() {
     usage
 }
 
+#  {{{1 Functions for Quicks
+prompt_continue() {
+    tput sc
+    while true; do
+        read -p "${1:-Continue?} (y/n) " -n 1 -r yn
+        case $yn in
+            [Yy]*) break;;
+            [Nn]*) printf "\n"; exit 1;;
+            *) tput el1; tput rc ;;
+        esac
+    done
+    printf "\n"
+}
+retryify() {
+    prompt_continue_retry() {
+        tput sc >&2
+        while true; do
+            read -p "${1:-Continue?} (s)kip / (r)etry / (a)bort " -n 1 -r yn >&2
+            case $yn in
+                [Ss]*) printf "\n" >&2; echo "s";return;; 
+                [Rr]*) printf "\n" >&2; echo "r"; return;; 
+                [Aa]*) printf "\n" >&2; echo "a";exit 1;;
+                *) tput el1 >&2; tput rc >&2;;
+            esac
+        done
+        printf "\n"
+    }
+
+    echo "\$ $1"
+    { eval "$1"; } || {
+        case "$(prompt_continue_retry "ERROR command failed")"  in
+            r)
+                retryify "$1"
+                ;;
+            s)
+                return 0
+                ;;
+            a)
+                exit 1
+                ;;
+        esac
+    }
+}
+
+git_commit_exists() { git cat-file -e "$1"'^{commit}' 2>/dev/null; }
+
+#  }}}
+
 if [[ $# -eq 0 ]]; then
     usage
 else
-    case "$1" in
+    quick=$1
+    shift
+    case "$quick" in
         empty-example) # {{{2
         ;;
     # }}}
