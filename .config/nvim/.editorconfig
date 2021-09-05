@@ -1,0 +1,2 @@
+[init.vim]
+trim_trailing_whitespace = false

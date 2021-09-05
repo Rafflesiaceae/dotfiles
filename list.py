@@ -15,6 +15,7 @@ sources = {
     "./.config/llpp.conf": { "linux": "" },
     "./.config/mpv/config": { "linux": "", "windows": "~/scoop/apps/mpv/current/portable_config/config" },
     "./.config/mpv/input.conf": { "linux": "" },
+    "./.config/nvim/.editorconfig": "",
     "./.config/nvim/autoload/airline/themes/base16_kokonai.vim": { "linux": "" },
     "./.config/nvim/colors/base16-kokonai.vim": { "linux": "" },
     "./.config/nvim/init.vim": "",
