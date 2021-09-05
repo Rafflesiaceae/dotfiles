@@ -564,6 +564,7 @@ autocmd FileType c   setlocal expandtab shiftwidth=3 tabstop=3 softtabstop=3
 autocmd FileType cpp setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 autocmd FileType c,cpp nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR> 
 autocmd FileType c,cpp nnoremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
+autocmd BufRead,BufNewFile *.CPP set filetype=cpp
 
 autocmd FileType c,cpp nnoremap <silent> <buffer> <F1> :call CurtineIncSw()<CR>
 " autocmd FileType cpp nnoremap <leader>r :w!<CR> :!runcpp %<CR>
