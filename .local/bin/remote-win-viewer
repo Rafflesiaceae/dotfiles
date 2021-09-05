@@ -1,0 +1,10 @@
+#!/bin/bash
+set -eo pipefail
+
+args=(
+    -M                     # render mouse on local side
+    -r sound:off           # no sound
+    -r clipboard:CLIPBOARD # map clipboard to CLIPBOARD buffer
+    $*
+)
+rdesktop "${args[@]}"

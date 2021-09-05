@@ -1,0 +1,99 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%s\n' "$1" >&2
+    exit "${2-1}"
+}
+
+usage() {
+    echo "usage: [-c|--clean] [-d|--debug] [-nr|--no-rebuild] [-r|--release]"
+    exit 1
+}
+
+prompt_continue() {
+    printf "\a" # bell
+    tput sc
+    while true; do
+        read -p "Continue? (y/n) " -n 1 -r yn
+        case $yn in
+            [Yy]*) break;;
+            [Nn]*) printf "\n"; exit 1;;
+            *) tput el1; tput rc ;;
+        esac
+    done
+    printf "\n"
+}
+
+ProjectDir=$PWD
+
+clean=
+debug=
+no_rebuild=
+release=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -c|--clean)
+            clean=1
+            ;;
+        -d|--debug)
+            debug=1
+            ;;
+        -nr|--no-rebuild)
+            no_rebuild=1
+            ;;
+        -r|--release)
+            release=1
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+if [[ $release ]]; then
+    build="build_release"
+else 
+    build="build"
+fi
+
+build() {
+    cd "$ProjectDir"
+    [[ ! -f "$ProjectDir/meson.build" ]] && die "run this in a directory with a meson.build"
+    [[ ! -d "$ProjectDir/$build" ]] && { 
+        pushd "$ProjectDir/$build"
+        mkdir -p "$ProjectDir/$build"; 
+
+        [[ $debug ]] && debug_arg="--buildtype debug"
+        [[ $release ]] && release_arg="--buildtype release"
+        meson .. $debug_arg $release_arg $* || { echo "meson command failed"; rebuild; }
+        popd
+    }
+
+    cd "$ProjectDir/$build"
+    if [[ $no_rebuild ]]; then
+        ninja
+    else
+        ninja || rebuild $*
+    fi
+
+    # link compile_commands.json
+    [[ ! -f "$ProjectDir/compile_commands.json" ]] && ln -s "$ProjectDir/$build/compile_commands.json" "$ProjectDir/compile_commands.json" || true
+
+    exit 0
+}
+rebuild() {
+    echo "about to clean the WHOLE build and then rebuild..."
+    prompt_continue
+    rm -rf "$ProjectDir/$build"
+    build $*
+}
+[[ $clean ]] && { echo "was told to explicitly clean"; rm -rf "$ProjectDir/$build"; } 
+build $*
