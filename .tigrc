@@ -13,6 +13,9 @@ set tab-size = 4
 set ignore-case = true
 
 # Keybindings
+bind generic <C-H> scroll-left
+bind generic <C-L> scroll-right
+
 bind generic g none
 bind generic gg move-first-line
 
