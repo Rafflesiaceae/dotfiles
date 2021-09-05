@@ -382,8 +382,8 @@ nmap <S-Enter> O<Esc>
 vnoremap // y/\V<C-R>"<CR>
 nnoremap <leader>cs :noh<CR>
 
-nnoremap <leader>sp :cd %:p:h<CR>
-nnoremap <leader>ss :AsyncStop<CR>
+" nnoremap <leader>sp :cd %:p:h<CR>
+" nnoremap <leader>ss :AsyncStop<CR>
 
 nmap <leader>pw :cd %:p:h<CR>
 
@@ -408,7 +408,8 @@ nnoremap <silent> <leader>vb :Gblame<cr>
 
 " nnoremap <silent> <leader>s :%s/\<<C-r><C-w>\>/
 " @TODO dont use yank buff, but visual selection instead
-nnoremap <leader>s :%s/\<<C-R>"\>/
+" nnoremap <leader>s :%s/\<<C-R>"\>/
+nnoremap <leader>s :%s///g<Left><Left>
 
 nnoremap <silent> <leader>cf :cd %:p:h<CR>
 
