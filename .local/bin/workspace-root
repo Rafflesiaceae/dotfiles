@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eo pipefail
+wr=$(find-upwards ".workspace.root") || true
+if [[ -n "$wr" ]]; then
+    dirname "$wr"
+else
+    git rev-parse --show-toplevel
+fi

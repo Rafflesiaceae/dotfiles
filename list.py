@@ -133,6 +133,7 @@ sources = {
     "./.local/bin/watch-go": { "linux": "" },
     "./.local/bin/watch-single": { "linux": "" },
     "./.local/bin/watch-vims": "",
+    "./.local/bin/workspace-root": "",
     "./.local/bin/xprofile": { "linux": "" },
     "./.local/bin/xsleep": "",
     "./.local/bin/zoom-share-bar-hide": "",

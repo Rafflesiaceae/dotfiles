@@ -391,6 +391,9 @@ nnoremap <leader>m :buffers<CR>:buffer<Space>
 nnoremap <leader>M :sp<CR><C-W><C-J>:e ~/marks<CR>gg
 nnoremap <leader>B :sp<CR><C-W><C-J>:e ~/breakpoints<CR>G
 
+nnoremap <silent> <C-M-p> :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
+nnoremap <silent> <M-p>   :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
+
 nnoremap <C-s> :w!<CR>
 inoremap <C-s> <C-O>:w!<CR>
 nnoremap <leader>w :w!<CR>
