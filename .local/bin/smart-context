@@ -14,25 +14,96 @@ clip_in()  { xclip -i -sel clip >/dev/null; }
 clip_out() { xclip -o -sel clip </dev/null; }
 clip_restore() { xclip -i -sel clip < /tmp/xclip_store >/dev/null; rm /tmp/xclip_store; }
 clip_store()   { xclip -o -sel clip > /tmp/xclip_store </dev/null; }
-xkey() { xdotool key --clearmodifiers --window "$win" "$@"; sleep 0.01; }
+xkey() { xdotool key --window "$win" "$@"; sleep 0.02; }
+xtype() { xdotool type --window "$win" "$@"; sleep 0.02; }
+i3backforth() { i3-msg workspace back_and_forth; }
+xactivewindowpid() { xdotool getactivewindow getwindowpid; } 
+xactivewindowisterminalemulator() {
+    local pid
+    pid=$(xactivewindowpid)
+    if [[ "$(cat /proc/"${pid}"/cmdline | tr -d '\000')" == *urxvt* ]]; then
+        return 0
+    fi
+    return 1
+} 
+xopennewterminalemulator() {
+    SH_STARTOPTS="autodir:$SH_STARTOPTS" urxvt & # code-dupe from  ~/.config/i3/config  search for 'Return'
+    sleep 0.6
+    newwin=$(xdotool getactivewindow)
+    xdotool windowfocus --sync "$newwin" 1>/dev/null 2>&1
+    echo "$newwin"
+}
+win_refresh() { win=$(xdotool getactivewindow); }
+# i3backforth
+# xopennewterminalemulator
+# exit 0
 
 chromium_get_url() {
     [[ -z $win ]] && die "I assume a \$win global"
     clip_store
     cur=$(xdotool getactivewindow)
     xdotool windowfocus --sync "$win"
+    sleep 0.1
     xkey ctrl+l
+    sleep 0.1
     xkey ctrl+c
+    sleep 0.1
     xclip -o -sel clip
+    sleep 0.1
     clip_restore
     xdotool windowfocus --sync "$cur"
+}
+focus_term() {
+    # i3backforth
+    if ! xactivewindowisterminalemulator; then
+        notify-send smart-context \
+        "LOL; can't open new terminals for you atm.  coz its broken and I don't
+            understand why, it keeps opening terminals on the workspace
+            smart-context started in inside the termpopup, not on the one currently
+            visible after we switch, so for now u have to make sure you start
+            terminals urself"
+        exit 1
+        # termwin=$(xopennewterminalemulator)
+        # xdotool windowfocus --sync "$termwin"
+    else
+        termwin=$(xdotool getactivewindow)
+    fi
+    # cur=$(xdotool getactivewindow)
+    # xtype "$1"
+    # xkey Return
+    # xkey ctrl+c
+    # xclip -o -sel clip
+    # clip_restore
+    # xdotool windowfocus --sync "$cur"
 }
 
 # {{{1 self-invocation
 if [[ $# -eq 1 ]]; then
     case $1 in
+        github-clone)
+            url=$chromium_url
+
+            clip_store
+
+            echo "$url" | clip_in
+            i3backforth
+            focus_term
+            win_refresh
+
+            xkey ctrl+u
+            xtype "ws"
+            xkey Return
+
+            xtype "git clone "
+            xkey ctrl+shift+v
+            xkey BackSpace
+            xtype ".git "
+            # xkey Return
+
+            clip_restore
+            ;;
         github-gists)
-            win=$(xdotool getactivewindow)
+            win_refresh
             url=$chromium_url
             if [[ "$url" =~ ^[^\/]+\/\/github\.com\/([^\/]+) ]]; then
                 username="${BASH_REMATCH[1]}"
@@ -46,7 +117,8 @@ if [[ $# -eq 1 ]]; then
             fi
             ;;
         jenkins-job-dsl)
-            win=$(xdotool getactivewindow)
+            win_refresh
+            # win=$(xdotool getactivewindow)
             url=$(chromium_get_url)
             if [[ "$url" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
                 url_prefix="${BASH_REMATCH[1]}"
@@ -59,7 +131,8 @@ if [[ $# -eq 1 ]]; then
             fi
             ;;
         jenkins-syntax)
-            win=$(xdotool getactivewindow)
+            win_refresh
+            # win=$(xdotool getactivewindow)
             url=$(chromium_get_url)
             if [[ "$url" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
                 url_prefix="${BASH_REMATCH[1]}"
@@ -70,6 +143,60 @@ if [[ $# -eq 1 ]]; then
                 xkey Return
                 clip_restore
             fi
+            ;;
+        youtube-mpv)
+            win_refresh
+            url=$(chromium_get_url)
+
+            clip_store
+
+            title=$(xdotool getwindowname "$(xdotool getactivewindow)")
+            title=${title% - YouTube - Chromium}
+
+            echo "$url" | clip_in
+
+            xkey ctrl+w
+
+            i3-msg workspace 9 
+
+            if ! xactivewindowisterminalemulator; then
+                win_refresh
+                xkey q
+                sleep 0.5
+                focus_term
+            fi
+
+            win_refresh
+            xkey ctrl+u
+
+            xtype "mpv \""
+            xkey ctrl+shift+v
+            xkey BackSpace
+            sleep 0.2
+            xtype "\"; # \""
+            echo "$title" | cut -c1-75 | clip_in
+            xtype "\""
+            xkey ctrl+shift+v
+            xkey BackSpace
+
+            xkey Return
+
+            clip_restore
+            ;;
+        youtube-music-youtube-dl)
+            win_refresh
+            url=$(chromium_get_url)
+
+            xkey ctrl+w
+            clip_store
+            echo "$url" | clip_in
+            win=$(xopennewterminalemulator)
+            xtype "music-youtube-dl \""
+            xkey ctrl+shift+v
+            xkey BackSpace
+            xtype "\" && notify-send 'music-youtube-dl' 'finished $url' && exit"
+            xkey Return
+            clip_restore
             ;;
         chromium_general_url)
             ;;
@@ -107,8 +234,12 @@ EOF
     if [[ $winname == *YouTube* ]]; then
         add_content <<EOF
 $content
-chrome open in youtube:
-    cmd: i3-chrome-open-url-in-mpv
+mpv:
+    # cmd: i3-chrome-open-url-in-mpv
+    cmd: [bash, -c, "smart-context youtube-mpv"]
+    copy-to-clipboard: false
+music-youtube-dl:
+    cmd: [bash, -c, "smart-context youtube-music-youtube-dl"]
     copy-to-clipboard: false
 EOF
     # {{{1 [chromium - jenkins]
@@ -120,6 +251,9 @@ EOF
         if [[ $chromium_url =~ .*\/\/github.com.* ]]; then
             add_content <<EOF
 $content
+clone:
+    cmd: [bash, -c, "smart-context github-clone"]
+    copy-to-clipboard: false
 gists:
     cmd: [bash, -c, "smart-context github-gists"]
     copy-to-clipboard: false
