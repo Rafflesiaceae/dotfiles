@@ -922,9 +922,10 @@ endfunction
 com! Split call s:Split()
 
 " {{{ vuild
+" requires:
+"     skywind3000/asyncrun.vim
 func s:vuildSaveAndRun(cmd)
     execute ":w"
-    " execute "!".a:cmd
     execute ":AsyncRun -raw ".a:cmd
 endf
 
@@ -958,8 +959,6 @@ func! s:vuildRun()
         call s:vuildSaveAndRun("nim c -r %")
     elseif filetype == "python"
         call s:vuildSaveAndRun("python %")
-    elseif filetype == "php"
-        call s:vuildSaveAndRun("php %")
     elseif filetype == "lua"
         call s:vuildSaveAndRun("lua %")
     elseif filetype == "html"
