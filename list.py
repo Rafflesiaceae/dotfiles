@@ -106,6 +106,7 @@ sources = {
     "./.local/bin/refresh-keyboard": { "linux": "" },
     "./.local/bin/refresh-keyring": "",
     "./.local/bin/remote-win-viewer": "",
+    "./.local/bin/retab": "",
     "./.local/bin/riprep": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
