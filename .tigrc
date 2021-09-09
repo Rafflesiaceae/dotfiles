@@ -39,6 +39,7 @@ bind main A !git commit --amend
 
 bind main c !?git checkout %(commit)
 bind main p ?git cherry-pick %(commit)
+bind main P ?git push
 
 bind status D !@?rm %(file)
 bind stage U @!git stage %(file)
