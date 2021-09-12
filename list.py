@@ -22,6 +22,8 @@ sources = {
     "./.config/parcellite/parcelliterc": { "linux": "" },
     "./.config/ranger/rc.conf": { "linux": "" },
     "./.config/ranger/rifle.conf": { "linux": "" },
+    "./.config/rofi/config.rasi": { "linux": "" },
+    "./.config/rofi/themes/Kokonai.rasi": { "linux": "" },
     "./.config/systemd/user/ssh-agent.service": { "linux": "" },
 
     "./.config/Code/User/keybindings.json.j2": {
