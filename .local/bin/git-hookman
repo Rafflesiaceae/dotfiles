@@ -20,6 +20,7 @@ usage() {
 }
 
 hook_prepare_commit_msg=.git/hooks/prepare-commit-msg
+hook_pre_commit=.git/hooks/pre-commit
 
 mkdirpf() {
     file=$1
@@ -68,12 +69,18 @@ if [[ ! -d ".git" ]]; then
     die "not a git directory"
 fi
 
+# hooks
 gerrit() {
     add_hook_as_installed "gerrit"
 
     find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-common-start"' "$hook_prepare_commit_msg"
     find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-gerrit-auto-change-id"' "$hook_prepare_commit_msg"
     # find_or_add_line_sh '. "$HOME/.githooks/prepare-commit-msg-common-end"' "$hook_prepare_commit_msg"
+}
+jenkins-lint() {
+    add_hook_as_installed "jenkins-lint"
+
+    find_or_add_line_sh '. "$HOME/.githooks/pre-commit-jenkins-lint"' "$hook_pre_commit"
 }
 
 if [[ "$#" -eq 0 ]]; then
@@ -87,6 +94,9 @@ for arg in "$@"; do
             ;;
         gerrit) # {arg
             gerrit
+            ;;
+        jenkins-lint) # {arg
+            jenkins-lint
             ;;
         *)
             die "unknown hook-template"

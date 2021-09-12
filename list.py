@@ -39,6 +39,7 @@ sources = {
         "linux": "./.config/Code - OSS/User/tasks.json"
     },
 
+    "./.githooks/pre-commit-jenkins-lint": "",
     "./.githooks/prepare-commit-msg-common-end": "",
     "./.githooks/prepare-commit-msg-common-start": "",
     "./.githooks/prepare-commit-msg-gerrit-auto-change-id": "",

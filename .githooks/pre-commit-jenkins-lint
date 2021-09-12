@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eo pipefail
+
+git diff --name-only --cached | while read -r f; do
+    if [[ $f == *"/Jenkinsfile" ]]; then
+        jenkins-lint "$f"
+    fi
+done
