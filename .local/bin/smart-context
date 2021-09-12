@@ -173,11 +173,11 @@ if [[ $# -eq 1 ]]; then
             xkey ctrl+shift+v
             xkey BackSpace
             sleep 0.2
-            xtype "\"; # \""
+            xtype "\"; # '"
             echo "$title" | cut -c1-75 | clip_in
-            xtype "\""
             xkey ctrl+shift+v
             xkey BackSpace
+            xtype "'"
 
             xkey Return
 
