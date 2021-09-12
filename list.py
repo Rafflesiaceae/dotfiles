@@ -140,6 +140,7 @@ sources = {
     "./.local/bin/zoom-share-bar-hide": "",
 
     "./.local/bin_override/gimp": { "linux": "" },
+    "./.local/bin_override/vimdiff": { "linux": "" },
 
     "./.qtcvimrc": "",
     "./.vim/colors/base16-kokonai.vim": { "linux": "" },
