@@ -12,11 +12,13 @@ fi
 xrdb -load "$HOME/.Xresources"
 xsetroot -solid "#191A15"
 xsetroot -cursor_name left_ptr
+
+# same as refresh-keyboard
 xmodmap "$HOME/.Xmodmap"
 xset r rate 200 50
+numlockx on
 
 # autostart
-numlockx &
 parcellite -d &
 # redshift -l "48.20849:16.37208" &
 # show-no-connman-con --font "/usr/share/fonts/microsoft/consola.ttf" &
