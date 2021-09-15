@@ -17,10 +17,14 @@ usage_and_die() {
 cli_out=
 cli_in=
 cli_str=
+cli_append=
 while :; do
     case $1 in
         -h|-\?|--help)
             usage; exit ;;
+        -a|--append)
+            cli_append=1
+            ;;
         -o|--out)
             cli_out=1
             ;;
@@ -42,7 +46,14 @@ while :; do
 done
 
 clip_out() { xclip -sel clip -o; }
-clip_in() { cat - | xclip -sel clip -i; }
+clip_in() { 
+    if [[ $cli_append ]]; then
+        inp=$(cat -)
+        printf "%s%s" "$(clip_out)" "$inp" | xclip -sel clip -i
+    else
+        cat - | xclip -sel clip -i
+    fi
+}
 
 if [[ $cli_out ]]; then
     clip_out
@@ -53,7 +64,7 @@ elif  [[ $cli_str ]]; then
 elif  [[ -f $1 ]]; then
     cb < "$1"
 else
-    if [ -t 0 ]; then
+    if [[ -t 0 ]]; then
         clip_out
     else
         clip_in
