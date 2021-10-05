@@ -871,7 +871,8 @@ capture a regex group (.js): |
 
 move a file (.js .node): fs.renameSync(BEFORE, AFTER)
 read whole stdin synchronously (.js .node): |
-
+    const fs = require("fs");
+    const response = fs.readFileSync(process.stdin.fd).toString();
 read line by line from stdin async (.js .node): |
     // read line by line from stdin
     const rl = require("readline").createInterface({
