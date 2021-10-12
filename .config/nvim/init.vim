@@ -6,6 +6,7 @@ if filereadable("/etc/vimrc")
 endif
 
 set ttimeoutlen=0
+set shell=/bin/bash " supposedly faster
 
 set nocompatible
 filetype off
@@ -82,6 +83,7 @@ let g:ycm_key_list_previous_completion = ['<S-TAB>', '<Up>',   '<C-k>']
 let g:ycm_complete_in_comments = 1
 let g:ycm_complete_in_strings  = 1
 let g:ycm_auto_trigger = 1
+let g:ycm_echo_current_diagnostic = 1
 
 let g:ycm_filetype_blacklist = {
       \ 'tagbar' : 1,
@@ -158,11 +160,11 @@ let g:go_gopls_enabled = 0
 let g:ale_completion_enabled = 0
 let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
-let g:airline#extensions#ale#enabled = 1
 
 let g:ale_linters = {
-\   'python': [''],
+\   'python': [],
 \   'c': [],
+\   'cpp': [],
 \   'objc': [],
 \   'javascript': [],
 \   'markdown': [],
@@ -170,15 +172,20 @@ let g:ale_linters = {
 
 " }}}
 " {{{ Airline
+let g:airline_highlighting_cache = 1
 "let g:airline_powerline_fonts = 1
+
+let g:airline#extensions#ale#enabled = 0
+let g:airline#extensions#hunks#enabled = 0
 let g:airline#extensions#tabline#enabled = 1 " disabled cause doesn't scroll like vim tab bar does
-let g:airline#extensions#tabline#show_buffers = 0 " show only tabs like vim tabline
-let g:airline#extensions#tabline#show_tabs = 0
-let g:airline#extensions#tabline#show_close_button = 0
-let g:airline#extensions#tabline#fnamemod = ':p:~'
 let g:airline#extensions#tabline#fnamecollapse = 0
-let g:airline#extensions#tagbar#flags = 'f'
+let g:airline#extensions#whitespace#enabled = 0
+let g:airline#extensions#tabline#fnamemod = ':p:~'
+let g:airline#extensions#tabline#show_buffers = 0 " show only tabs like vim tabline
+let g:airline#extensions#tabline#show_close_button = 0
+let g:airline#extensions#tabline#show_tabs = 0
 let g:airline#extensions#tagbar#enabled = 1
+let g:airline#extensions#tagbar#flags = 'f'
 " let g:airline#extensions#tabline#fnametruncate = 10
 
 " let g:airline#extensions#ycm#enabled = 1
@@ -1090,7 +1097,6 @@ Plug 'zah/nim.vim'                 ,{ 'for': 'nim' }
 Plug 'ericcurtin/CurtineIncSw.vim' ,{ 'for': 'cpp' }
 Plug 'leafo/moonscript-vim'        ,{ 'for': 'moon' }
 Plug 'ziglang/zig.vim'             ,{ 'for': 'zig' }
-Plug 'ericcurtin/CurtineIncSw.vim' ,{ 'for': 'cpp' }
 
 Plug 'slashmili/alchemist.vim'   ,{ 'for': 'ex' }
 Plug 'elixir-editors/vim-elixir' ,{ 'for': 'ex' }
@@ -1098,8 +1104,8 @@ Plug 'elixir-editors/vim-elixir' ,{ 'for': 'ex' }
 Plug 'spacewander/openresty-vim'
 Plug 'nickhutchinson/vim-systemtap'
 
-Plug 'tpope/vim-sexp-mappings-for-regular-people'
-Plug 'guns/vim-sexp'
+" Plug 'tpope/vim-sexp-mappings-for-regular-people'
+" Plug 'guns/vim-sexp'
 
 " Markups
 Plug 'mustache/vim-mustache-handlebars'
@@ -1118,11 +1124,11 @@ Plug 'cappyzawa/starlark.vim'           ,{ 'for': 'starlark' }
 Plug 'saltstack/salt-vim'
 Plug 'zchee/vim-flatbuffers'
 Plug 'cespare/vim-toml'
+Plug 'LnL7/vim-nix'
 
 Plug 'wsdjeg/vim-fetch'
 
 Plug 'will133/vim-dirdiff'
-Plug 'LnL7/vim-nix'
 
 call SourceIfExists("~/.config/nvim/local_custom_imports")
 
