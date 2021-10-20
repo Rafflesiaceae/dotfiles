@@ -58,9 +58,11 @@ for arg in "$@"; do
             if [[ ! $search_phrase ]]; then
                 search_phrase=$1
             elif [[ $from_pre_to_post ]]; then
-                rg_postargs+=("$(printf "%q" "$1")") # escape it
+                # rg_postargs+=("$(printf "%q" "$1")") # escape it
+                rg_postargs+=("$1") # escape it
             else
-                rg_preargs+=("$(printf "%q" "$1")")  # escape it
+                # rg_preargs+=("$(printf "%q" "$1")")  # escape it
+                rg_preargs+=("$1") # escape it
             fi
             ;;
     esac
@@ -69,5 +71,5 @@ done
 
 # set -x
 echo "$search_phrase" >/tmp/agt-query
-rg "${rg_preargs[@]}" "$search_phrase" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt || die "no matches"
+rg "$search_phrase" "${rg_preargs[@]}" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt || die "no matches"
 vi /tmp/agt
