@@ -31,11 +31,16 @@ bind generic f refresh
 bind main R !git rebase -i %(commit)^
 bind diff R !git rebase -i %(commit)^
 
-bind main ! !git revert %(commit)
+# @TODO
+# bind diff ! !notify-send qwe %(text)^
+
+bind main ! >git revert %(commit)
 
 bind generic C !git commit
-bind main C !git commit
-bind main A !git commit --amend
+bind main C >git commit
+bind main A >git commit --amend
+
+bind generic <F8> >git-debug-commitpush
 
 bind main c !?git checkout %(commit)
 bind main p ?git cherry-pick %(commit)
