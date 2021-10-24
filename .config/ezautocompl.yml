@@ -843,6 +843,7 @@ sh subprocess capture stdout no check / flexible/complex (.js .ts .node): |
             shell: options.shell,
             stdio: options.stdio,
             timeout: options.timeout,
+            ...options,
         });
 
         if (options.check && result.error) {
