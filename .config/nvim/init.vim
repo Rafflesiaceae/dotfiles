@@ -407,6 +407,8 @@ nnoremap <leader>w :w!<CR>
 nnoremap <leader>W :w!<CR>:e!<CR>
 nnoremap <leader>l :e!<CR>
 
+inoremap <C-e> <C-o>de
+
 " @TODO only in diffmode ( https://vi.stackexchange.com/a/2706 ?)
 " nnoremap <silent> <leader>dp V:diffput<cr>
 " nnoremap <silent> <leader>dg V:diffget<cr>
@@ -606,6 +608,9 @@ autocmd BufWritePost *.go normal! zv
 autocmd FileType go let b:delimitMate_matchpairs = "(:),[:],{:}"
 autocmd FileType go nnoremap <F2> :YcmCompleter RefactorRename <C-r><C-w>
 
+" NIM
+autocmd FileType nim nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR> 
+autocmd FileType nim nnoremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
 
 " ELIXIR
 " autocmd FileType elixir nnoremap <leader>r :w!<CR> :!elixir %<CR>
