@@ -16,6 +16,7 @@ usage_and_die() {
 
 capture_window=
 no_audio=
+no_cursor=
 while :; do
     case $1 in
         -h|-\?|--help)
@@ -25,6 +26,9 @@ while :; do
             ;;
         -na|--no-audio)
             no_audio=1
+            ;;
+        -nc|--no-cursor)
+            no_cursor=1
             ;;
         --)
             shift
@@ -37,38 +41,46 @@ while :; do
     shift
 done
 
+args=(
+    # -video_size "$res"
+    -framerate 60
+    -f x11grab
+)
+
+[[ $no_cursor ]] && args+=(
+    -draw_mouse 0
+)
+
 if [[ $capture_window ]]; then
+    args+=($(slop -D -f '-video_size %wx%h -i +%x,%y'))
     # @TODO this needs a fix big-time, don't calc i3border around like that instead use xwininfo which will do this for you see https://unix.stackexchange.com/a/14170
-    i3border=5
+    # i3border=5
 
-    geom=$(xdotool getwindowgeometry "$(xdotool selectwindow)")
-    res=$(echo "$geom" | grep -oP "Geometry: \K(.*)")
-    posRaw=$(echo "$geom" | grep -Po 'Position: \K([^\ ]*)')
+    # geom=$(xdotool getwindowgeometry "$(xdotool selectwindow)")
+    # res=$(echo "$geom" | grep -oP "Geometry: \K(.*)")
+    # posRaw=$(echo "$geom" | grep -Po 'Position: \K([^\ ]*)')
 
-    IFS=',' read -ra pos <<< "$posRaw"
-    x="${pos[0]}"
-    y="${pos[1]}"
+    # IFS=',' read -ra pos <<< "$posRaw"
+    # x="${pos[0]}"
+    # y="${pos[1]}"
 
-    # remove i3border
-    # @TODO this is only needed **floating**, but we don't differentiate atm, so this won't work on non-floating windows w/o borders
-    x=$(("$x"-5))
-    y=$(("$y"-5))
+    # # remove i3border
+    # # @TODO this is only needed **floating**, but we don't differentiate atm, so this won't work on non-floating windows w/o borders
+    # x=$(("$x"-5))
+    # y=$(("$y"-5))
 else
     # @TODO lul dont hardcode dis get both frum xrandr or somesing
-    res="1920x1080"
-    x="0"
-    y="0"
+    # res="1920x1080"
+    # x="0"
+    # y="0"       
+    # args+=(-i ":0.0+$x,$y")
+    args+=(-i ":0.0")
 fi
 
 # @TODO (???) colors are messed up, the pix_fmt needs to be some sort of proper conversion instead of what seems like a cast
 
 tmpfile="$HOME/record-tempfile.mkv"
 
-args=(
-    -video_size "$res"
-    -framerate 60
-    -f x11grab -i ":0.0+$x,$y"
-)
 
 postprocess=(
     -c:v libx264 -crf 14 -preset slow
@@ -79,7 +91,7 @@ postprocess=(
 [[ ! $no_audio ]] && args+=(
     -f pulse 
     -ac 2
-    -i default
+    # -i default
 ) && postprocess+=(
     -c:a aac 
 )
