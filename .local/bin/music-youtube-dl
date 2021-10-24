@@ -1,5 +1,5 @@
 #!/bin/sh
-youtube-dl $* \
+yt-dlp $* \
     --output "$HOME/Music/%(title)s_%(id)s.%(ext)s" \
     --format bestaudio \
     --extract-audio \

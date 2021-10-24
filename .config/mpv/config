@@ -29,6 +29,9 @@ screenshot-template="~/mpv_%n"
 ytdl-format=bestvideo[height<=?720]+bestaudio/best
 
 
+# ytdl is currenly broken and unmaintained - use yt-dlp (fork) instead
+script-opts=ytdl_hook-ytdl_path=yt-dlp
+
 [auto-resume]
 # match network streams like YouTube
 profile-cond=p["path"]:match("^http.*") ~= nil
