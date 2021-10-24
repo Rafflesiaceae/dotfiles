@@ -646,6 +646,13 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # python {{{1
+walk directory recursively (.py): |
+    import fnmatch
+    import os
+     
+    for root, dirs, files in os.walk("."):
+        for filename in files:
+            print( os.path.join(root, filename))
 
 sh subprocess capture stdout no check / flexible/complex (.python): |
 
