@@ -88,6 +88,7 @@ sources = {
     "./.local/bin/i3-swap-workspaces": { "linux": "" },
     "./.local/bin/i3-type-mark": { "linux": "" },
     "./.local/bin/install-local-bin": { "linux": "" },
+    "./.local/bin/irc": { "linux": "" },
     "./.local/bin/jenkins-listen-job": "",
     "./.local/bin/json2msgpack": "",
     "./.local/bin/lastdl": "",
