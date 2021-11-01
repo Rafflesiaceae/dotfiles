@@ -2,8 +2,8 @@
 targetdir=
 if_exists_set_targetdir() { [[ -d "$1" ]] && export targetdir="$1" ; }
 
-if_exists_set_targetdir "$HOME/.numdots"
 if_exists_set_targetdir "$HOME/.dotfiles"
+if_exists_set_targetdir "$HOME/.numdots"
 
 set -e
 pushd "$targetdir"
