@@ -72,6 +72,7 @@ base=(
     hyperfine
     imagemagick
     jq
+    linux-headers
     maim
     man-db
     man-pages
