@@ -930,6 +930,7 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+read stdin (.sh .bash): stdin=$(cat)
 split a variable by character into an array (.bash): |
     IFS='€' read -ra stat <<< "$variable"
 remove/delete first line (.sh .bash): tail -n +2
