@@ -317,6 +317,13 @@ edit_which_current_buffer() {
 zle -N edit_which_current_buffer
 bindkey '^[[15~' edit_which_current_buffer # F5
 # }}}
+# {{{ edit file from xsel primary
+edit_xsel_primary() {
+    "$EDITOR" "$(xsel -o)"
+}
+zle -N edit_xsel_primary
+bindkey '^[[17~' edit_xsel_primary # F6
+# }}}
 # {{{ Show last exit-code
 function show_last_exit_code() {
     local last_exit_code=$?
