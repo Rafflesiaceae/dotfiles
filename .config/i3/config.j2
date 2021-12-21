@@ -113,7 +113,7 @@ bindsym »mod«+Shift+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" urxv
 
 # launcher/dmenu
 # bindsym »mod«+r exec "bemenu-run --fn 'Consolas Bold 10' -p 'RUN' --fb '#383830' --nb '#383830' --nf '#F8F8F2' --hb '#A6E22E' --hf '#272822' --tb '#47473C' --tf '#33B9F3' --ff '#F8F8F2'"
-bindsym »mod«+r exec "rofi -show run -color-window '#222222, #222222, #b1b4b3' -color-normal '#222222, #b1b4b3, #222222, #005577, #b1b4b3' -color-active '#222222, #b1b4b3, #222222, #007763, #b1b4b3' -color-urgent '#222222, #b1b4b3, #222222, #77003d, #b1b4b3' -kb-row-down 'Control+j' -kb-accept-entry 'Return' -kb-row-up   'Control+k' -kb-remove-to-eol '' -matching fuzzy -sort"
+bindsym »mod«+r exec "rofi -show run -matching fuzzy -sort"
 
 # locking screen
 bindsym »mod«+Ctrl+L exec "i3lock -i $HOME/.lock.bg.png -e -f"
