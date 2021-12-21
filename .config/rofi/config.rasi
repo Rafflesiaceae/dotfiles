@@ -1,1 +1,11 @@
+configuration {
+    kb-accept-entry     : "Return";
+    kb-clear-line       : "Control+u";
+    kb-remove-to-eol    : "";
+    kb-remove-to-sol    : "";
+    kb-remove-word-back : "Control+w";
+    kb-row-down         : "Control+j,Down";
+    kb-row-up           : "Control+k,Up";
+}
+
 @theme "./themes/Kokonai.rasi"
