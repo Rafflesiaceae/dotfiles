@@ -139,7 +139,7 @@ bindsym »mod«+Print exec "maim --select --hidecursor | xclip -selection clipbo
 #    }}} mod=»mod«
 {% endfor %}
 
-bindsym Print exec "maim ~/shot_$(date +%s).png"
+bindsym Print exec "maim | tee ~/shot_$(date +%s).png | xclip -selection clipboard -t image/png -i"
 
 # }}}
 # {{{ MODES
