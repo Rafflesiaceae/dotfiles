@@ -449,6 +449,10 @@ nnoremap <leader>cw "+yiw<CR>
 
 nnoremap <leader>m :buffers<CR>:buffer<Space>
 
+noremap <leader>gt :OpenTig<CR>
+noremap <leader>! :OpenTig<CR>
+noremap <leader>C :OpenTerminal<CR>
+noremap <leader>T :OpenTerminal<CR>
 noremap <leader>gb :Git blame<CR>
 
 " Google it - TODO for visual selection
@@ -658,6 +662,24 @@ augroup END
 " }}}
 
 " {{{ Custom Functions
+function! s:OpenTig()
+    " @TODO show/use .git - dir instead of parent dir of file
+    let pdir = expand('%:p:h')
+    let toplevel = system('git-show-toplevel-name '.pdir)
+    echom "OpenTig ".toplevel
+    silent exec "!urxvt -title \\(tig:\\ ".toplevel."\\) -cd ".pdir." -e $SHELL -i -c tig &"
+endfunction
+com! OpenTig call s:OpenTig()
+
+function! s:OpenTerminal()
+    " @TODO show/use .git - dir instead of parent dir of file
+    let pdir = expand('%:p:h')
+    let toplevel = system('git-show-toplevel-name '.pdir)
+    echom "OpenTerminal ".toplevel
+    silent exec "!urxvt -cd ".pdir." -e $SHELL -i &"
+endfunction
+com! OpenTerminal call s:OpenTerminal()
+
 function! s:GetLink()
     let pos = getcurpos()
     echom system("get-link \"".expand("%:p")."\" \"".pos[1]."\"")

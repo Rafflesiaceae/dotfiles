@@ -75,6 +75,7 @@ sources = {
     "./.local/bin/git-list-changed-files-in-commit": "",
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
+    "./.local/bin/git-show-toplevel-name": "",
     "./.local/bin/git-submodule-apply": "",
     "./.local/bin/gitpseudfuse": "",
     "./.local/bin/gitr": "",

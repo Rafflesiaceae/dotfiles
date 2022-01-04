@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eo pipefail
+if [[ "$1" ]]; then
+    path=$1
+else
+    path=$PWD
+fi
+
+cd "$path"
+abstoplevel=$(git rev-parse --show-toplevel)
+printf "%s" "$(basename "$abstoplevel")"
