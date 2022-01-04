@@ -13,8 +13,8 @@ set tab-size = 4
 set ignore-case = true
 
 # Keybindings
-bind generic <C-H> scroll-left
-bind generic <C-L> scroll-right
+bind generic h scroll-left
+bind generic l scroll-right
 
 bind generic g none
 bind generic gg move-first-line
@@ -22,8 +22,8 @@ bind generic gg move-first-line
 bind main    G move-last-line
 bind generic G move-last-line
 
-bind generic h back
-bind generic l view-next
+bind generic <C-H> back
+bind generic <C-L> view-next
 bind generic H view-help
 bind generic <C-R> refresh
 bind generic f refresh
@@ -57,6 +57,8 @@ bind generic S ?git format-patch -1 -N %(commit)
 bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
 bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)\""
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
+
+bind generic <C-s> !@?git stash
 
 bind generic E !@code -g %(file):%(lineno)
 
