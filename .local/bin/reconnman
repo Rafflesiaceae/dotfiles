@@ -2,3 +2,5 @@
 connmanctl disable wifi
 sleep 1
 connmanctl enable wifi
+sleep 1
+connmanctl disable ethernet || true
