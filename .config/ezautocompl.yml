@@ -6,6 +6,8 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 resolve a dns/domain (.cmd): dig +short lwn.net
 
+dont prompt for password for ssh call (.cmd .ssh): -o PasswordAuthentication=no
+
 xargs for each line (.cmd .xargs): xargs -L 1
 xargs for each line w args (.cmd .xargs): xargs -I '{}' echo "{}"
 
@@ -938,6 +940,7 @@ if main (.js .node .ts): |
 read stdin (.sh .bash): stdin=$(cat)
 split a variable by character into an array (.bash): |
     IFS='€' read -ra stat <<< "$variable"
+get first line (.sh .bash): head -n 1
 remove/delete first line (.sh .bash): tail -n +2
 echo/print/extract contents from-to/between 2 matches/lines (.bash): |
     between_2_lines() {
