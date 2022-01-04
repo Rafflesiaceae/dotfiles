@@ -13,6 +13,10 @@ if [[ "$1" != "--no-record" ]]; then
     exit 0
 fi
 
+echo {{{1 update archlinux-keyring
+sudo pacman -Sy --noconfirm
+sudo pacman -S archlinux-keyring --noconfirm
+
 echo {{{1 update official packages
 sudo pacman -Syu --noconfirm
 
