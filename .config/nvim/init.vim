@@ -49,7 +49,8 @@ noremap ^ 0
 " auto BufEnter * let &titlestring = hostname() . "/" . expand("%:p")
 set title titlestring=%t titlelen=70
 
-set diffopt+=iwhite
+" set diffopt+=iwhite   " ignore changes in amount of white space
+" set diffopt+=vertical " open diff-splits vertically
 
 set guicursor=n-v-c:block-Cursor/lCursor-blinkon0,i-ci:ver25-Cursor/lCursor,r-cr:hor20-Cursor/lCursor
 set iskeyword=@,48-57,_,192-255
@@ -174,12 +175,13 @@ let g:ale_linters = {
 " {{{ Airline
 let g:airline_highlighting_cache = 1
 "let g:airline_powerline_fonts = 1
-
+let g:airline#extensions#branch#enabled=1
 let g:airline#extensions#ale#enabled = 0
 let g:airline#extensions#hunks#enabled = 0
 let g:airline#extensions#tabline#enabled = 1 " disabled cause doesn't scroll like vim tab bar does
 let g:airline#extensions#tabline#fnamecollapse = 0
 let g:airline#extensions#whitespace#enabled = 0
+
 let g:airline#extensions#tabline#fnamemod = ':p:~'
 let g:airline#extensions#tabline#show_buffers = 0 " show only tabs like vim tabline
 let g:airline#extensions#tabline#show_close_button = 0
@@ -453,7 +455,12 @@ noremap <leader>gt :OpenTig<CR>
 noremap <leader>! :OpenTig<CR>
 noremap <leader>C :OpenTerminal<CR>
 noremap <leader>T :OpenTerminal<CR>
+noremap <leader>gc :Git commit<CR>
+noremap <leader>gd :Gdiff<CR>
 noremap <leader>gb :Git blame<CR>
+noremap <leader>gs :GitGutterPreviewHunk<CR>
+noremap <leader>G  :GitGutterPreviewHunk<CR>
+noremap <leader>gu :GitGutterUndoHunk<CR>
 
 " Google it - TODO for visual selection
 nnoremap <leader>gg :call system("chromium \"http://www.google.com/search?q=".expand("<cword>")."\"")<CR>
@@ -518,6 +525,7 @@ autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 
 " JSON
 autocmd FileType json setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+autocmd FileType json setlocal foldmethod=syntax
 
 " XML
 autocmd FileType xml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
@@ -634,7 +642,7 @@ autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 autocmd FileType json5 setlocal commentstring=//\ %s
 
 " YAML
-autocmd FileType yaml setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+autocmd FileType yaml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
 " MARKDOWN
 autocmd FileType markdown setlocal list
@@ -690,7 +698,7 @@ nmap <leader>gl :GetLink<CR>
 function! CopyCurrentFullTag()
     let @+=tagbar#currenttag("%s", "", "f")
 endfunction
-map <leader>sy :call CopyCurrentFullTag()<CR>
+map <leader>ct :call CopyCurrentFullTag()<CR>
 
 function! CopySearchRegisterToClipboardRegister()
     let searchreg = @/
@@ -823,9 +831,8 @@ command! -nargs=1 ChangeLang
 " nmap <leader>gg :call GoogleWordUnderCursor()<CR>
 " nmap <leader>gg :system("chromium \"http://www.google.com/search?q=".wordUnderCursor.<cword>")<CR>
 
-"" toggle ,/; characters at the end of a line
-function! ToggleEolCharacter(char)
-    " TODO: replace last char if its one of the ones we use with the one we want, e.g. ,=>; if we <leader>;
+"" toggle characters at the end of a line
+function! ToggleLastChar(char)
     let line = getline(".")
     if line[len(line)-1] == a:char
        call setline( ".", strpart(line, 0, len(line)-1) )
@@ -833,8 +840,8 @@ function! ToggleEolCharacter(char)
        call setline( ".", line . a:char )
     endif
 endfunction
-nmap <leader>, :call ToggleEolCharacter(",")<CR>
-nmap <leader>. :call ToggleEolCharacter(";")<CR>
+nmap <leader>, :call ToggleLastChar(",")<CR>
+nmap <leader>. :call ToggleLastChar(";")<CR>
 
 function! s:Escape(startl, endl) range
     " TODO
@@ -917,6 +924,13 @@ function! CopyPathToClip()
     call setreg("*", expand("%:p"))
 endfunction
 nmap <leader>pc :call CopyPathToClip()<CR>
+function! CopyFileNameToClip()
+    echo "Copying filename to clipboard..."
+    call setreg("+", expand("%:t:r"))
+    call setreg("*", expand("%:t:r"))
+endfunction
+nmap <leader>pf :call CopyFileNameToClip()<CR>
+nmap <leader>py :call CopyPathToClip()<CR>
 
 function! CopyRelativePathWLineToClip()
     echo "Copying relative path w/ linenr to clipboard..."
@@ -1147,6 +1161,7 @@ Plug 'jigish/vim-thrift'
 Plug 'mitei/gyp.vim'                    ,{ 'for': 'gyp' }
 Plug 'gutenye/json5.vim'
 Plug 'elzr/vim-json'
+Plug 'mogelbrod/vim-jsonpath'
 Plug 'cappyzawa/starlark.vim'           ,{ 'for': 'starlark' }
 Plug 'saltstack/salt-vim'
 Plug 'zchee/vim-flatbuffers'
