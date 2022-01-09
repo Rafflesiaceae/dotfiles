@@ -1,6 +1,31 @@
 #!/bin/bash
 set -eo pipefail
 
+usage() {
+    echo "usage: [-r|--reset] <files>"
+    echo "if any of the passed files changed, will return exit-code 0, 1 otherwise"
+    exit "${1-0}"
+}
+
+reset=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -r|--reset)
+            reset=1
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
 hash() {  xxh128sum - | cut -d ' ' -f1; }
 
 cached=$HOME/.cache/file-changed
@@ -14,17 +39,24 @@ for arg in "$@" ; do
     cache_path="${cached}/${id}"
     content_hash=$(hash < "$realpath")
 
-    previous_content_hash=
-    if [[ -r "$cache_path" ]]; then
-        previous_content_hash="$(cat "$cache_path")"
-        if [[ "$previous_content_hash" != "$content_hash" ]]; then
-            changed=1
+    if [[ $reset ]]; then
+        if [[ -f "$cache_path" ]]; then
+            rm "$cache_path"
         fi
     else
-        changed=1
+        previous_content_hash=
+        if [[ -f "$cache_path" ]]; then
+            previous_content_hash="$(cat "$cache_path")"
+            if [[ "$previous_content_hash" != "$content_hash" ]]; then
+                changed=1
+            fi
+        else
+            changed=1
+        fi
+
+        echo "$content_hash" > "$cache_path"
     fi
 
-    echo "$content_hash" > "$cache_path"
 done
 
 if [[ $changed ]]; then
