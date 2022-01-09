@@ -65,6 +65,7 @@ sources = {
     "./.local/bin/drb": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
+    "./.local/bin/file-changed": "",
     "./.local/bin/find-upwards": "",
     "./.local/bin/focuswindow": { "linux": "" },
     "./.local/bin/font-lookup-character": { "linux": "" },
