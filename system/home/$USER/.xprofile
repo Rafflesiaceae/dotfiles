@@ -22,8 +22,3 @@ numlockx on
 parcellite -d &
 # redshift -l "48.20849:16.37208" &
 # show-no-connman-con --font "/usr/share/fonts/microsoft/consola.ttf" &
-
-# hack restart gvfs
-{ sleep 3 && pkill "gvfs*";} &
-
-exec dbus-launch "$1"
