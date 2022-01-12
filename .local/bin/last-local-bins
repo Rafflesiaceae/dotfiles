@@ -1,4 +1,4 @@
 #!/bin/bash
 set -eo pipefail
 echo "..."
-ls -thr1A "$HOME"/.local/bin | sed '/last-local-bins/d' | tail -n 8
+ls -thr1A "$HOME"/.local/bin | sed '/last-local-bins/d' | tail -n "${1:-8}"
