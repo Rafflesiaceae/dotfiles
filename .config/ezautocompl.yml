@@ -1083,7 +1083,7 @@ write array to json (.jq .bash): |
   allToStringArray=(100 "all-numbers-are-strings" "\n" "excessive escaping of escaped newlines")
   printf "%s\n" "${allToStringArray[@]}" | jq -s --raw-input 'split("\n")[:-1]'
 
-change dir to script parent location path (.bash): |
+cd/change dir to script parent location path (.bash): |
   # cd to parent dir of current script
   cd "$(dirname "${BASH_SOURCE[0]}")"
 
@@ -1216,11 +1216,11 @@ for each file in path (.sh .bash): |
 abspath / realpath (.sh .bash): |
     fabspath=$(realpath "$path")
 
-extract file name and extension from path (.sh .bash): |
-    local fnamewext=$(basename -- "$path")
-    local fbase="${path%/*}"
-    local fext="${fnamewext##*.}"
-    local fname="${fnamewext%.*}"
+extract/split file base,name,extension from path (.sh .bash): |
+    fnamewext=$(basename -- "$path")
+    fbase="${path%/*}"
+    fext="${fnamewext##*.}"
+    fname="${fnamewext%.*}"
 
 kill background processes along with main process (.sh .bash): |
     bgpids=()
