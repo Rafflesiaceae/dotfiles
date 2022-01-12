@@ -79,6 +79,7 @@ sources = {
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/git-show-toplevel-name": "",
     "./.local/bin/git-submodule-apply": "",
+    "./.local/bin/git-unstage": "",
     "./.local/bin/gitpseudfuse": "",
     "./.local/bin/gitr": "",
     "./.local/bin/gitsup": "",
