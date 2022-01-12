@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eo pipefail
+sudo bpftrace - <<EOF
+tracepoint:syscalls:sys_enter_exec*{ 
+    printf("%-8u pid: %6d, comm: %10s, args: ", 
+        elapsed / 1000000, 
+        pid, 
+        comm
+    );
+    join(args->argv);
+}
+EOF

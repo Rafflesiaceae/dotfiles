@@ -130,6 +130,7 @@ sources = {
     "./.local/bin/thuncb": "",
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/togglekb": "",
+    "./.local/bin/track-execs": "",
     "./.local/bin/update-arch": { "linux": "" },
     "./.local/bin/update-arch-android": { "linux": "" },
     "./.local/bin/update-numdots": "",
