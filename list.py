@@ -92,6 +92,7 @@ sources = {
     "./.local/bin/install-local-bin": { "linux": "" },
     "./.local/bin/jenkins-listen-job": "",
     "./.local/bin/json2msgpack": "",
+    "./.local/bin/last-local-bins": "",
     "./.local/bin/lastdl": "",
     "./.local/bin/mark-code": "",
     "./.local/bin/meson-quickbuild": "",
