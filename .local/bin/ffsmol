@@ -29,6 +29,7 @@ ffmpeg \
 	-map 0             `#use all subtitles/audio/videos` \
 	-vf "scale=-2:720" `#use height 720 and an aspect-ratio matching width as a multiple of 2` \
 	-sws_flags lanczos+accurate_rnd `#use lanczos for downscaling instead of bicubic` \
+    -pix_fmt yuv420p  `#dont use funky color-spaces` \
 	-c:v libx264 -crf 20 -preset slow \
 	-c:a aac -b:a 128k `#use 128kbs aac audio` \
 	-ac 2              `#map audio to stereo` \
@@ -60,6 +61,7 @@ if [ "$#" == 1 ]; then
 		-pix_fmt yuv420p  `#dont use funky color-spaces` \
 		-c:a aac -b:a 64k `#use 64kbs aac audio` \
 		-ac 1             `#map audio to mono` \
+        -filter:a "loudnorm=I=-16:TP=-3:LRA=4" `# loudnorm` \
         $* \
 		-y "yt_$(date +%s).mp4"
 else
@@ -74,6 +76,7 @@ else
 		-pix_fmt yuv420p  `#dont use funky color-spaces` \
 		-c:a aac -b:a 64k `#use 64kbs aac audio` \
 		-ac 1             `#map audio to mono` \
+        -filter:a "loudnorm=I=-16:TP=-3:LRA=4" `# loudnorm` \
 		-ss "$from" \
 		-to "$to" \
         $* \
@@ -88,6 +91,7 @@ else
             -c:v libx264 -crf 20 -preset slow \
             -c:a aac -b:a 128k `#use 128kbs aac audio` \
             -ac 2              `#map audio to stereo` \
+            -filter:a "loudnorm=I=-16:TP=-3:LRA=4" `# loudnorm` \
             $* \
             -y "$(prefix "$res" smol_ mp4)" 
 
