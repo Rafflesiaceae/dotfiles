@@ -1,0 +1,37 @@
+#!/bin/bash
+set -eo pipefail
+
+pidinfo() { ps -o user,pid,command --no-headers -p "$@"; }
+get_connection_unix_process_id() {
+    gdbus call --session --dest org.freedesktop.DBus --object-path / --method \
+        org.freedesktop.DBus.GetConnectionUnixProcessID "$1" || true
+}
+
+echo
+echo "== (system) service registration files"
+ls -1A "/usr/share/dbus-1/system-services/"
+
+echo
+echo "== (session) service registration files"
+ls -1A "/usr/share/dbus-1/services/"
+
+echo
+echo "== (session) service connections"
+echo
+echo "!!! 1 *Error* is to be expected, as running this will run qdbus which has to connect to the session and thus opens its own connection, it then closes and afterwards we look through the service_connection, including the now closed one"
+echo
+
+pids=()
+while read -r service_connection; do
+    if [[ "$(get_connection_unix_process_id "$service_connection")" =~ ^\(uint32\ ([0-9]+),\)$ ]]; then
+        pid=${BASH_REMATCH[1]}
+
+        pids+=("$pid€$service_connection")
+    fi
+done < <(qdbus)
+
+echo
+for ee in "${pids[@]}"; do
+    IFS='€' read -ra e <<< "$ee"
+    printf "% 50s | %s\n" "${e[1]}" "$(pidinfo "${e[0]}")"
+done

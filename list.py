@@ -60,6 +60,7 @@ sources = {
     "./.local/bin/clipdiff": "",
     "./.local/bin/cmake-quickbuild": "",
     "./.local/bin/cpwd": "",
+    "./.local/bin/dbus-list-all-services": "",
     "./.local/bin/dcot": "",
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",
