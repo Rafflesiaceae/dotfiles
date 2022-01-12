@@ -40,3 +40,8 @@ save-position-on-quit=yes
 [software-render]
 profile-cond=p["video-format"]=="vc1"
 hwdec=no
+
+[lang-jpn]
+profile-cond=p["path"]:match(".*/jpn/.*") ~= nil
+alang=jpn
+slang=eng
