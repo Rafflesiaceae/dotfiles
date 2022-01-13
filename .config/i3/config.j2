@@ -140,6 +140,8 @@ bindsym »mod«+Print exec "maim --select --hidecursor | xclip -selection clipbo
 {% endfor %}
 
 bindsym Print exec "maim | tee ~/shot_$(date +%s).png | xclip -selection clipboard -t image/png -i"
+bindsym Control+space exec "dunstctl close"
+bindsym Control+Shift+space exec "dunstctl history-pop"
 
 # }}}
 # {{{ MODES
