@@ -675,7 +675,7 @@ function! s:OpenTig()
     let pdir = expand('%:p:h')
     let toplevel = system('git-show-toplevel-name '.pdir)
     echom "OpenTig ".toplevel
-    silent exec "!urxvt -title \\(tig:\\ ".toplevel."\\) -cd ".pdir." -e $SHELL -i -c tig &"
+    silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c tig &"
 endfunction
 com! OpenTig call s:OpenTig()
 
