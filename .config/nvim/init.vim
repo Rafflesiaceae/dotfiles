@@ -930,6 +930,7 @@ function! CopyFileNameToClip()
     call setreg("*", expand("%:t:r"))
 endfunction
 nmap <leader>pf :call CopyFileNameToClip()<CR>
+nmap <leader>gf :call CopyFileNameToClip()<CR>
 nmap <leader>py :call CopyPathToClip()<CR>
 
 function! CopyRelativePathWLineToClip()
