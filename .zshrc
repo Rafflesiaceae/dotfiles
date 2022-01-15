@@ -235,7 +235,7 @@ list_git_branches_via_fzf() {
 zle -N list_git_branches_via_fzf{,}
 bindkey '^G' list_git_branches_via_fzf
 # }}}
-# {{{ RPROMPT GIT & STUFF
+# {{{ RPROMPT
 local zsh_git_prompt=$HOME/.zsh/zsh-git-prompt/zshrc.sh
 local has_zsh_git_prompt=
 command -v gitusers &>/dev/null && has_zsh_git_prompt=1
@@ -268,7 +268,7 @@ function precmd() {
 function TRAPUSR1() {
     if [[ $has_zsh_git_prompt ]]; then
         # read from temp file
-        RPROMPT="$(cat /tmp/zsh_prompt_$$)"
+        RPROMPT="$(date +"%T") $(cat /tmp/zsh_prompt_$$ 2>/dev/null)"
 
         # reset proc number
         ASYNC_PROC=0
@@ -277,6 +277,7 @@ function TRAPUSR1() {
         zle && zle reset-prompt
     fi
 }
+TRAPUSR1
 function TRAPEXIT() {
     # cleanup async prompts
     [[ -f "/tmp/zsh_prompt_$$" ]] && rm "/tmp/zsh_prompt_$$"
