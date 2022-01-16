@@ -64,6 +64,7 @@ sources = {
     "./.local/bin/dcot": "",
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",
+    "./.local/bin/edit-clipboard": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
     "./.local/bin/file-changed": "",

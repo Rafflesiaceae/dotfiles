@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eo pipefail
+tmpfile=$(mktemp)
+cleanup_tmpfile() {
+    rm "$tmpfile"
+}
+trap 'cleanup_tmpfile' EXIT
+
+cb -o > "$tmpfile"
+"$EDITOR" "$tmpfile"
+truncate -s-1 "$tmpfile"
+cb -i < "$tmpfile"
