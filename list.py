@@ -98,6 +98,7 @@ sources = {
     "./.local/bin/json2msgpack": "",
     "./.local/bin/last-local-bins": "",
     "./.local/bin/lastdl": "",
+    "./.local/bin/lastfile": "",
     "./.local/bin/mark-code": "",
     "./.local/bin/meson-quickbuild": "",
     "./.local/bin/music-to-youtube": "",

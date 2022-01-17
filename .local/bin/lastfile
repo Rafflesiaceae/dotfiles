@@ -1,0 +1,9 @@
+#!/bin/bash
+set -eo pipefail
+
+unset -v latest
+for file in "$PWD"/*; do
+  [[ $file -nt $latest ]] && latest=$file
+done
+
+echo "$latest"
