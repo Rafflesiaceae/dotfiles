@@ -1341,9 +1341,11 @@ vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags -
 vim run compile (.cpp .vim .various): // [RUN] bear -- clang++ $(pkg-config --cflags --libs libpcrecpp jsoncpp) "%" -o "%.out"
 
 vim modeline for basic text (.vim .various): |
-  // vim: noai:tw=80:nosmartindent:
+  // vim: set noai tw=80 nosmartindent:
 vim modeline for setting filetype (.vim .various): |
-  # vim: ft=nginx:
+  # vim: set ft=nginx syn=nginx:
+vim modeline for setting indentation settings (.vim .various): |
+  # vim: set ts=4 sw=4 et:
 show term cursor again via tput (.gdb): 'shell tput cnorm'
 
 utf8/unicode symbols (.various): |
