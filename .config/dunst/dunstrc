@@ -1,9 +1,9 @@
 [global]
 font = Consolas 11
 
-mouse_left_click = close_current
-mouse_middle_click = do_action, close_current
-mouse_right_click = close_all
+mouse_left_click = do_action, close_current
+mouse_middle_click = close_all
+mouse_right_click = close_current
 
 # allow a small subset of html markup:
 # <b>bold</b>
@@ -45,7 +45,7 @@ browser = /usr/bin/chromium # browser for opening urls in context menu
 bounce_freq = 0
 
 # show age of message if message is older than show_age_threshold seconds.  set to -1 to disable.
-show_age_threshold = 60 
+show_age_threshold = 60
 
 # Hide duplicate's count and stack them.
 stack_duplicates = yes
@@ -72,7 +72,7 @@ geometry = "0x5-30-50"
 # Don't remove messages, if the user is idle (no mouse or keyboard input)
 # for longer than idle_threshold seconds.
 # Set to 0 to disable.
-idle_threshold = 2
+idle_threshold = 1
 
 
 # Display notification on focused monitor. Possible modes are:
