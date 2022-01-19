@@ -823,6 +823,8 @@ endfunction
 command! -nargs=1 ChangeLang
 \ execute "bd!|e" substitute(expand("%:p"), "/de/\\\|/en/\\\|/fr/\\\|/it/", "/".<q-args>."/", "")
 
+command! -bar -range=% Reverse <line1>,<line2>g/^/m<line1>-1|nohl
+
 " function! GoogleWordUnderCursor()
 "     let wordUnderCursor = expand("<cword>")
 "     call system("chromium \"http://www.google.com/search?q=".wordUnderCursor."\"")
