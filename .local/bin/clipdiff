@@ -1,6 +1,10 @@
 #!/bin/bash
 set -eo pipefail
 
-parcellite-history 0 > /tmp/clipdiff_0
-parcellite-history 1 > /tmp/clipdiff_1
-nvim -d /tmp/clipdiff_0 /tmp/clipdiff_1
+if [[ "$1" == "-d" ]]; then
+    nvim -d "$(parcellite-history 0)" "$(parcellite-history 1)"
+else
+    parcellite-history 0 > /tmp/clipdiff_0
+    parcellite-history 1 > /tmp/clipdiff_1
+    nvim -d /tmp/clipdiff_0 /tmp/clipdiff_1
+fi
