@@ -890,7 +890,14 @@ function! ToggleSpacesAroundParens()
     call setpos(".", cur_cur_pos)
 endfunction
 
+let s:__attempt_cd_git_cache = {}
 function! s:AttemptToCdToGitDir()
+    let cf  = expand("%:p")
+
+    if has_key(s:__attempt_cd_git_cache, cf)
+        return
+    endif
+
     let cgd = trim(system("git rev-parse --show-toplevel"))
     if v:shell_error != 0
         return
@@ -900,6 +907,8 @@ function! s:AttemptToCdToGitDir()
         echom cgd
         exe 'cd' cgd
     endif
+
+    let s:__attempt_cd_git_cache[cf] = 1
 endfunction
 autocmd BufReadPost,BufNewFile * call s:AttemptToCdToGitDir()
 
@@ -912,7 +921,6 @@ function! s:ToggleCD()
         echo "No GIT dir."
     endif
 
-    " echom cwd
     if cwd != cgd
         echom "cd ".cgd." (git)"
         exe 'cd' cgd
@@ -923,7 +931,6 @@ function! s:ToggleCD()
 endfunction
 com! ToggleCD call s:ToggleCD()
 nnoremap <leader>sd :ToggleCD<CR>
-" autocmd BufReadPost,BufNewFile * call s:ToggleCD()
 
 "" ??-?? forgot what this does
 function! EditJsonKVInLine(key)
