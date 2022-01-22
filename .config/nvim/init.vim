@@ -664,7 +664,7 @@ autocmd FileType groovy nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
 
 augroup QuickFix
     " override :YcmComplete GoTo for QF
-    au FileType qf nmap <CR> <CR>
+    au FileType qf nmap <buffer> <CR> <CR>
 augroup END
 
 " }}}
