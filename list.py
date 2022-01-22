@@ -104,6 +104,7 @@ sources = {
     "./.local/bin/meson-quickbuild": "",
     "./.local/bin/music-to-youtube": "",
     "./.local/bin/music-youtube-dl": "",
+    "./.local/bin/mvn-fetch": "",
     "./.local/bin/npmis":  { "linux": "" },
     "./.local/bin/npmisd": { "linux": "" },
     "./.local/bin/num-set-desc": { "linux": "" },
