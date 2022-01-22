@@ -891,13 +891,21 @@ function! ToggleSpacesAroundParens()
     call setpos(".", cur_cur_pos)
 endfunction
 
-let s:__attempt_cd_git_cache = {}
+let s:__attempt_cd_git_cache = 0
 function! s:AttemptToCdToGitDir()
     let cf  = expand("%:p")
 
-    if has_key(s:__attempt_cd_git_cache, cf)
+    " if file startswith /tmp/agt → disable
+    let agtprefix="/tmp/agt"
+    if expand("%")[0:len(agtprefix)-1] ==# agtprefix
+        let s:__attempt_cd_git_cache = 1
         return
     endif
+
+    if s:__attempt_cd_git_cache == 1
+        return
+    endif
+    let s:__attempt_cd_git_cache = 1
 
     let cgd = trim(system("git rev-parse --show-toplevel"))
     if v:shell_error != 0
@@ -908,8 +916,6 @@ function! s:AttemptToCdToGitDir()
         echom cgd
         exe 'cd' cgd
     endif
-
-    let s:__attempt_cd_git_cache[cf] = 1
 endfunction
 autocmd BufReadPost,BufNewFile * call s:AttemptToCdToGitDir()
 
