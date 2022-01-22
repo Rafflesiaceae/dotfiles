@@ -458,7 +458,8 @@ noremap <leader>T :OpenTerminal<CR>
 noremap <leader>gc :Git commit<CR>
 noremap <leader>gd :Gdiff<CR>
 noremap <leader>gb :Git blame<CR>
-noremap <leader>gs :GitGutterPreviewHunk<CR>
+noremap <leader>gs :GitGutterStageHunk<CR>
+noremap <leader>gp :GitGutterPreviewHunk<CR>
 noremap <leader>G  :GitGutterPreviewHunk<CR>
 noremap <leader>gu :GitGutterUndoHunk<CR>
 
@@ -509,8 +510,8 @@ vnoremap <silent> <RightMouse> "+y
 
 " grammar
 nmap <leader>gr <Plug>(grammarous-open-info-window)
-nmap <leader>gn <Plug>(grammarous-move-to-next-error)
-nmap <leader>gp <Plug>(grammarous-move-to-previous-error)	
+nmap <leader>grn <Plug>(grammarous-move-to-next-error)
+nmap <leader>grp <Plug>(grammarous-move-to-previous-error)
 
 " automatically hightlight the agt-query when reading agt results
 autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys("/\<CR>")
