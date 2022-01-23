@@ -785,10 +785,16 @@ regex capture groups (.python): |
     assert len(result_groups) == 2
     print(result_groups[0])
 
+get duration/time difference as unix/posix timestamp from date command format-string (.python): |
+    def posix_time_at(time_string):
+        return int(sh("date", "-d", time_string, "+%s", check=True)[0].strip())
+
 get current date / timestamp / unix/posix-time (.python): |
     from datetime import datetime, timezone
     now_iso_8601 = datetime.now(timezone.utc).astimezone().isoformat()
     now_posix = datetime.now().timestamp()
+
+    from_posix = datetime.fromtimestamp(1642954569)
 
 if main (.python): |
     #!/usr/bin/env python3
