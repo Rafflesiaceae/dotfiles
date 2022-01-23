@@ -1020,6 +1020,7 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+printf stdin (.bash): "{ stdin=\"\"; read -r -d '' -u 0 stdin; printf \"%q\" \"$stdin\"; }"
 read stdin (.sh .bash): stdin=$(cat)
 split a variable by character into an array (.bash): |
     IFS='€' read -ra stat <<< "$variable"
