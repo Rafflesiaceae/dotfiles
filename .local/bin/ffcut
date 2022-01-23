@@ -10,31 +10,30 @@ shift
 to=$1
 shift
 
+args=(
+	-i "$src"
+
+	-c:v copy
+	-c:a copy
+
+    # re-encode - this needs to happen if we want frame-precision
+    -c:v libx264 
+    -preset ultrafast
+    -crf 0
+
+    -pix_fmt yuv420p   # don't use funky color-spaces
+
+	-ss "$from"
+	-to "$to"
+
+	-y "cut_$(date +%s).mp4"
+)
+
 (set -x;
 ffmpeg \
-	-i "$src" \
-	-c:v copy\
-	-c:a copy\
 	$* \
-	-ss "$from" \
-	-to "$to" \
-	-y "yt_$(date +%s).mp4")
+    "${args[@]}"
+)
 
 #	-map 0             `#use all subtitles/audio/videos` \
-
-#	-filter_complex "[0:v]scale=640:-2:flags=lanczos+accurate_rnd[rv]; [rv]subtitles=$1" `#hardcode subtitles into video` \
 #	-sn               `#strip subtitles` \
-
-#	-sws_flags lanczos+accurate_rnd `#use lanczos for downscaling instead of bicubic` \
-#	-vf scale=640:-2 \
-
-# only process 5 minutes
-#	-t 00:05:00        `#only process X minutes` \
-
-
-#	-c:v copy \
-
-#	-ss "$from" \
-#	-to "$to" \
-#	-c:a aac -b:a 64k -ac 1 \
-#	-vf scale=720 \
