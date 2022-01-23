@@ -653,6 +653,83 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # python {{{1
+
+lock a file / synchronize file access among processes / flock (.python .linux): |
+  import fcntl
+  import io
+  class LinuxFileLock():
+      """ Blocks on a file-lock. Will not work if a single process has multiple fd to the same file. """
+      def __init__(self, inp):
+          if isinstance(inp, str):
+              self.f = open(inp, "r+")
+          elif isinstance(inp, io.IOBase):
+              self.f = inp
+              if not self.f.writable() or \
+                  not self.f.readable(): raise Exception("File needs to be writeable and readable.")
+          else: raise Exception("Unsupported type: " + str(type(inp)))
+          self.fd = self.f.fileno()
+
+      def __enter__(self):
+          fcntl.lockf(self.fd, fcntl.LOCK_EX)
+          return self.f
+
+      def __exit__(self, type, value, traceback):
+          fcntl.lockf(self.fd, fcntl.LOCK_UN)
+          self.f.close()
+
+cat/print a file (.python): |
+  def cat(path):
+      with open(path, "r") as f: print(f.read(), flush=True)
+
+cli / NO argparse (.python): |
+  def die(msg, code=1):
+      print(msg, file=sys.stderr)
+      quit(code)
+  def usage(code=0):
+      print((
+          f"usage: [-h|--help] <file>\n"
+          f"version: 1.0"
+      ), file=sys.stderr)
+      quit(code)
+  def usage_and_die(msg, code=1):
+      print(msg, file=sys.stderr)
+      usage(code)
+
+  def cli():
+      own_path  = sys.argv[0]
+      own_fname = os.path.basename(own_path)
+      args      = sys.argv[1:]
+      args_len  = len(args)
+
+      if any(arg in args for arg in ["-h", "--help"] ):
+          usage()
+      if (args_len != 2):
+          usage(1)
+
+read lines of file without newlines at end (.python): |
+  with open(FILE_PATH, "r") as f:
+      lines = f.read().splitlines()
+basic timeout (.python .posix): |
+  import signal
+
+  def timeout_handler(signum, frame):
+      raise Exception("timeout")
+  signal.signal(signal.SIGALRM, timeout_handler)
+  signal.alarm(10)
+  signal.alarm(0) # cancel
+remove/delete/unlink a file (.python): |
+  from pathlib import Path
+  Path(FILE_PATH).unlink()
+touch/create a file (.python): |
+  from pathlib import Path
+  Path(FILE_PATH).touch()
+defer exit (.python): |
+  import atexit
+
+  def exit_handler():
+      print("EXIT_HANDLER")
+
+  atexit.register(exit_handler)
 walk directory recursively (.py): |
     import fnmatch
     import os
@@ -789,7 +866,7 @@ get duration/time difference as unix/posix timestamp from date command format-st
     def posix_time_at(time_string):
         return int(sh("date", "-d", time_string, "+%s", check=True)[0].strip())
 
-get current date / timestamp / unix/posix-time (.python): |
+get current date / now / timestamp / unix/posix-time (.python): |
     from datetime import datetime, timezone
     now_iso_8601 = datetime.now(timezone.utc).astimezone().isoformat()
     now_posix = datetime.now().timestamp()
