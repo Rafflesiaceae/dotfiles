@@ -155,7 +155,7 @@ if [[ $# -eq 1 ]]; then
 
             echo "$url" | clip_in
 
-            xkey ctrl+w
+            # xkey ctrl+w
 
             i3-msg workspace 9 
 
@@ -174,7 +174,7 @@ if [[ $# -eq 1 ]]; then
             xkey BackSpace
             sleep 0.2
             xtype "\"; # '"
-            echo "$title" | cut -c1-75 | clip_in
+            echo "$title" | cut -c1-75 | sed "s/'/\"/g" | clip_in
             xkey ctrl+shift+v
             xkey BackSpace
             xtype "'"
@@ -187,7 +187,7 @@ if [[ $# -eq 1 ]]; then
             win_refresh
             url=$(chromium_get_url)
 
-            xkey ctrl+w
+            # xkey ctrl+w
             clip_store
             echo "$url" | clip_in
             win=$(xopennewterminalemulator)
