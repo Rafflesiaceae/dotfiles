@@ -8,7 +8,7 @@ die() {
     exit 1
 }
 usage() {
-    echo "usage: termpopup [-ns|--no-shell] [-ne|--no-escape] [-nf|--no-float] [-w|--wait] ..."
+    echo "usage: termpopup [-cd|--change-dir <path>] [-nc|--no-close] [-ne|--no-escape] [-nf|--no-float] [-ns|--no-shell] [-nw|--no-wait] [-w|--wait] [--] ..."
     exit 1
 }
 usage_and_die() {
@@ -16,17 +16,26 @@ usage_and_die() {
     usage
 }
 
-no_shell=
+cd=
+no_close=
 no_escape=
 no_float=
+no_shell=
 wait=1
 while :; do
     case $1 in
-        -h|-\?|--help)  usage; exit ;;
-        -ns|--no-shell) no_shell=1 ;;
-        -ne|--no-escape) no_escape=1 ;;
-        -fe|--no-float) no_escape=1; no_float=1 ;;
-        -w|--wait)      wait=1 ;;
+        -h|-\?|--help)   usage; exit;;
+        -cd|--change-dir)  
+            cd=$2
+            [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
+            shift || usage_and_die "--change-dir expects a path argument"
+            ;;
+        -nc|--no-close)  no_close=1;;
+        -ne|--no-escape) no_escape=1;;
+        -nf|--no-float)  no_escape=1; no_float=1;;
+        -ns|--no-shell)  no_shell=1;;
+        -nw|--no-wait)   wait=;;
+        -w|--wait)       wait=1;;
         --)
             shift
             break
@@ -41,26 +50,34 @@ while :; do
     shift
 done
 
-if [[ $wait ]]; then
-    cmd=(urxvt)
-else
-    cmd=(urxvtc)
+args=()
+if [[ $cd ]]; then
+    args+=(-cd "$cd")
 fi
 
-if [[ ! $no_float ]]; then
-    cmd+=(-title "floating")
+# keeps the window open even if program exits
+if [[ $no_close ]]; then
+    args+=(-hold)
 fi
 
 if [[ ! $no_escape ]]; then
-    cmd+=(-keysym.Escape "eval: exit")
+    args+=(-keysym.Escape "eval: exit")
+fi
+
+if [[ ! $no_float ]]; then
+    args+=(-title "floating")
 fi
 
 if [[ ! $no_shell ]]; then
-    cmd+=(-e "$SHELL" \
+    args+=(-e "$SHELL" \
         -i \
         -c "$*")
 else
-    cmd+=(-e "$*")
+    args+=(-e "$*")
 fi
 
-"${cmd[@]}"
+if [[ $wait ]]; then
+    urxvt "${args[@]}"
+else
+    nohup urxvt "${args[@]}" &>/dev/null &
+fi
