@@ -4,6 +4,8 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 # cmd {{{1
 
+poor man's ps/top / list all processes/pids (.cmd): "( cd /proc; for pid in *; do [[ \"$pid\" != *[[:digit:]]* ]] && continue; printf \"%10s\\t%10s\\t%s\\n\" \"$pid\" \"$(stat -c \"%u (%U)\" \"$pid/loginuid\")\" \"$(tr -d '\\0' < \"$pid/cmdline\" | head -n 1)\"; done;)"
+
 resolve a dns/domain (.cmd): dig +short lwn.net
 
 dont prompt for password for ssh call (.cmd .ssh): -o PasswordAuthentication=no
@@ -1114,7 +1116,9 @@ lock/unlock a file (.sh .bash): |
     flock --unlock 5
 
 open file as file descriptor (.sh .bash): exec 5<> "./lockme.json"
-read lines of file into array (.bash): readarray -t VARNAME < FILEPATH
+read lines of file into array (.bash): |
+  readarray -t VARNAME < FILEPATH
+  readarray -t VARNAM < <(SOME_PROCESS)
 
 write heredoc to file with sudo rights (.sh .bash): |
     sudo tee "FILEPATH" >/dev/null <<EOF
