@@ -22,6 +22,10 @@ f() { # colored find / searches current tree recursively
     # find . -iregex ".*$@" 2> >(grep -v "Permission denied" ) 1> >(while IFS='$\n' read -r line;  do; ls --color=auto -1d "$line"; done; )
 }
 
+cdgit() {
+    cd "$(git rev-parse --show-toplevel)"
+}
+
 ## basic
 bindkey -e # emacs default binds
 REPORTTIME=5 # show time if command takes longer than 5 seconds
