@@ -19,7 +19,17 @@ find_docker_compose() {
 }
 
 docker_compose_file=$(find_docker_compose)
-service=$(yq '.services | to_entries | .[].key' -r < "$docker_compose_file"  )
+
+readarray services < <(yq '.services | to_entries | .[].key' -r < "$docker_compose_file")
+
+# if there's multiple services, prompt interactively
+if [[ ${#services[@]} -gt 1 ]]; then
+    # service=$(printf "%s" "${services[@]}" | rofi -dmenu -window-title docker-compose-service)
+    service=$(printf "%s" "${services[@]}" | fzf --prompt=service --height=1)
+else
+    service=${services[0]}
+fi
+service=$(printf "%b" "$service")
 
 shell=${1:-bash}
 service=${2:-$service}
