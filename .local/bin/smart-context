@@ -146,6 +146,7 @@ if [[ $# -eq 1 ]]; then
             ;;
         youtube-mpv)
             win_refresh
+            xkey space # pause
             url=$(chromium_get_url)
 
             clip_store
@@ -185,9 +186,11 @@ if [[ $# -eq 1 ]]; then
             ;;
         youtube-music-youtube-dl)
             win_refresh
+            xkey space # pause
             url=$(chromium_get_url)
 
             # xkey ctrl+w
+
             clip_store
             echo "$url" | clip_in
             win=$(xopennewterminalemulator)
