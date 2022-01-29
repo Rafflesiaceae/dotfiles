@@ -22,7 +22,7 @@ af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]
 cache=auto
 
 screenshot-template="~/mpv_%n"
-osd-duration=3000
+osd-duration=2000
 
 # only play 720p yt videos
 # @XXX we get out of sync audio/video with some youtube-videos when using a separate audio-stream, so we give a nonsense selector for audio that causes youtube-dl to fallback to the videos own audio stream ( not sure what happens when the video doesnt have an audio stream, we'll see, possibly doesnt play audio at all :[ )
