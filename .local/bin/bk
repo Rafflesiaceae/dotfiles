@@ -1,6 +1,10 @@
 #!/bin/bash
 # DEPENDENCIES: swap-file
 set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
 
 debk() {
     after="$1"
@@ -12,13 +16,25 @@ debk() {
     echo "$after"
 }
 
+files=()
+copy=
 for file in "$@"; do
+    if [[ "$file" == "-c" ]]; then
+        copy=1
+    else
+        files+=("$file")
+    fi
+done
+for file in "${files[@]}"; do
     if [[ ! -e "$file" ]]; then
         printf "bk: cannot backup '%s': No such file or directory\n" "$file" >&2
         exit 1
     fi
 
     if [[ "$file" == *".bk" ]]; then
+        if [[ $copy ]]; then
+            die "can't restore a .bk file in copy-mode"
+        fi
         # restore
         og_file="$(debk "$file")"
         echo "$file → $og_file"
@@ -34,7 +50,12 @@ for file in "$@"; do
             bkfile="${bkfile}.bk"
         done
 
-        echo "$file → $bkfile"
-        mv -i "$file" "$bkfile"
+        if [[ $copy ]]; then
+            echo "$file cp→ $bkfile"
+            cp -i "$file" "$bkfile"
+        else
+            echo "$file → $bkfile"
+            mv -i "$file" "$bkfile"
+        fi
     fi
 done
