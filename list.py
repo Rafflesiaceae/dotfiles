@@ -82,6 +82,7 @@ sources = {
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/git-show-toplevel-name": "",
+    "./.local/bin/git-stage-all-unstaged-changes": "",
     "./.local/bin/git-submodule-apply": "",
     "./.local/bin/git-unstage": "",
     "./.local/bin/gitpseudfuse": "",
