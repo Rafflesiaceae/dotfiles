@@ -5,7 +5,7 @@ die() {
 }
 
 usage() {
-    echo "usage: cb [-i|--in] [-o|--out] [-s|--str <str>]"
+    echo "usage: cb [-a|--append] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
     exit 1
 }
 
@@ -14,10 +14,11 @@ usage_and_die() {
     usage
 }
 
-cli_out=
-cli_in=
-cli_str=
 cli_append=
+cli_in=
+cli_out=
+cli_str=
+cli_tee=
 while :; do
     case $1 in
         -h|-\?|--help)
@@ -25,14 +26,17 @@ while :; do
         -a|--append)
             cli_append=1
             ;;
-        -o|--out)
-            cli_out=1
-            ;;
         -i|--in)
             cli_in=1
             ;;
+        -o|--out)
+            cli_out=1
+            ;;
         -s|--str)
             cli_str=1
+            ;;
+        -t|--tee)
+            cli_tee=1
             ;;
         --)
             shift
@@ -50,6 +54,10 @@ clip_in() {
     if [[ $cli_append ]]; then
         inp=$(cat -)
         printf "%s%s" "$(clip_out)" "$inp" | xclip -sel clip -i
+    elif [[ $cli_tee ]]; then
+         stdin=$(cat)
+         echo "$stdin"
+         printf "%s" "$stdin" | xclip -sel clip -i
     else
         cat - | xclip -sel clip -i
     fi
