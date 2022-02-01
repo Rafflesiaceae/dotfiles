@@ -6,6 +6,7 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 poor man's ps/top / list all processes/pids (.cmd): "( cd /proc; for pid in *; do [[ \"$pid\" != *[[:digit:]]* ]] && continue; printf \"%10s\\t%10s\\t%s\\n\" \"$pid\" \"$(stat -c \"%u (%U)\" \"$pid/loginuid\")\" \"$(tr -d '\\0' < \"$pid/cmdline\" | head -n 1)\"; done;)"
 
+clean nohup (.cmd): 'nohup CMD &>/dev/null &'
 resolve a dns/domain (.cmd): dig +short lwn.net
 
 dont prompt for password for ssh call (.cmd .ssh): -o PasswordAuthentication=no
@@ -1324,7 +1325,14 @@ defer exit (.sh .bash): |
     }
     trap 'cleanup' EXIT
 
+on/trap error (.bash): |
+    on_error() {
+        echo "ASD"
+    }
+    trap 'on_error' ERR
+
 date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T
+date-short-time (.cmd .sh .bash): date +%T
 date-posix (.cmd .sh .bash): date +%s
 
 # https://stackoverflow.com/a/35638712
@@ -1434,6 +1442,8 @@ vim modeline for setting filetype (.vim .various): |
   # vim: set ft=nginx syn=nginx:
 vim modeline for setting indentation settings (.vim .various): |
   # vim: set ts=4 sw=4 et:
+vim modeline for setting comment string (.vim .various): |
+  # vim: set commentstring=#\ %s:
 show term cursor again via tput (.gdb): 'shell tput cnorm'
 
 utf8/unicode symbols (.various): |
@@ -1442,4 +1452,6 @@ utf8/unicode symbols (.various): |
   ↔ ↕ ↚ ⇳ ⬍
   ↖ ↗ ↘ ↙ ⬁ ⬀ ⬂ ⬃ ⬉ ⬈ ⬊ ⬋
   ⇠ ⇢ ⇡ ⇣
-  ⛯¦∞☇∷⋮★⚕➶➚→➺➧@✿ℭ⏸
+  ⛯ ¦ ∞ ☇ ∷ ⋮ ★ ⚕ ➶ ➚ → ➺ ➧ @ ✿ ℭ ⏸
+  ✓ ✗ ✘ 𐄂
+  ↺ ↻ ⟲ ⟳ ⭯ ⭮ ↺ ↻ ⥀ ⥁ ⮌ ⮍ ⮎ ⮏ ⤸ ⤹
