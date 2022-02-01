@@ -68,4 +68,7 @@ pushd "$HOME/.vim/plugged/YouCompleteMe"
     --ts-completer
 popd
 
+echo {{{1 System Checks
+check-system || true
+
 echo "CONSIDER RESTARTING!"
