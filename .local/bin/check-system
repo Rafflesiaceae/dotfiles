@@ -1,0 +1,94 @@
+#!/bin/bash
+# simple shell script to run some maintenance checks for my system
+set -eo pipefail
+
+# {{{1 globals
+journald_errors_jq_filter='. | select(.COREDUMP_EXE != "/usr/bin/urxvt" and ._EXE != "/usr/bin/sudo")'
+
+err_count=0
+warn_count=0
+
+cred=$(     2>/dev/null tput setaf 1) || true
+cyellow=$(  2>/dev/null tput setaf 3) || true
+creset=$(   2>/dev/null tput sgr0) || true
+
+# {{{1 cli
+usage() {
+    echo "usage: [-h|--help] [-j|--journal] "
+    exit "${1-0}"
+}
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -j|--journal)
+            journalctl --priority=3 --since "120min ago" --output=json | jq "$journald_errors_jq_filter"
+            exit 0
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+# {{{1 utils
+warn() {
+    printf "[%sWARNG%s] %s\n" "$cyellow" "$creset" "$1"
+    warn_count+=1
+}
+error() {
+    printf "[%sERROR%s] %s\n" "$cyellow" "$creset" "$1"
+    err_count+=1
+}
+
+# {{{1 check for neovim shada tmp files, these can fill up and cause neovim to
+# not remember any history silently without telling you, real fun right?
+shada_dir=$HOME/.local/share/nvim/shada
+shada_tmp_file_count=$(find "$shada_dir" -name "main.shada.tmp*" | wc -l)
+if [[ $shada_tmp_file_count -gt 10 ]]; then
+    warn "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', best delete them before your nvim will stop remembering history"
+fi
+
+# {{{1 check for pacdiff files
+pacdiff_count=$(pacdiff --output | wc -l)
+if [[ $pacdiff_count -gt 0 ]]; then
+    warn "you have $pacdiff_count .pacdiff files - better run pacdiff"
+fi
+
+# {{{1 check for failed systemd units
+systemd_system_failed_unit_count=$(systemctl list-units --state=failed --output=json | jq '. | length')
+if [[ $systemd_system_failed_unit_count -gt 0 ]]; then
+    warn "you have $systemd_system_failed_unit_count failed systemd system-wide units, better run: "'systemctl list-units --state=failed'
+fi
+systemd_user_failed_unit_count=$(systemctl --user list-units --state=failed --output=json | jq '. | length')
+if [[ $systemd_user_failed_unit_count -gt 0 ]]; then
+    warn "you have $systemd_user_failed_unit_count failed systemd user-wide units, better run: "'systemctl --user list-units --state=failed'
+fi
+
+# {{{1 check for non-trivial journalctls last 2hrs
+journald_errors_nontrivial=$(journalctl --priority=3 --since "120min ago" --output=json | jq -c "$journald_errors_jq_filter")
+journald_errors_nontrivial_count=$(printf "%s" "$journald_errors_nontrivial" | wc -l)
+if [[ $journald_errors_nontrivial_count -gt 0 ]]; then
+    warn "you have $journald_errors_nontrivial_count nontrivial journald errors, to see them run: check-system -j"
+fi
+
+# @TODO add .dotfile - has remote changes
+
+
+# {{{1 print summary
+if [[ warn_count -gt 0 ]]; then
+    echo "Detected some ${cyellow}WARNINGS${creset} ↑"
+fi
+if [[ err_count -gt 0 ]]; then
+    echo "Detected some ${cred}ERRORS${creset} ↑"
+    exit "$err_count"
+fi
+if [[ warn_count -eq 0 ]] && [[ err_count -eq 0 ]]; then
+    echo "All good."
+fi
+

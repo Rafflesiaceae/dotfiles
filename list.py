@@ -58,6 +58,7 @@ sources = {
     "./.local/bin/blank-screen": "",
     "./.local/bin/cb": "",
     "./.local/bin/cfp": { "linux": "" },
+    "./.local/bin/check-system": "",
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",
     "./.local/bin/cmake-quickbuild": "",
