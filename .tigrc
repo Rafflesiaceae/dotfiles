@@ -43,8 +43,10 @@ bind main A >git commit --amend
 bind generic <F8> >git-debug-commitpush
 
 bind main c !?git checkout %(commit)
-bind main p ?git cherry-pick %(commit)
-bind main P ?git push
+bind main p ?git push
+bind main P ?git cherry-pick %(commit)
+bind generic T !@sh -c "git-stage-all-unstaged-changes"
+bind main I !@sh -c "git-stage-all-unstaged-changes"
 
 bind status D !@?rm %(file)
 bind stage U @!git stage %(file)
