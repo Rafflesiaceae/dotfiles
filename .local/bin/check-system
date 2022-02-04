@@ -42,7 +42,7 @@ warn() {
     warn_count+=1
 }
 error() {
-    printf "[%sERROR%s] %s\n" "$cyellow" "$creset" "$1"
+    printf "[%sERROR%s] %s\n" "$cred" "$creset" "$1"
     err_count+=1
 }
 
@@ -50,8 +50,10 @@ error() {
 # not remember any history silently without telling you, real fun right?
 shada_dir=$HOME/.local/share/nvim/shada
 shada_tmp_file_count=$(find "$shada_dir" -name "main.shada.tmp*" | wc -l)
-if [[ $shada_tmp_file_count -gt 10 ]]; then
+if [[ $shada_tmp_file_count -gt 5 ]]; then
     warn "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', best delete them before your nvim will stop remembering history"
+elif [[ $shada_tmp_file_count -gt 15 ]]; then
+    error "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', delete them before your nvim will stop remembering history"
 fi
 
 # {{{1 check for pacdiff files
@@ -63,11 +65,11 @@ fi
 # {{{1 check for failed systemd units
 systemd_system_failed_unit_count=$(systemctl list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_system_failed_unit_count -gt 0 ]]; then
-    warn "you have $systemd_system_failed_unit_count failed systemd system-wide units, better run: "'systemctl list-units --state=failed'
+    error "you have $systemd_system_failed_unit_count failed systemd system-wide units, run: "'systemctl list-units --state=failed'
 fi
 systemd_user_failed_unit_count=$(systemctl --user list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_user_failed_unit_count -gt 0 ]]; then
-    warn "you have $systemd_user_failed_unit_count failed systemd user-wide units, better run: "'systemctl --user list-units --state=failed'
+    error "you have $systemd_user_failed_unit_count failed systemd user-wide units, run: "'systemctl --user list-units --state=failed'
 fi
 
 # {{{1 check for non-trivial journalctls last 2hrs
@@ -78,14 +80,17 @@ if [[ $journald_errors_nontrivial_count -gt 0 ]]; then
 fi
 
 # @TODO add .dotfile - has remote changes
-
+# @TODO prompt running updatedb if not ran for a while
+# @TODO suggest clearing yay cache at some points
+# @TODO suggest clearing pacman cache at some points
+# @TODO suggest pruning docker at some points
 
 # {{{1 print summary
 if [[ warn_count -gt 0 ]]; then
     echo "Detected some ${cyellow}WARNINGS${creset} ↑"
 fi
 if [[ err_count -gt 0 ]]; then
-    echo "Detected some ${cred}ERRORS${creset} ↑"
+    echo "Detected some ${cred}ERRORS${creset}   ↑"
     exit "$err_count"
 fi
 if [[ warn_count -eq 0 ]] && [[ err_count -eq 0 ]]; then
