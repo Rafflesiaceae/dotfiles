@@ -8,7 +8,7 @@ die() {
     exit 1
 }
 usage() {
-    echo "usage: termpopup [-cd|--change-dir <path>] [-nc|--no-close] [-ne|--no-escape] [-nf|--no-float] [-ns|--no-shell] [-nw|--no-wait] [-w|--wait] [--] ..."
+    echo "usage: termpopup [-cd|--change-dir <path>] [-nc|--no-close] [-ne|--no-escape] [-nf|--no-float] [-ns|--no-shell] [-nw|--no-wait] [-t|--title] [-w|--wait] [--] ..."
     exit 1
 }
 usage_and_die() {
@@ -21,6 +21,7 @@ no_close=
 no_escape=
 no_float=
 no_shell=
+title=
 wait=1
 while :; do
     case $1 in
@@ -28,13 +29,17 @@ while :; do
         -cd|--change-dir)  
             cd=$2
             [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
-            shift || usage_and_die "--change-dir expects a path argument"
+            shift || usage_and_die "--change-dir expects a followup path argument"
             ;;
         -nc|--no-close)  no_close=1;;
         -ne|--no-escape) no_escape=1;;
         -nf|--no-float)  no_escape=1; no_float=1;;
         -ns|--no-shell)  no_shell=1;;
         -nw|--no-wait)   wait=;;
+        -t|--title)
+            title=$2
+            shift || usage_and_die "--title expects a followup title argument"
+            ;;
         -w|--wait)       wait=1;;
         --)
             shift
@@ -62,6 +67,10 @@ fi
 
 if [[ ! $no_escape ]]; then
     args+=(-keysym.Escape "eval: exit")
+fi
+
+if [[ $title ]]; then
+    args+=(-title "$title")
 fi
 
 if [[ ! $no_float ]]; then
