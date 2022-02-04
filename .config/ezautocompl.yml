@@ -4,6 +4,8 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 # cmd {{{1
 
+multiple arguments in shebang/shabang (.cmd): '#!/usr/bin/env -S command arg1 arg2 ...'
+
 poor man's ps/top / list all processes/pids (.cmd): "( cd /proc; for pid in *; do [[ \"$pid\" != *[[:digit:]]* ]] && continue; printf \"%10s\\t%10s\\t%s\\n\" \"$pid\" \"$(stat -c \"%u (%U)\" \"$pid/loginuid\")\" \"$(tr -d '\\0' < \"$pid/cmdline\" | head -n 1)\"; done;)"
 
 clean nohup (.cmd): 'nohup CMD &>/dev/null &'
@@ -916,6 +918,9 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+change dir (.js .ts .node): process.chdir(NEW_DIR);
+print to stderr (.js .ts .node): console.error(MSG);
+print to stderr (.js .ts .node): console.error(MSG);
 sh subprocess capture stdout no check / flexible/complex (.js .ts .node): |
     const childProcess = require("child_process");
 
@@ -1138,9 +1143,19 @@ check if script running as root (.sh .bash): "[[ $EUID -eq 0 ]]"
 hashmap / declarative / associative array (.bash): |
   declare -A MAP
   MAP[foo]=bar
-  echo ${MAP[foo]}
-  echo "keys" ${!MAP[@]}
-  echo "vals" ${MAP[@]}
+  echo "${MAP[foo]}"
+  echo "keys" "${!MAP[@]}"
+  echo "vals" "${MAP[@]}"
+
+  # read
+  while IFS='=' read -r key value; do
+      MAP[$key]=$value
+  done < FILENAME
+
+  # write
+  for e in "${!MAP[@]}"; do
+      printf "%s=%s\n" "$e" "${MAP[$e]}" >> FILENAME
+  done
 
 all keys matching/equal-to a given value (.jq .sh .bash): |
     jq -e 'to_entries[] | select(.value=="xxx")) | .key'
