@@ -1061,31 +1061,32 @@ join/replace newlines in file with a new char/separator (.sh .bash): |
     join_array "," "${ARRAY[@]}"
 
 ascii terminal colours / bold/italic/underline tput (.sh .bash): |
-    cblack=$(   2>/dev/null tput setaf 0) || true
-    cred=$(     2>/dev/null tput setaf 1) || true
-    cgreen=$(   2>/dev/null tput setaf 2) || true
-    cyellow=$(  2>/dev/null tput setaf 3) || true
-    cblue=$(    2>/dev/null tput setaf 4) || true
-    cmagenta=$( 2>/dev/null tput setaf 5) || true
-    ccyan=$(    2>/dev/null tput setaf 6) || true
-    cwhite=$(   2>/dev/null tput setaf 7) || true
-    creset=$(   2>/dev/null tput sgr0) || true
+    if [ -t 1 ]; then
+        cblack=$(   2>/dev/null tput setaf 0) || true
+        cred=$(     2>/dev/null tput setaf 1) || true
+        cgreen=$(   2>/dev/null tput setaf 2) || true
+        cyellow=$(  2>/dev/null tput setaf 3) || true
+        cblue=$(    2>/dev/null tput setaf 4) || true
+        cmagenta=$( 2>/dev/null tput setaf 5) || true
+        ccyan=$(    2>/dev/null tput setaf 6) || true
+        cwhite=$(   2>/dev/null tput setaf 7) || true
+        creset=$(   2>/dev/null tput sgr0) || true
 
-    cBblack=$(  2>/dev/null tput setab 0) || true
-    cBred=$(    2>/dev/null tput setab 1) || true
-    cBgreen=$(  2>/dev/null tput setab 2) || true
-    cByellow=$( 2>/dev/null tput setab 3) || true
-    cBblue=$(   2>/dev/null tput setab 4) || true
-    cBmagent=$( 2>/dev/null tput setab 5) || true
-    cBcyan=$(   2>/dev/null tput setab 6) || true
-    cBwhite=$(  2>/dev/null tput setab 7) || true
+        cBblack=$(  2>/dev/null tput setab 0) || true
+        cBred=$(    2>/dev/null tput setab 1) || true
+        cBgreen=$(  2>/dev/null tput setab 2) || true
+        cByellow=$( 2>/dev/null tput setab 3) || true
+        cBblue=$(   2>/dev/null tput setab 4) || true
+        cBmagent=$( 2>/dev/null tput setab 5) || true
+        cBcyan=$(   2>/dev/null tput setab 6) || true
+        cBwhite=$(  2>/dev/null tput setab 7) || true
 
-    cbold=$(        2>/dev/null tput bold) || true
-    cunbold=$cBreset
-    citalic=$(      2>/dev/null tput sitm) || true
-    cunitalic=$(    2>/dev/null tput ritm) || true
-    cunderline=$(   2>/dev/null tput smul) || true
-    cununderline=$( 2>/dev/null tput rmul) || true
+        cbold=$(        2>/dev/null tput bold) || true
+        citalic=$(      2>/dev/null tput sitm) || true
+        cunitalic=$(    2>/dev/null tput ritm) || true
+        cunderline=$(   2>/dev/null tput smul) || true
+        cununderline=$( 2>/dev/null tput rmul) || true
+    fi
 
 first word of a string (.sh .bash): cut -d ' ' -f1
 
@@ -1335,8 +1336,11 @@ kill background processes along with main process (.sh .bash): |
     unset 'bgpids[${#bgpids[@]}-2]'
 
 defer exit (.sh .bash): |
+    cleanups=()
     cleanup() {
-        echo "ASD"
+        for cleanupScript in "${cleanups[@]}"; do
+            eval "$cleanupScript"
+        done
     }
     trap 'cleanup' EXIT
 
@@ -1470,3 +1474,10 @@ utf8/unicode symbols (.various): |
   ⛯ ¦ ∞ ☇ ∷ ⋮ ★ ⚕ ➶ ➚ → ➺ ➧ @ ✿ ℭ ⏸
   ✓ ✗ ✘ 𐄂
   ↺ ↻ ⟲ ⟳ ⭯ ⭮ ↺ ↻ ⥀ ⥁ ⮌ ⮍ ⮎ ⮏ ⤸ ⤹
+  😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😇 🥰 😍 ☺ 😞
+  🤖 😺 😸 😹 😻 😼 😽 🙀 😿 😾
+  💋 💌 💘 💝 💖 💗 💓 💞 💕 💟 ❣ 💔
+  🧡 💛 💚 💙 💜 🤎 🖤 🤍 💯 💢 💥 💫 💦 💨
+  💣 💬 💭 💤 👋 🤚 🖐 ✋ 🖖 🤌 🤏 ✌ 🤞 🤟 🤘 🤙
+  👈 👉 👆 🖕 👇 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝
+  🙏 💅 🤳 💪 🦾 🦿 🦵 🦶 👂 🦻 👃 🧠 🫀 🫁 🦷 🦴 👀
