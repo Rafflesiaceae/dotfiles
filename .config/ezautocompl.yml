@@ -4,6 +4,10 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 # cmd {{{1
 
+git set user config local for one repository (.cmd .git): |
+  git config --local user.name "user"
+  git config --local user.email "user@AM3I1w2WsJEa2MYWRWmk.com"
+
 multiple arguments in shebang/shabang (.cmd): '#!/usr/bin/env -S command arg1 arg2 ...'
 
 poor man's ps/top / list all processes/pids (.cmd): "( cd /proc; for pid in *; do [[ \"$pid\" != *[[:digit:]]* ]] && continue; printf \"%10s\\t%10s\\t%s\\n\" \"$pid\" \"$(stat -c \"%u (%U)\" \"$pid/loginuid\")\" \"$(tr -d '\\0' < \"$pid/cmdline\" | head -n 1)\"; done;)"
