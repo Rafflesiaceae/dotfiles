@@ -171,6 +171,9 @@ sources = {
     "./.shellrc": "",
     "./.tigrc": { "linux": "", "windows": "./.config/tig/config" },
     "./.zshrc": { "linux": "" },
+
+    "./.icon.jenkins.build.failed.png": "",
+    "./.icon.jenkins.build.success.png": "",
 }
 
 if common.get_current_os() == None:
