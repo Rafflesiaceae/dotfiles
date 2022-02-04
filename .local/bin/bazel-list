@@ -1,4 +1,3 @@
 #!/bin/bash
-set -eo pipefail
-set -x
-bazel query 'attr(visibility, "//visibility:public", //:*)'
+set -xeo pipefail
+bazel query "attr(visibility, \"//visibility:public\", ${1-//:*})"
