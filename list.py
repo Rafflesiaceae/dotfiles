@@ -125,6 +125,7 @@ sources = {
     "./.local/bin/riprep": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
+    "./.local/bin/run-notify": "",
     "./.local/bin/scan-brother": "",
     "./.local/bin/secret-lookup": "",
     "./.local/bin/secret-store": "",

@@ -1,0 +1,21 @@
+#!/bin/bash
+if [[ "$1" == "--" ]]; then
+    shift
+fi
+
+{ eval "$@"; }
+subcode=$?
+
+if [[ $subcode == 0 ]]; then
+    dunstify --raw_icon="$HOME/.icon.jenkins.build.success.png" \
+        --urgency=low "$(echo "$@")" "success"
+        # --action=showwindow,showwindow \
+else
+    dunstify --raw_icon="$HOME/.icon.jenkins.build.failed.png" \
+        --urgency=low "$(echo "$@")" "error: ${subcode}"
+        # --action=showwindow,showwindow \
+fi
+
+# if [[ "$cmd" == "showwindow" ]]; then
+#     focuswindow
+# fi
