@@ -46,7 +46,8 @@ bind main c !?git checkout %(commit)
 bind main p ?git push
 bind main P ?git cherry-pick %(commit)
 bind generic T !@sh -c "git-stage-all-unstaged-changes"
-bind main I !@sh -c "git-stage-all-unstaged-changes"
+bind main  I !@sh -c "git-stage-all-unstaged-changes"
+bind stage I !@sh -c "git-stage-all-unstaged-changes"
 
 bind status D !@?rm %(file)
 bind stage U @!git stage %(file)
