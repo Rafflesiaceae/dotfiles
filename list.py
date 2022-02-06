@@ -126,6 +126,7 @@ sources = {
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/run-notify": "",
+    "./.local/bin/rsync-hosts": { "linux": "" },
     "./.local/bin/scan-brother": "",
     "./.local/bin/secret-lookup": "",
     "./.local/bin/secret-store": "",
