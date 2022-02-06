@@ -1135,6 +1135,11 @@ Plug 'chrisbra/Colorizer'   ,{ 'on': 'ColorToggle'}
 Plug 'EinfachToll/DidYouMean'
 Plug 'tommcdo/vim-exchange'
 
+" Beauty
+Plug 'bling/vim-airline'
+Plug 'vim-airline/vim-airline-themes'
+Plug 'mhinz/vim-startify'
+
 " Movements
 Plug 'justinmk/vim-sneak'
 Plug 'farmergreg/vim-lastplace'
@@ -1164,10 +1169,6 @@ Plug 'tpope/vim-unimpaired'
 Plug 'tpope/vim-eunuch'
 Plug 'tpope/vim-jdaddy'
 
-" Beauty
-Plug 'bling/vim-airline'
-Plug 'vim-airline/vim-airline-themes'
-Plug 'mhinz/vim-startify'
 
 " Languages
 " Plug 'jelera/vim-javascript-syntax'
