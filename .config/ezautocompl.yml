@@ -4,6 +4,9 @@ ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${
 
 # cmd {{{1
 
+draw a full-width horizontal line in terminal (.cmd): |
+  printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+
 git set user config local for one repository (.cmd .git): |
   git config --local user.name "user"
   git config --local user.email "user@AM3I1w2WsJEa2MYWRWmk.com"
@@ -1306,7 +1309,7 @@ if string ends with substring / suffix (.sh .bash): |
 capture regex group (.sh .bash): |
     echo "Geometry: 100x00" | grep -oP "Geometry: \K(.*)"
 
-arrays (.sh .bash): |
+array (.bash .sh): |
     fooList=(foo bar "${fooList[@]}")
     fooList+=(baz)
     for foo in "${fooList[@]}"; do
