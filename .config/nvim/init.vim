@@ -118,14 +118,6 @@ let g:ycm_language_server =
   " \     'filetypes': [ 'groovy', 'gvy', 'gy', 'gsh' ],
   " \   }
 
-map <C-g> :CtrlSF 
-map <C-f> :CtrlSF<CR>
-map <leader>f :CtrlSFToggle<CR>
-map <leader>F :CtrlSFUpdate<CR>
-xmap <C-f> <Plug>CtrlSFVwordPath<CR>
-
-map <C-t> :Tabularize /
-
 " nnoremap <leader>g :YcmCompleter GoTo<CR>
 " nnoremap <leader>pd :YcmCompleter GoToDefinition<CR>
 " nnoremap <leader>pc :YcmCompleter GoToDeclaration<CR>
@@ -412,6 +404,14 @@ nnoremap <leader>W :w!<CR>:e!<CR>
 nnoremap <leader>l :e!<CR>
 
 inoremap <C-e> <C-o>de
+
+map <C-g> :CtrlSF 
+map <C-f> :CtrlSF<CR>
+map <leader>f :CtrlSFToggle<CR>
+map <leader>F :CtrlSFUpdate<CR>
+xmap <C-f> <Plug>CtrlSFVwordPath<CR>
+
+map <C-t> :Tabularize /
 
 " @TODO only in diffmode ( https://vi.stackexchange.com/a/2706 ?)
 " nnoremap <silent> <leader>dp V:diffput<cr>
