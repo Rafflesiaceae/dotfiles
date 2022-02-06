@@ -22,7 +22,7 @@ while :; do
         -h|-\?|--help)
             usage; exit ;;
         -j|--journal)
-            journalctl --priority=3 --since "120min ago" --output=json | jq "$journald_errors_jq_filter"
+            journalctl --priority=3 --since "120min ago" --output=json | jq --sort-keys "${journald_errors_jq_filter}"
             exit 0
             ;;
         --)
@@ -65,7 +65,7 @@ fi
 # {{{1 check for failed systemd units
 systemd_system_failed_unit_count=$(systemctl list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_system_failed_unit_count -gt 0 ]]; then
-    error "you have $systemd_system_failed_unit_count failed systemd system-wide units, run: "'systemctl list-units --state=failed'
+    error "you have $systemd_system_failed_unit_count failed systemd system-wide units, run: "'+ systemctl list-units --state=failed'"\nor clear the failed unit via: + systemctl reset-failed vmware-networks.service"
 fi
 systemd_user_failed_unit_count=$(systemctl --user list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_user_failed_unit_count -gt 0 ]]; then
