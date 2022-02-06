@@ -1150,7 +1150,6 @@ if s:os == "Darwin"
 else
     Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' }
 endif
-Plug 'junegunn/fzf.vim'
 
 Plug 'dyng/ctrlsf.vim'
 Plug 'PeterRincker/vim-argumentative'
