@@ -977,6 +977,7 @@ function! CopyPathToClip()
     call setreg("*", expand("%:p"))
 endfunction
 nmap <leader>pc :call CopyPathToClip()<CR>
+nmap <leader>pp :call CopyPathToClip()<CR>
 function! CopyFileNameToClip()
     echo "Copying filename to clipboard..."
     call setreg("+", expand("%:t:r"))
