@@ -6,7 +6,6 @@ if filereadable("/etc/vimrc")
 endif
 
 set ttimeoutlen=0
-set shell=/bin/bash " supposedly faster
 
 set nocompatible
 filetype off
