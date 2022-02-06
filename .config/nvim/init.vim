@@ -519,6 +519,8 @@ nmap <leader>grp <Plug>(grammarous-move-to-previous-error)
 autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys("/\<CR>")
 
 " {{{ Autocommands
+autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
+
 " BASH
 autocmd BufNewFile   *.sh 0r ~/.vim/templates/sh
 autocmd BufWritePre  *.sh call s:AddExecutablebitPre()
