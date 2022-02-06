@@ -156,6 +156,9 @@ let g:go_gopls_enabled = 0
 " " let g:syntastic_warning_symbol = '⚠️'
 " " let g:syntastic_python_flake8_args=''
 " " }}}
+" {{{ editorconfig
+let g:EditorConfig_max_line_indicator = "none"
+" }}}
 " {{{ ALE
 let g:ale_completion_enabled = 0
 let g:ale_sign_error = '⤫'
