@@ -603,7 +603,6 @@ autocmd FileType c,cpp setlocal commentstring=//\ %s
 
 
 " autocmd FileType c   noremap <silent> <buffer> <leader>x "=strftime('%c')<CR>
-autocmd FileType c   nnoremap <silent> <buffer> <leader>x "='YcmCompleter '<CR>
 " autocmd FileType c   noremap <silent> <buffer> <leader>x O<ESC>""=strftime('%c')<C-M>P
 
 " RUST
