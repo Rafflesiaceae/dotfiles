@@ -78,9 +78,14 @@ if [[ ! $no_float ]]; then
 fi
 
 if [[ ! $no_shell ]]; then
-    args+=(-e "$SHELL" \
-        -i \
-        -c "$*")
+    if [[ $# -gt 0 ]]; then
+        args+=(-e "$SHELL" \
+            -i \
+            -c "$*")
+    else
+        args+=(-e "$SHELL" \
+            -i )
+    fi
 else
     args+=(-e "$*")
 fi
