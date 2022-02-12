@@ -1,6 +1,6 @@
 ---
 # cmd-ssh {{{1
-ssh fetch file / show full path (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
+ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
 
 # cmd {{{1
 
@@ -104,6 +104,10 @@ start a http server (.cmd):
       random_digit() { grep -m1 -ao '[0-9]' /dev/urandom | sed s/0/9/ | head -n1; }
       printf "npx --no-install http-server -p 80%s%s -a 127.0.0.1 ." "$(random_digit)" "$(random_digit)"
 
+curl upload json from stdin (.cmd): |
+    curl -X POST --data-binary "@-" \
+        -H "Content-Type: application/json" \
+        URL
 curl download a file like wget (.cmd): curl -L -O URL
 nmap list all IPs on LAN (.cmd): nmap -sP 192.168.0.0/24
 autoformat html (.cmd): tidy -i -w 100 SOMEHTMLFILE
@@ -1112,7 +1116,7 @@ git helper (.git .bash): |
     git_branch_exists() { [[ -z "$(git branch --list "$1")" ]]; }
     git_current_branch() { local head; head="$(git symbolic-ref HEAD)"; echo "${head:11}"; }
 
-remove postfix (.bash): ${"/foo/bar"%/bar}
+remove postfix/suffix (.bash): ${"/foo/bar"%/bar}
 remove prefix (.bash): ${"/foo/bar"#/foo/}
 default value for env/arg variable (.sh .bash): ${1:-default}
 
