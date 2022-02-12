@@ -8,12 +8,28 @@ die() {
     exit 1
 }
 usage() {
-    echo "usage: termpopup [-cd|--change-dir <path>] [-nc|--no-close] [-ne|--no-escape] [-nf|--no-float] [-ns|--no-shell] [-nw|--no-wait] [-t|--title] [-w|--wait] [--] ..."
-    exit 1
+cat <<EOF
+Usage: termpopup [options] [--] ...
+
+Options:
+    -cd, --change-dir <path>
+    -nc, --no-close            Don't close window, even after program has exited
+    -ne, --no-escape           Don't bind ESC to terminating the popup
+    -nf, --no-float            Don't float the window
+    -ns, --no-shell            Don't run passed commands through \$SHELL
+    -nw, --no-wait             Don't wait for command to exit / nohup the command
+    -t,  --title               Set a title for the popup (unreliable)
+    -w,  --wait                Wait for command to exit (default)
+
+Presets:
+    -ft, --full-terminal, --fullterm   
+        Spawning a normal terminal, no popup'nes
+EOF
+    exit ${1:0}
 }
 usage_and_die() {
     printf '%s\n' "$1" >&2
-    usage
+    usage 1
 }
 
 cd=
@@ -31,6 +47,11 @@ while :; do
             [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
             shift || usage_and_die "--change-dir expects a followup path argument"
             ;;
+        -ft|--full-terminal|--fullterm)   
+            no_escape=1
+            no_float=1
+            wait=1
+            ;;
         -nc|--no-close)  no_close=1;;
         -ne|--no-escape) no_escape=1;;
         -nf|--no-float)  no_escape=1; no_float=1;;
@@ -46,7 +67,7 @@ while :; do
             break
             ;;
         -?*) 
-            die "Unknown option: $1"
+            usage_and_die "Unknown option: $1"
             break
             ;;
         *) break ;;
