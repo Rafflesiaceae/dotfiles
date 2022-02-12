@@ -1035,6 +1035,10 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+remove/delete last characters (.sh .bash): '"${var::-3}"'
+secure hash function (.sh .bash): |
+    secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
+swap stdout/stderr (.sh .bash): 3>&1 1>&2 2>&3
 printf stdin (.bash): "{ stdin=\"\"; read -r -d '' -u 0 stdin; printf \"%q\" \"$stdin\"; }"
 read stdin (.sh .bash): stdin=$(cat)
 split a variable by character into an array (.bash): |
