@@ -231,6 +231,27 @@ die usage usageAndDie (.golang): |
       fmt.Fprintln(os.Stderr, a...)
       usage(retCode)
     }
+cli basic/flags (.golang): |
+    wordPtr := flag.String("word", "foo", "a string")
+
+    numbPtr := flag.Int("numb", 42, "an int")
+    forkPtr := flag.Bool("fork", false, "a bool")
+
+    var svar string
+    flag.StringVar(&svar, "svar", "bar", "a string var")
+
+    flag.Parse()
+
+    fmt.Println("word:", *wordPtr)
+    fmt.Println("numb:", *numbPtr)
+    fmt.Println("fork:", *forkPtr)
+    fmt.Println("svar:", svar)
+    fmt.Println("tail:", flag.Args())
+
+get current date / now / timestamp / unix/posix-time (.golang): time.Now()
+create random bytes (.golang): |
+    token := make([]byte, 4)
+    rand.Read(token)
 
 open/read bytes a file (.golang): |
     f, err := os.Open(FILEPATH)
