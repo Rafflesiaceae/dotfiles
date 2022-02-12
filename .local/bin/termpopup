@@ -9,7 +9,7 @@ die() {
 }
 usage() {
 cat <<EOF
-Usage: termpopup [options] [--] ...
+Usage: termpopup [options/presets] [--] ...
 
 Options:
     -cd, --change-dir <path>
