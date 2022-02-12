@@ -8,7 +8,7 @@ if_exists_set_targetdir "$HOME/.numdots"
 set -e
 pushd "$targetdir"
 
-gitup main
+gitup main || { termpopup --fullterm -cd "$PWD"; }
 ./bootstrap.py
 
 popd
