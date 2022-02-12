@@ -12,7 +12,7 @@ cat <<EOF
 Usage: termpopup [options/presets] [--] ...
 
 Options:
-    -cd, --change-dir <path>
+    -cd, --cd, --change-dir <path>
     -nc, --no-close            Don't close window, even after program has exited
     -ne, --no-escape           Don't bind ESC to terminating the popup
     -nf, --no-float            Don't float the window
@@ -42,7 +42,7 @@ wait=1
 while :; do
     case $1 in
         -h|-\?|--help)   usage; exit;;
-        -cd|--change-dir)  
+        -cd|--cd|--change-dir)  
             cd=$2
             [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
             shift || usage_and_die "--change-dir expects a followup path argument"
