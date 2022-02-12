@@ -16,6 +16,11 @@ else
         # --action=showwindow,showwindow \
 fi
 
+if [[ $subcode != 0 ]]; then
+    printf "\a"
+fi
+
+exit "$subcode"
 # if [[ "$cmd" == "showwindow" ]]; then
 #     focuswindow
 # fi
