@@ -209,6 +209,29 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+die usage usageAndDie (.golang): |
+    func die(retCode int, a ...interface{}) {
+      fmt.Fprintln(os.Stderr, a...)
+      os.Exit(retCode)
+    }
+    func dief(retCode int, format string, a ...interface{}) {
+      fmt.Fprintf(os.Stderr, format, a...)
+      os.Exit(retCode)
+    }
+    func usage(retCode int) {
+      f := os.Stderr
+      if retCode == 0 {
+        f = os.Stdout
+      }
+
+      fmt.Fprintln(f, "usage: [-h|--help] <file>")
+      os.Exit(retCode)
+    }
+    func usageAndDie(retCode int, a ...interface{}) {
+      fmt.Fprintln(os.Stderr, a...)
+      usage(retCode)
+    }
+
 open/read bytes a file (.golang): |
     f, err := os.Open(FILEPATH)
     if err != nil {
