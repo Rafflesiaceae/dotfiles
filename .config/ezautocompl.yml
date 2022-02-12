@@ -209,6 +209,17 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+check if stdin is terminal/tty (.golang): |
+    stat, _ := os.Stdin.Stat()
+    if (stat.Mode() & os.ModeCharDevice) != 0 {
+        fmt.Println("stdin is from a terminal")
+    }
+convert between fixed-sized array & slice (.golang): |
+    s := []int{1, 2, 3}
+    var a [3]int
+
+    fmt.Println(copy(a[:2], s))  // 2
+    fmt.Println(a)               // [1 2 0]
 die usage usageAndDie (.golang): |
     func die(retCode int, a ...interface{}) {
       fmt.Fprintln(os.Stderr, a...)
@@ -841,7 +852,7 @@ extract group from compiled regex (.python): |
     number_seperator = next(re_number_sep.finditer(line))
     group0           = number_seperator.groups()[0]
 
-check if stdin is terminal/tty or pipe/stdin (.python): |
+check if stdin is terminal/tty (.python): |
     if sys.stdout.isatty():
         print("tty")
     else:
@@ -1540,3 +1551,4 @@ utf8/unicode symbols (.various): |
   💣 💬 💭 💤 👋 🤚 🖐 ✋ 🖖 🤌 🤏 ✌ 🤞 🤟 🤘 🤙
   👈 👉 👆 🖕 👇 👍 👎 ✊ 👊 🤛 🤜 👏 🙌 👐 🤲 🤝
   🙏 💅 🤳 💪 🦾 🦿 🦵 🦶 👂 🦻 👃 🧠 🫀 🫁 🦷 🦴 👀
+# vim: set ts=4 sw=4 et:
