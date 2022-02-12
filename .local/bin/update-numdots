@@ -5,6 +5,13 @@ if_exists_set_targetdir() { [[ -d "$1" ]] && export targetdir="$1" ; }
 if_exists_set_targetdir "$HOME/.dotfiles"
 if_exists_set_targetdir "$HOME/.numdots"
 
+case $1 in
+    -w|--window)
+        termpopup --fullterm --cd "$targetdir"
+        exit 0
+        ;;
+esac
+
 set -e
 pushd "$targetdir"
 
