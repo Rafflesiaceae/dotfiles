@@ -31,3 +31,6 @@ export PATH=$PATH:$HOME/.cargo/bin
 # salt
 alias salt=salt --config-dir=\$HOME/.salt
 alias salt-minion=salt-minion --config-dir=\$HOME/.salt
+
+# MAKEFLAGS
+export MAKEFLAGS="$MAKEFLAGS -j 4"
