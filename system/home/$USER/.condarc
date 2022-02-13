@@ -1,0 +1,9 @@
+changeps1: False
+channel_priority: strict
+channels:
+    - conda-forge
+    - defaults
+pkgs_dirs:
+    - '/home/MYUSER/.conda/pkgs'
+envs_dirs:
+    - '/home/MYUSER/.conda/envs'
