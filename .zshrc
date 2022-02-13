@@ -271,8 +271,19 @@ function precmd() {
 
 function TRAPUSR1() {
     if [[ $has_zsh_git_prompt ]]; then
-        # read from temp file
-        RPROMPT="$(date +"%T") $(cat /tmp/zsh_prompt_$$ 2>/dev/null)"
+        local parts
+
+        parts+=("$(date +"%T")") # date
+
+        # conda-env
+        if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+            parts+=('%B'"$CONDA_DEFAULT_ENV"'%b')
+        fi
+
+        # rprompt_cmd
+        parts+=("$(cat /tmp/zsh_prompt_$$ 2>/dev/null)")
+
+        RPROMPT="$parts"
 
         # reset proc number
         ASYNC_PROC=0
