@@ -723,6 +723,17 @@ subprocess / spawn / communicate (.lua): |
   x = read("*a")
   fp:close()
 
+# nim {{{1
+check if file exists (.nim): os.fileExists(FILEPATH)
+check if dir exists (.nim): os.dirExists(DIRPATH)
+create directory with parents / mkdir -p (.nim): os.createDir(FILEPATH)
+expand user/home (.nim): |
+    import os
+    getHomeDir()
+    expandTilde("~/.config")
+converter (.nim): |
+    converter toBool(x: int): bool = x != 0
+
 # python {{{1
 
 lock a file / synchronize file access among processes / flock (.python .linux): |
@@ -1094,6 +1105,23 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+build args via array (.bash): |
+    args=(
+        arg1
+    )
+    args+=(arg2)
+
+    argsLen=${#args[@]}
+
+    if [[ "${#args[@]}" -gt 0 ]]; then
+        echo "has args"
+    fi
+
+    for arg in "${args[@]}"; do
+        echo $args
+    done
+    myfunc "${args[@]}"
+
 remove/delete last characters (.sh .bash): '"${var::-3}"'
 secure hash function (.sh .bash): |
     secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
