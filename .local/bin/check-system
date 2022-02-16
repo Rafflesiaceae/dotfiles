@@ -72,6 +72,16 @@ if [[ $systemd_user_failed_unit_count -gt 0 ]]; then
     error "you have $systemd_user_failed_unit_count failed systemd user-wide units, run: "'systemctl --user list-units --state=failed'
 fi
 
+# {{{1 check for problematic active systemd units
+# systemd_active_units=$(systemctl list-units --output=json | jq '.[] | select(.active == "active") | .unit' -r)
+systemd_active_units=$(systemctl list-units --output=json | jq '.[] | select(.active == "active") | .unit' -r | sed 's/^/→/; s/$/←/')
+check_problematic_active_unit() {
+    if [[ "$systemd_active_units" == *→$1←* ]]; then
+        error "you have a 'problematic' systemd active unit: $1"
+    fi
+}
+check_problematic_active_unit "connman-vpn.service"
+
 # {{{1 check for non-trivial journalctls last 2hrs
 journald_errors_nontrivial=$(journalctl --priority=3 --since "120min ago" --output=json | jq -c "$journald_errors_jq_filter")
 journald_errors_nontrivial_count=$(printf "%s" "$journald_errors_nontrivial" | wc -l)
