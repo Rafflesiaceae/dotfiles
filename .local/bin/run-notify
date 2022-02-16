@@ -2,6 +2,11 @@
 if [[ "$1" == "--" ]]; then
     shift
 fi
+focus_window=
+if [[ "$1" == "-f" ]]; then
+    focus_window=1
+    shift
+fi
 
 { eval "$@"; }
 subcode=$?
@@ -18,9 +23,10 @@ fi
 
 if [[ $subcode != 0 ]]; then
     printf "\a"
+    if [[ "$focus_window" ]]; then
+        sleep 0.4
+        focuswindow
+    fi
 fi
 
 exit "$subcode"
-# if [[ "$cmd" == "showwindow" ]]; then
-#     focuswindow
-# fi
