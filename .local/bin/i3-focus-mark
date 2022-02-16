@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eo pipefail
+window=$(i3-msg -t get_tree | jq -r ".. | select(.window?) | select(.marks[] | contains(\"$1\")) | .window")
+if [[ -n "$window" ]]; then
+    xdotool windowactivate "$window"
+else
+    exit 1
+fi

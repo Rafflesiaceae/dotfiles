@@ -93,6 +93,7 @@ sources = {
     "./.local/bin/i3-ctrlc": { "linux": "" },
     "./.local/bin/i3-ctrlp": { "linux": "" },
     "./.local/bin/i3-edit-mark": { "linux": "" },
+    "./.local/bin/i3-focus-mark": "",
     "./.local/bin/i3-make-sticky": { "linux": "" },
     "./.local/bin/i3-swap-workspaces": { "linux": "" },
     "./.local/bin/i3-type-mark": { "linux": "" },
