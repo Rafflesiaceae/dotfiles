@@ -674,6 +674,30 @@ augroup END
 " }}}
 
 " {{{ Custom Functions
+function! s:Verify()
+    set list
+    let lnr=line('$')
+
+    if lnr%2 != 0
+        echom "VERIFY: linenr not multiple of 2 ✗"
+        return 0
+    endif
+
+    let first_half=getline(0,lnr/2)
+    let second_half=getline(lnr/2+1,lnr)
+    if first_half !=# second_half
+        echom "VERIFY: halfs are different !!! ✗"
+        return 1
+    else
+        call deletebufline(bufnr("%"), 1, '$')
+        call append('0', first_half)
+        call feedkeys("dd")
+        echom "VERIFY: success ✓"
+    endif
+endfunction
+com! Verify call s:Verify()
+nmap <leader>vv :Verify<CR>
+
 function! s:OpenTig()
     " @TODO show/use .git - dir instead of parent dir of file
     let pdir = expand('%:p:h')
