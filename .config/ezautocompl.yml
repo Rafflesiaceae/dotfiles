@@ -728,6 +728,10 @@ subprocess / spawn / communicate (.lua): |
 
 # nim {{{1
 throw/raise exception (.nim): raise newException(Exception, MSG)
+parse int from string (.nim): |
+    import parseutils
+    var res: uint
+    discard parseUInt("3450", res)
 check if file exists (.nim): os.fileExists(FILEPATH)
 check if dir exists (.nim): os.dirExists(DIRPATH)
 create directory with parents / mkdir -p (.nim): os.createDir(FILEPATH)
@@ -1109,6 +1113,13 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+print an associative array (.bash): |
+    printaarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k" "${__p[$k]}"; done;  }  
+spread associative array (.bash): |
+    spread() { printf "for k in \"\${!%s[@]}\"; do %s[\$k]=\${%s[\$k]}; done\n" "$2" "$1" "$2"; }
+    eval "$(spread ft f1)"
+count lines (.cmd .sh .bash): wc -l FILE
+trim a string (.bash): sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 build args via array (.bash): |
     args=(
         arg1
@@ -1132,6 +1143,8 @@ secure hash function (.sh .bash): |
 swap stdout/stderr (.sh .bash): 3>&1 1>&2 2>&3
 printf stdin (.bash): "{ stdin=\"\"; read -r -d '' -u 0 stdin; printf \"%q\" \"$stdin\"; }"
 read stdin (.sh .bash): stdin=$(cat)
+split a variable by character x times (.bash): |
+    IFS=';' read -r first rest <<< "$variable"
 split a variable by character into an array (.bash): |
     IFS='€' read -ra stat <<< "$variable"
 get first line (.sh .bash): head -n 1
