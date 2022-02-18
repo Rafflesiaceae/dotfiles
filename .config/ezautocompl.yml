@@ -4,6 +4,8 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+remove first n characters (.cmd .sh .bash): cut -c 5-
+get size of a file (.cmd .sh .bash): stat --printf="%s" FILE
 draw a full-width horizontal line in terminal (.cmd): |
   printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
 
@@ -209,6 +211,7 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+int to string (.golang): strconv.Itoa(999)
 check if stdin is terminal/tty (.golang): |
     stat, _ := os.Stdin.Stat()
     if (stat.Mode() & os.ModeCharDevice) != 0 {
@@ -724,6 +727,7 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # nim {{{1
+throw/raise exception (.nim): raise newException(Exception, MSG)
 check if file exists (.nim): os.fileExists(FILEPATH)
 check if dir exists (.nim): os.dirExists(DIRPATH)
 create directory with parents / mkdir -p (.nim): os.createDir(FILEPATH)
@@ -1451,6 +1455,7 @@ on/trap error (.bash): |
 date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T
 date-short-time (.cmd .sh .bash): date +%T
 date-posix (.cmd .sh .bash): date +%s
+date-posix with days/offset (.cmd .sh .bash): date -d "2 days ago" +%s
 
 # https://stackoverflow.com/a/35638712
 func is_nohup (.sh .bash): |
