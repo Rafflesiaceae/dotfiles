@@ -727,6 +727,21 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # nim {{{1
+print to stderr (.nim): |
+    writeLine(stderr, MSG)
+    flushFile(stderr)
+parse/string to enum (.nim): |
+    import strutils
+    parseEnum[ENUM](STRVAR)
+string starts with/prefix (.nim): |
+    import strutils
+    someString.startsWith("PREFIX")
+get args (.nim): |
+  let args = commandLineParams()
+read a file (.nim): |
+    let contents = io.readFile(PATH)
+read stdin (.nim): |
+    let contents = stdin.readAll()
 throw/raise exception (.nim): raise newException(Exception, MSG)
 parse int from string (.nim): |
     import parseutils
@@ -987,7 +1002,7 @@ cli / argparse (.python): |
 
     parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
 
 dataclass (.python): |
     from dataclasses import dataclass
@@ -1114,7 +1129,7 @@ if main (.js .node .ts): |
 
 # bash {{{1
 print an associative array (.bash): |
-    printaarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k" "${__p[$k]}"; done;  }  
+    printaarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k" "${__p[$k]}"; done;  }
 spread associative array (.bash): |
     spread() { printf "for k in \"\${!%s[@]}\"; do %s[\$k]=\${%s[\$k]}; done\n" "$2" "$1" "$2"; }
     eval "$(spread ft f1)"
@@ -1238,6 +1253,8 @@ lock/unlock a file (.sh .bash): |
     flock --unlock 5
 
 open file as file descriptor (.sh .bash): exec 5<> "./lockme.json"
+read lines of command into array (.bash): |
+  readarray -t VARNAM < <(SOME_PROCESS)
 read lines of file into array (.bash): |
   readarray -t VARNAME < FILEPATH
   readarray -t VARNAM < <(SOME_PROCESS)
