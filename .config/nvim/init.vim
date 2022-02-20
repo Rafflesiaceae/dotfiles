@@ -108,7 +108,7 @@ let g:ycm_language_server =
   \ [ 
   \   {
   \     'name': 'nim',
-  \     'cmdline': [ '/home/raf/.nimble/bin/nimlsp' ],
+  \     'cmdline': [ $HOME.'/.nimble/bin/nimlsp' ],
   \     'filetypes': [ 'nim' ],
   \   },
   \ ]
