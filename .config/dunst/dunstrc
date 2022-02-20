@@ -123,7 +123,7 @@ startup_notification = false
 # Otherwise the '#' and following  would be interpreted as a comment.
 background = "#222222"
 foreground = "#888888"
-timeout = 3
+timeout = 2
 
 [urgency_normal]
 background = "#285577"
