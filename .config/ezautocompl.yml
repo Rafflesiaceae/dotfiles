@@ -1128,6 +1128,14 @@ if main (.js .node .ts): |
     }
 
 # bash {{{1
+clean/remove dir/file (.sh .bash): |
+    clean() { { [ -d "$1" ] && rm -rf "$1" ;} || { [ -f "$1" ] && rm "$1"; } || true; }
+back/stacktrace an error (.bash): |
+    function trace_err () {
+        local line="${BASH_LINENO[0]}"
+        local src="${BASH_SOURCE[0]}"
+        echo "  ↑ from ${src}:${line} → $(sed "${line}q;d" "$src")"
+    }; set -o errtrace; trap 'trace_err' ERR
 print an associative array (.bash): |
     printaarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k" "${__p[$k]}"; done;  }
 spread associative array (.bash): |
