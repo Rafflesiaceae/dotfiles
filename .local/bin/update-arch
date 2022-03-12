@@ -66,6 +66,7 @@ pushd "$HOME/.vim/plugged/YouCompleteMe"
     --java-completer \
     --rust-completer \
     --ts-completer
+npm i --global vscode-json-languageserver # json
 popd
 
 echo {{{1 System Checks
