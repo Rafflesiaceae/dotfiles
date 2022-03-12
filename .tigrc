@@ -54,7 +54,8 @@ bind stage U @!git stage %(file)
 
 bind refs D !?git push %(remote) --delete %(branch)
 
-bind generic S ?git format-patch -1 -N %(commit)
+bind generic S     ?git format-patch -1 -N %(commit)
+bind generic <C-P> ?git format-patch -1 -N %(commit)
 
 # copy commit ID to clipboard
 bind generic V !@sh -c "termpopup --no-escape --no-float --no-wait -- git show \\\"%(commit)\\\" \\\| vim -"
