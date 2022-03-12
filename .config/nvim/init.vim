@@ -111,6 +111,12 @@ let g:ycm_language_server =
   \     'cmdline': [ $HOME.'/.nimble/bin/nimlsp' ],
   \     'filetypes': [ 'nim' ],
   \   },
+  \   {
+  \     'name': 'json',
+  \     'cmdline': [ $HOME.'/.node_modules/bin/vscode-json-languageserver', '--stdio' ],
+  \     'filetypes': [ 'json' ],
+  \     'capabilities': { 'textDocument': { 'completion': { 'completionItem': { 'snippetSupport': v:true } } } },
+  \   },
   \ ]
   " \   {
   " \     'name': 'groovy',
