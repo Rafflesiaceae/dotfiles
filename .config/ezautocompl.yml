@@ -7,6 +7,7 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 run a command for each match in find (.cmd): |
     find . -type f -name "*.txt" -exec echo "{}" \;
 
+git shallow clone (.cmd .git): git clone --depth 1 https://github.com/git/git.git
 remove first n characters (.cmd .sh .bash): cut -c 5-
 get size of a file (.cmd .sh .bash): stat --printf="%s" FILE
 draw a full-width horizontal line in terminal (.cmd): |
@@ -1021,6 +1022,7 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+write to file (.js .ts .node): fs.writeFileSync(PATH, STRING)
 change dir (.js .ts .node): process.chdir(NEW_DIR);
 print to stderr (.js .ts .node): console.error(MSG);
 print to stderr (.js .ts .node): console.error(MSG);
