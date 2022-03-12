@@ -1,0 +1,18 @@
+#!/bin/bash
+set -eo pipefail
+
+# ↓ copied from: update-arch
+
+echo {{{1 update vim plugins
+nvim +'PlugUpdate --sync' +qa
+
+echo {{{1 update YCM
+pushd "$HOME/.vim/plugged/YouCompleteMe"
+./install.py \
+    --clangd-completer \
+    --go-completer \
+    --java-completer \
+    --rust-completer \
+    --ts-completer
+npm i --global vscode-json-languageserver # json
+popd
