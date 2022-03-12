@@ -149,6 +149,7 @@ sources = {
     "./.local/bin/update-arch-android": { "linux": "" },
     "./.local/bin/update-numdots": "",
     "./.local/bin/update-ycm": "",
+    "./.local/bin/vimdiff-first-with-rest": "",
     "./.local/bin/vimdirdiff": { "linux": "" },
     "./.local/bin/vims": "",
     "./.local/bin/vtt-extract": "",
