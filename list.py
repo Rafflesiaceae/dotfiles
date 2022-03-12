@@ -74,6 +74,7 @@ sources = {
     "./.local/bin/find-upwards": "",
     "./.local/bin/focuswindow": { "linux": "" },
     "./.local/bin/font-lookup-character": { "linux": "" },
+    "./.local/bin/forever": "",
     "./.local/bin/fstack": { "linux": "" },
     "./.local/bin/git-delete-remote-branch": "",
     "./.local/bin/git-drop": "",
