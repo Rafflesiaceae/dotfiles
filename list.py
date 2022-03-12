@@ -139,6 +139,7 @@ sources = {
     "./.local/bin/svnrootdir": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": { "linux": "" },
+    "./.local/bin/thunar-kill-and-co": "",
     "./.local/bin/thuncb": "",
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/togglekb": "",
