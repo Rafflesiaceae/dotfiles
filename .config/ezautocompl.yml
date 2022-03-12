@@ -4,6 +4,9 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+run a command for each match in find (.cmd): |
+    find . -type f -name "*.txt" -exec echo "{}" \;
+
 remove first n characters (.cmd .sh .bash): cut -c 5-
 get size of a file (.cmd .sh .bash): stat --printf="%s" FILE
 draw a full-width horizontal line in terminal (.cmd): |
@@ -1136,6 +1139,12 @@ back/stacktrace an error (.bash): |
         local src="${BASH_SOURCE[0]}"
         echo "  ↑ from ${src}:${line} → $(sed "${line}q;d" "$src")"
     }; set -o errtrace; trap 'trace_err' ERR
+read output into array (.bash):
+    readarray -t VAR < <(CMD)
+if output contains/has line (.cmd .sh .bash):
+    if grep -q "SOMELINE" "SOMEFILE"; then
+        echo "FOUND"
+    fi
 print an associative array (.bash): |
     printaarr() { declare -n __p="$1"; for k in "${!__p[@]}"; do printf "%s=%s\n" "$k" "${__p[$k]}"; done;  }
 spread associative array (.bash): |
@@ -1273,7 +1282,7 @@ write heredoc to file with sudo rights (.sh .bash): |
     EOF
 
 extract/match regex groups (.bash): |
-    if [[ $line =~ ^(.*):\ \"([^\"]+)\"$ ]]; then
+    if [[ "$line" =~ ^(.*):\ \"([^\"]+)\"$ ]]; then
         echo "${BASH_REMATCH[0]}" # full string
         echo "${BASH_REMATCH[1]}" # first group
         echo "${BASH_REMATCH[2]}" # second group
@@ -1422,6 +1431,11 @@ check if dir exists (.sh .bash): |
     [[ -d "$dir" ]] &&
 check if file exists (.sh .bash): |
     [[ -f "$file" ]] &&
+
+for each line in variable (.sh .bash): |
+    while IFS= read -r line; do
+        echo "$line"
+    done <<< "$VAR"
 
 for each line in file (.sh .bash): |
     # https://mywiki.wooledge.org/BashFAQ/001
