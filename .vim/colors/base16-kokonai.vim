@@ -260,6 +260,12 @@ call <sid>hi("javaScript",        s:gui05, "", s:cterm05, "", "", "")
 call <sid>hi("javaScriptBraces",  s:gui05, "", s:cterm05, "", "", "")
 call <sid>hi("javaScriptNumber",  s:gui09, "", s:cterm09, "", "", "")
 
+" JSON highlighting
+call <sid>hi("jsonNoQuotesError", "", "", s:cterm05, "", "", "")
+call <sid>hi("jsonTrailingCommaError", "", "", s:cterm05, "", "", "")
+call <sid>hi("jsonMissingCommaError", "", "", s:cterm05, "", "", "")
+call <sid>hi("jsonCommentError", "", "", s:cterm05, "", "", "")
+
 " Mail highlighting
 call <sid>hi("mailQuoted1",  s:gui0A, "", s:cterm0A, "", "", "")
 call <sid>hi("mailQuoted2",  s:gui0B, "", s:cterm0B, "", "", "")
