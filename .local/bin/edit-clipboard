@@ -6,7 +6,20 @@ cleanup_tmpfile() {
 }
 trap 'cleanup_tmpfile' EXIT
 
-cb -o > "$tmpfile"
+is_primary=
+if [[ "$1" == "--primary" ]]; then
+    is_primary=1
+fi
+
+xclip_sel=clipboard
+if [[ "$is_primary" ]]; then
+    xclip_sel=primary
+fi
+
+xclip -sel "$xclip_sel" -o > "$tmpfile"
 "$EDITOR" "$tmpfile"
 truncate -s-1 "$tmpfile"
-cb -i < "$tmpfile"
+xclip -sel "$xclip_sel" -i < "$tmpfile"
+if [[ "$is_primary" ]]; then
+    xclip -sel "clipboard" -i < "$tmpfile"
+fi

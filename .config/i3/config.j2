@@ -125,7 +125,8 @@ bindsym »mod«+o exec paup
 bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
 {# @XXX the "&& :" part is here because otherwise termpopup using /bin/bash as $SHELL somehow prevents ezautocompl from copying to clipboard - might be a timing issue, however adding another command fixes this, so we use ":" - nop #}
 bindsym »mod«+u exec termpopup ezautocompl "--path" "$HOME/.config/ezautocompl.yml" "&&" ":"
-bindsym »mod«+F10 exec termpopup --no-escape --no-float edit-clipboard
+bindsym »mod«+F9 exec termpopup --no-escape --no-float -- edit-clipboard --primary
+bindsym »mod«+F10 exec termpopup --no-escape --no-float -- edit-clipboard
 # bindsym »mod«+comma exec termpopup --no-shell fastkey
 bindsym »mod«+Tab exec i3-ctrlp
 bindsym »mod«+comma exec i3-ctrlc
