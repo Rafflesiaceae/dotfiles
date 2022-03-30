@@ -5,6 +5,8 @@ if filereadable("/etc/vimrc")
     source /etc/vimrc
 endif
 
+set clipboard^=unnamed
+
 set ttimeoutlen=0
 
 set nocompatible
