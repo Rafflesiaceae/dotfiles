@@ -53,6 +53,8 @@ bind status D !@?rm %(file)
 bind stage U @!git stage %(file)
 
 bind refs D !?git push %(remote) --delete %(branch)
+bind refs C !?git checkout -b %(tag) %(tag)
+bind refs c !?git checkout -b %(tag) %(tag)
 
 bind generic S     ?git format-patch -1 -N %(commit)
 bind generic <C-P> ?git format-patch -1 -N %(commit)
