@@ -51,7 +51,7 @@ for file in "${files[@]}"; do
         done
 
         if [[ $copy ]]; then
-            echo "$file cp→ $bkfile"
+            echo "$file [cp →] $bkfile"
             cp -i "$file" "$bkfile"
         else
             echo "$file → $bkfile"
