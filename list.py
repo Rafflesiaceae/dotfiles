@@ -139,6 +139,7 @@ sources = {
     "./.local/bin/sshhost": "",
     "./.local/bin/svimdiff": { "linux": "" },
     "./.local/bin/svnrootdir": "",
+    "./.local/bin/syncy": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": { "linux": "" },
     "./.local/bin/thunar-kill-and-co": "",

@@ -1,0 +1,90 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf "${cred}[E]${creset} %b\n" "$1" >&2
+    exit "${2-1}"
+}
+
+if [ -t 1 ]; then
+    cblack=$(   2>/dev/null tput setaf 0) || true
+    cred=$(     2>/dev/null tput setaf 1) || true
+    cgreen=$(   2>/dev/null tput setaf 2) || true
+    cyellow=$(  2>/dev/null tput setaf 3) || true
+    cblue=$(    2>/dev/null tput setaf 4) || true
+    cmagenta=$( 2>/dev/null tput setaf 5) || true
+    ccyan=$(    2>/dev/null tput setaf 6) || true
+    cwhite=$(   2>/dev/null tput setaf 7) || true
+    creset=$(   2>/dev/null tput sgr0) || true
+fi
+
+header() { printf "${cmagenta}[${2:-∷}]${creset} %b\n" "$1"; }
+    
+
+syncyfile=$(find-upwards ".syncy.json" || die "could not find '.syncy.json'")
+locald=$(dirname "$syncyfile")
+projd=$(basename "$locald")
+
+remote=$(jq --raw-output ".remote" "$HOME/.config/syncy.json" || die "could not find '~/.config/syncy.json:.remote'")
+
+rsync_local="$locald"
+rsync_remote="$remote"/"$projd"
+
+args=(
+    -avcr
+    --delete 
+    -e ssh 
+    --out-format="%i %t %f"
+)
+
+change_lines=$(rsync --dry-run "${args[@]}" "$rsync_local/" "$rsync_remote")
+[[ "$(echo "$change_lines" | head -n 1)" == "sending incremental file list" ]] || die "first line should say: sending incremental file list"
+[[ "$(echo "$change_lines" | tail -n 1)" == "total size is"*"speedup is"*" (DRY RUN)" ]] || die "last line should say: total size is * speedup is * (DRY RUN)"
+
+has_changes=
+[[ "$(echo "$change_lines" | wc -l)" -gt 4 ]] && has_changes=1
+
+if [[ $has_changes ]]; then
+    header "detected changes ↓"
+    echo "$change_lines" | head -n -3 | tail -n +2 # remove last 3 lines, then remove first line
+else
+    header "up-to-date"
+    exit 0
+fi
+
+rsync_choice=
+prompt() {
+    tput sc
+    while true; do
+        read -p "${cmagenta}[?]${creset} Send to remote (default) / Receive from remote (opposite of detected changes)? (s/r) " -n 1 -r yn
+        case $yn in
+            [Rr]*) rsync_choice=r; return;;
+            [Ss]*) rsync_choice=s; return;;
+            [Nn]*) printf "\n"; exit 1;;
+            [Aa]*) printf "\n"; exit 1;;
+            *) tput el1; tput rc ;;
+        esac
+    done
+    printf "\n"
+}
+echo
+header "'*deleting' means that the remote is missing it" "!"
+header "'<f+++++++' means that local has a new file" "!"
+header "'<fc'       means that local has changes" "!"
+echo
+prompt
+
+printf "\n\n"
+case $rsync_choice in
+    r)
+        header "receiving opposite of listed changes from remote.."
+        (set -x; rsync "${args[@]}" "$rsync_remote/" "$rsync_local") || die "failed receiving changes from remote"
+        ;;
+    s)
+        header "sending listed changes to remote.."
+        (set -x; rsync "${args[@]}" "$rsync_local/" "$rsync_remote") || die "failed sending changes to remote"
+        ;;
+    *)
+        die "unknown rsync_choice → $rsync_choice"
+        ;;
+esac
+header "completed" "😽"
