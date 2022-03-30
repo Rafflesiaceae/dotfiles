@@ -239,6 +239,29 @@ list_git_branches_via_fzf() {
 zle -N list_git_branches_via_fzf{,}
 bindkey '^G' list_git_branches_via_fzf
 # }}}
+# {{{ k8s - list pods
+list_k8s_pods_via_fzf() {
+    local podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || exit 1
+    pod=$(echo "$podline" | awk '{ print $1 }')
+    namespace=$(echo "$podline" | awk '{ print $2 }')
+    LBUFFER+="-n $namespace $pod"
+    zle .reset-prompt
+}
+zle -N list_k8s_pods_via_fzf{,}
+bindkey '^[p' list_k8s_pods_via_fzf
+# {{{ docker - list containers
+list_docker_containers_via_fzf() {
+    local psout=$(docker ps) || exit 1
+    local header=$(echo "$psout" | head -n 1)
+    local choices=$(echo "$psout" | tail -n +2)
+    local choice=$(echo "$choices" | fzf --header "$header") || exit 1
+    container=$(echo "$choice" | awk '{ print $1 }')
+    LBUFFER+="$container"
+    zle .reset-prompt
+}
+zle -N list_docker_containers_via_fzf{,}
+bindkey '^[d' list_docker_containers_via_fzf
+# }}}
 # {{{ RPROMPT
 local zsh_git_prompt=$HOME/.zsh/zsh-git-prompt/zshrc.sh
 local has_zsh_git_prompt=
