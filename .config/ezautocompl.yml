@@ -1181,8 +1181,10 @@ split a variable by character x times (.bash): |
     IFS=';' read -r first rest <<< "$variable"
 split a variable by character into an array (.bash): |
     IFS='€' read -ra stat <<< "$variable"
+get last line (.sh .bash): tail -n 1
 get first line (.sh .bash): head -n 1
 remove/delete first line (.sh .bash): tail -n +2
+remove/delete last line (.sh .bash): head -n -1
 echo/print/extract contents from-to/between 2 matches/lines (.bash): |
     between_2_lines() {
         local found_begin=
