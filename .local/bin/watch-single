@@ -17,8 +17,14 @@ usage_and_die() {
 file=$1
 shift || usage_and_die "pass me a file to listen for"
 
-# echo "$@"
-# exit 0
+
+function ctrl_c() {
+    echo "stopping..."
+    exit 0
+}
+trap ctrl_c INT
+
+echo "watch $file → $*"
 while true; do
-    echo "$file" | entr -r "$1"
+    echo "$file" | entr -r "$@"
 done
