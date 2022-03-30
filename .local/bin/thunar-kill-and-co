@@ -1,5 +1,4 @@
 #!/bin/bash
-# set -eo pipefail
 pkill --exact Thunar
 pkill --exact thunar
 pkill gvfsd
