@@ -380,6 +380,11 @@ regex extract groups (.golang): |
     matches := rePattern.FindStringSubmatch(fname)
     // either returns [] if no match or [whole match, group1, group2, ...]
 
+string match regex (.golang): |
+    match, _ := regexp.MatchString("p([a-z]+)ch", "peach")
+    r, _ := regexp.Compile("p([a-z]+)ch")
+    r.MatchString("peach")
+
 print the type of a variable at runtime (.golang .reflection): fmt.Println(reflect.TypeOf(fooVar).String())
 string to int (.golang): |
     // for `int`
