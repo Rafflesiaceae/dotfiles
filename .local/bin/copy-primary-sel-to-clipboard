@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eo pipefail
+prim=$(xclip -o -sel primary)
+printf "%s" "$prim" | xclip -i -sel clipboard
+notify-send --urgency low "Primary → Clipboard | $(date +%T)"

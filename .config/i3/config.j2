@@ -132,6 +132,7 @@ bindsym »mod«+Tab exec i3-ctrlp
 bindsym »mod«+comma exec i3-ctrlc
 bindsym »mod«+ctrl+comma exec termpopup i3-edit-mark prompt "$(xdotool getactivewindow)"
 bindsym »mod«+period exec i3-ctrlp
+bindsym »mod«+minus exec copy-primary-sel-to-clipboard
 
 # print screen
 bindsym »mod«+Print exec "maim --select --hidecursor | xclip -selection clipboard -t image/png -i"

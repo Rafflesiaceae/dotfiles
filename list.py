@@ -62,6 +62,7 @@ sources = {
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",
     "./.local/bin/cmake-quickbuild": "",
+    "./.local/bin/copy-primary-sel-to-clipboard": "",
     "./.local/bin/cpwd": "",
     "./.local/bin/dbus-list-all-services": "",
     "./.local/bin/dcot": "",
