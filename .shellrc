@@ -80,3 +80,7 @@ man() {
         LESS_TERMCAP_us=$'\E[04;38;5;00;33m' \
         man $*
 }
+
+if [[ -f "$HOME/.shellrc.local" ]]; then
+    source "$HOME/.shellrc.local"
+fi
