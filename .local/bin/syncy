@@ -19,6 +19,15 @@ fi
 
 header() { printf "${cmagenta}[${2:-∷}]${creset} %b\n" "$1"; }
     
+if [[ $1 == "init" ]]; then
+    header "writing .syncy.json"
+    cat <<EOF > .syncy.json
+{
+    "ignore": []
+}
+EOF
+    exit 0
+fi
 
 syncyfile=$(find-upwards ".syncy.json" || die "could not find '.syncy.json'")
 locald=$(dirname "$syncyfile")
@@ -35,6 +44,12 @@ args=(
     -e ssh 
     --out-format="%i %t %f"
 )
+
+# append ignore patterns
+readarray -t ignore < <(jq -r '.ignore[]' < "$syncyfile")
+for pattern in "${ignore[@]}" ; do
+    args+=("$pattern")
+done
 
 change_lines=$(rsync --dry-run "${args[@]}" "$rsync_local/" "$rsync_remote")
 [[ "$(echo "$change_lines" | head -n 1)" == "sending incremental file list" ]] || die "first line should say: sending incremental file list"
