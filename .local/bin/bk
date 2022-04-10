@@ -52,7 +52,7 @@ for file in "${files[@]}"; do
 
         if [[ $copy ]]; then
             echo "$file [cp →] $bkfile"
-            cp -i "$file" "$bkfile"
+            cp -i -r "$file" "$bkfile"
         else
             echo "$file → $bkfile"
             mv -i "$file" "$bkfile"
