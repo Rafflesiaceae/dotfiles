@@ -135,7 +135,7 @@ bindsym »mod«+period exec i3-ctrlp
 bindsym »mod«+minus exec copy-primary-sel-to-clipboard
 
 # print screen
-bindsym »mod«+Print exec "maim --select --hidecursor | xclip -selection clipboard -t image/png -i"
+bindsym »mod«+Print exec "maim --select --hidecursor | tee ~/shot_$(date +%s)_sel.png | xclip -selection clipboard -t image/png -i"
 
 # sometimes chromium requires killing
 bindsym »mod«+shift+mod1+k      exec "pkill chromium"
