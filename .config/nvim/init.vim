@@ -75,6 +75,10 @@ let s:os = substitute(system('uname'), "\n", "", "")
 set formatoptions-=t
 set textwidth=80
 
+" https://vim.fandom.com/wiki/Fix_syntax_highlighting#Highlight_from_an_amount_backwards
+" fromstart is impossible with larger files
+autocmd BufEnter * :syntax sync minlines=200 
+
 " Configurations
 " {{{ YouCompleteMe
 let g:ycm_confirm_extra_conf = 0 " don't ask for confirmation
