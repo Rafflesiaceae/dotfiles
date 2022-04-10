@@ -48,7 +48,7 @@ args=(
 # append ignore patterns
 readarray -t ignore < <(jq -r '.ignore[]' < "$syncyfile")
 for pattern in "${ignore[@]}" ; do
-    args+=("$pattern")
+    args+=("--exclude=$pattern")
 done
 
 change_lines=$(rsync --dry-run "${args[@]}" "$rsync_local/" "$rsync_remote")
