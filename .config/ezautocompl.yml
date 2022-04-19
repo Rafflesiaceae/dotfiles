@@ -1531,6 +1531,12 @@ func is_nohup (.sh .bash): |
         grep -Eq 'SigIgn:\s.{15}[13579bdf]' "/proc/$$/status" && return 0 || return 1
     }
 
+die (.sh .bash): |
+    die() {
+        printf '%b\n' "$1" >&2
+        exit "${2-1}"
+    }
+
 die usage usage_and_die (.sh .bash): |
     die() {
         printf '%b\n' "$1" >&2
