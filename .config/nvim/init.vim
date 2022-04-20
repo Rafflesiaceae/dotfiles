@@ -77,7 +77,7 @@ set textwidth=80
 
 " https://vim.fandom.com/wiki/Fix_syntax_highlighting#Highlight_from_an_amount_backwards
 " fromstart is impossible with larger files
-autocmd BufEnter * :syntax sync minlines=200 
+autocmd BufEnter * :syntax sync minlines=1000 
 
 " Configurations
 " {{{ YouCompleteMe
