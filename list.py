@@ -108,6 +108,7 @@ sources = {
     "./.local/bin/lastfile": "",
     "./.local/bin/mark-code": "",
     "./.local/bin/meson-quickbuild": "",
+    "./.local/bin/mmbr": "",
     "./.local/bin/music-to-youtube": "",
     "./.local/bin/music-youtube-dl": "",
     "./.local/bin/mvn-fetch": "",

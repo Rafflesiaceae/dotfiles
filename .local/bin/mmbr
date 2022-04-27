@@ -1,0 +1,45 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+usage() {
+    echo "usage: [-h|--help] [--] <cmd>+"
+    exit "${1-0}"
+}
+
+if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+    deac=$(micromamba shell --shell bash deactivate)
+    eval "$deac"
+    exit 0
+fi
+
+mmbenv=$1
+shift || die "pass an env, known envs:\n$(ls "$MAMBA_ROOT_PREFIX"/envs | sed 's/^/\t/')"
+
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+args=("$@")
+eargs=()
+for arg in "${args[@]}" ; do
+    eargs+=("$(printf "%q" "$arg")")
+done
+
+[[ $# -lt 1 ]] && die "pass at least one cmd"
+function join_array { local IFS="$1"; shift; echo "$*"; }
+
+micromamba run -a stdin,stdout,stderr -n "$mmbenv" /bin/bash -c "$(join_array " " "${eargs[@]}")"
