@@ -9,6 +9,10 @@ usage() {
     exit "${1-0}"
 }
 
+cleanups=""
+cleanup() { eval "$cleanups"; }
+trap 'cleanup' EXIT
+
 if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
     deac=$(micromamba shell --shell bash deactivate)
     eval "$deac"
@@ -32,6 +36,35 @@ while :; do
 
     shift || usage
 done
+
+# if it's a file, so we consider it a conda-lock scenario
+if [[ -e "$mmbenv" ]]; then 
+    name=$(yq -r '.name' < "$mmbenv")
+    echo "! env: $name" >&2
+    if file-changed "$mmbenv"; then
+        echo "! $mmbenv changed, rebuilding..." >&2
+        cleanups="file-changed -r \"$mmbenv\""
+
+        lockfile="lock-$name.yml"
+
+        (
+        set -x
+        conda-lock lock    --micromamba --lockfile "$lockfile" --file "$mmbenv"
+        # @XXX total joke, but conda-lock fails when passing a specific lockfile
+        # path, so instead we move it to the default path :/
+        if [[ -e "./conda-lock.yml" ]]; then
+            bk "./conda-lock.yml"
+        fi
+        mv "$lockfile" "conda-lock.yml"
+        cleanups="$cleanups;mv conda-lock.yml \"$lockfile\""
+        conda-lock install --micromamba --name "$name"
+        mv "conda-lock.yml" "$lockfile"
+        )
+
+        cleanups=""
+    fi
+    mmbenv=$name
+fi
 
 args=("$@")
 eargs=()
