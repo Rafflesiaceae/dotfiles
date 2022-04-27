@@ -773,6 +773,12 @@ converter (.nim): |
 
 # python {{{1
 
+require minimum python version (.python): |
+    import sys
+    MIN_PYTHON = (2, 6)
+    if sys.version_info < MIN_PYTHON:
+        sys.exit("Python %s.%s or later is required." % MIN_PYTHON)
+
 lock a file / synchronize file access among processes / flock (.python .linux): |
   import fcntl
   import io
@@ -1140,6 +1146,14 @@ if main (.js .node .ts): |
 
     if (typeof require !== 'undefined' && require.main === module) {
         process.exitCode = main(process.argv.slice(2));
+    }
+
+# json-schema {{{1
+enum (.json-schema): |
+    "type": "array",
+    "items": {
+        "type": "string",
+        "enum": ["one", "two", "three"]
     }
 
 # bash {{{1
