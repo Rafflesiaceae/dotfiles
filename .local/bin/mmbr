@@ -38,6 +38,7 @@ while :; do
 done
 
 # if it's a file, so we consider it a conda-lock scenario
+pass_no_args=
 if [[ -e "$mmbenv" ]]; then 
     name=$(yq -r '.name' < "$mmbenv")
     echo "! env: $name" >&2
@@ -61,6 +62,7 @@ if [[ -e "$mmbenv" ]]; then
         mv "conda-lock.yml" "$lockfile"
         )
 
+        pass_no_args=1
         cleanups=""
     fi
     mmbenv=$name
@@ -72,7 +74,13 @@ for arg in "${args[@]}" ; do
     eargs+=("$(printf "%q" "$arg")")
 done
 
-[[ $# -lt 1 ]] && die "pass at least one cmd"
+if [[ $# -lt 1 ]]; then
+    if [[ "$pass_no_args" ]]; then
+        exit 0
+    else
+        die "pass at least one cmd"
+    fi
+fi
 function join_array { local IFS="$1"; shift; echo "$*"; }
 
 micromamba run -a stdin,stdout,stderr -n "$mmbenv" /bin/bash -c "$(join_array " " "${eargs[@]}")"
