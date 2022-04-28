@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 from dataclasses import dataclass
 from io import StringIO
 from typing import *
@@ -8,6 +9,7 @@ import argparse
 import copy
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -15,18 +17,8 @@ import tempfile
 
 import yaml
 
-# @XXX @NOTE: we don't support all possible cases of weird filenames, as
-# ripgrep doesn't do any escaping, if you have ':[0-9]+:' as part of any
-# filename, we will break for sure
-#
-# once https://github.com/BurntSushi/ripgrep/issues/1872 goes through we
-# can swap over to parsing the '--json' output and then this issue will be
-# fixed
-
-import re
 re_number_sep = re.compile(r':([0-9]+):')
 
-from typing import *
 
 @dataclass
 class Replacement:
@@ -34,6 +26,7 @@ class Replacement:
     start_line: int
     search_line_count: int
     content: List[str]
+
 @dataclass
 class Task:
     replace: List[str]
@@ -57,6 +50,7 @@ class Task:
         self.line_i += 1
         self.lines_left -= 1
 
+
 def ensure_newline_at_end_of_string(s):
     if s[:-1] != ["\n"]:
         return s + "\n"
@@ -68,31 +62,7 @@ def iterate_replaces(replaces: List[Replacement]):
             yield (replace.start_line + li, line)
 
 def cli():
-    description = """
-                @TODO
-                  I turn ripgrep into a search-and-replace kinda deal, do
-                  you know ripgrep's -r/--replace ? it's a cool thing, but
-                  it doesnt edit files in place, ripgrep is intended by
-                  the author to never ever change your files, so instead I
-                  am here
-
-                  do like a normal rg with -r to get the result that you
-                  want and then just prefix me to the whole shell command,
-                  I'll do the rest, you can also pass me the stdout of an
-                  rg command as long as it's piped, but I expect a
-                  specific format from ripgrep, check 'clean_args' in my
-                  source if you want to do that, I'll also add them to the
-                  last example
-
-                  have a nice day
-
-                  examples:
-                      ripsed rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
-                      ripsed "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh'
-
-                      rg "foobar-(.*)" -r "foo-\${1}" -g '!**.*sh' \\
-                          --color never --context 0 --line-number \\
-                          --max-columns 0 --no-column | ripsed"""
+    description = """@TODO"""
 
     parser = argparse.ArgumentParser(description=description)
 
@@ -102,7 +72,7 @@ def cli():
     # parser.add_argument("-f", "--any-flag", dest="any_flag",action="store_true", help="A flag")
     # parser.add_argument("-s", "--any-string", dest="any_string",type=str, default="default", help="A string")
     # parser.add_argument("-ss", "--any-strings", dest="any_strings", type=str, nargs="?", help="Multiple strings")
-    parser.add_argument("-rg-ap", "--rg-args-post", dest="rg_args_post", type=str, nargs="?", default=[], help="arguments passed to ripgrep (post)")
+    # parser.add_argument("-rg-ap", "--rg-args-post", dest="rg_args_post", type=str, nargs="*", default=[], help="arguments passed to ripgrep (post)")
 
     # parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
@@ -167,61 +137,65 @@ def main(args):
         # print(new_task)
 
     for affected_file in affected_files:
-        # skip riprep-*.yml plans
-        if "riprep-" in affected_file and \
-                (".yaml" in affected_file or
-                 ".yml" in affected_file):
-            continue
+        try:
+            # skip riprep-*.yml plans
+            if "riprep-" in affected_file and \
+                    (".yaml" in affected_file or
+                    ".yml" in affected_file):
+                continue
 
-        # reset tasks
-        for task in tasks:
-            task.reset()
+            # reset tasks
+            for task in tasks:
+                task.reset()
 
-        # collect replaces
-        replaces: List[Replacement] = []
-        with open(affected_file) as f:
-                for line_nr, raw_line in enumerate(f.readlines()):
+            # collect replaces
+            replaces: List[Replacement] = []
+            with open(affected_file) as f:
+                    for line_nr, raw_line in enumerate(f.readlines()):
 
-                    # determine indent string prefixed to the raw_line
-                    ii=0
-                    for c in raw_line:
-                        if c == " ":
-                            ii+=1
-                        else:
-                            break
-                    line_indent = raw_line[0:ii]
-                    line = raw_line[ii:]
-
-                    # print("+",line)
-                    for task in tasks:
-                        task_line = task.search[task.line_i]
-
-                        if not task.is_within_match and task_line == line:
-                            # print(line)
-                            task.is_within_match = True
-                            task.first_match_indent = line_indent
-                            task.line_start = line_nr
-
-                        if task.is_within_match:
-                            rel_line = raw_line[len(task.first_match_indent):]
-                            if task_line == rel_line:
-                                if task.lines_left == 1:
-                                    # done
-                                    replaces.append(Replacement(
-                                        search_line_count = len(task.search),
-                                        start_line = task.line_start,
-                                        content = [
-                                            task.first_match_indent+rl for rl in task.replace
-                                        ],
-                                    ))
-                                    for task in tasks:
-                                        task.reset()
-
-                                else:
-                                    task.advance()
+                        # determine indent string prefixed to the raw_line
+                        ii=0
+                        for c in raw_line:
+                            if c == " ":
+                                ii+=1
                             else:
-                                # reset
-                                task.reset()
+                                break
+                        line_indent = raw_line[0:ii]
+                        line = raw_line[ii:]
+
+                        # print("+",line)
+                        for task in tasks:
+                            task_line = task.search[task.line_i]
+
+                            if not task.is_within_match and task_line == line:
+                                # print(line)
+                                task.is_within_match = True
+                                task.first_match_indent = line_indent
+                                task.line_start = line_nr
+
+                            if task.is_within_match:
+                                rel_line = raw_line[len(task.first_match_indent):]
+                                if task_line == rel_line:
+                                    if task.lines_left == 1:
+                                        # done
+                                        replaces.append(Replacement(
+                                            search_line_count = len(task.search),
+                                            start_line = task.line_start,
+                                            content = [
+                                                task.first_match_indent+rl for rl in task.replace
+                                            ],
+                                        ))
+                                        for task in tasks:
+                                            task.reset()
+
+                                    else:
+                                        task.advance()
+                                else:
+                                    # reset
+                                    task.reset()
+        except Exception as e:
+            print(f"happened during {affected_file}")
+            raise e
 
         # @TODO assert that replaces dont overlap
 
