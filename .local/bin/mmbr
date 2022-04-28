@@ -47,6 +47,22 @@ if [[ -e "$mmbenv" ]]; then
         cleanups="file-changed -r \"$mmbenv\""
 
         lockfile="lock-$name.yml"
+        envpath=$MAMBA_ROOT_PREFIX/envs/$name
+
+        # for now we don't reuse any previous lockfile or environment by default
+        # so we actually remove all previous traces on a change
+        # @XXX if there's a name collision with some other env it will be
+        # removed completely and replaced
+        (
+        if [[ -e "$lockfile" ]]; then
+            echo "! rm $lockfile" >&2
+            rm "$lockfile"
+        fi
+        if [[ -d "$envpath" ]]; then
+            echo "! rm -rf $envpath" >&2
+            rm -rf "$envpath"
+        fi
+        )
 
         (
         set -x
@@ -61,6 +77,7 @@ if [[ -e "$mmbenv" ]]; then
         conda-lock install --micromamba --name "$name"
         mv "conda-lock.yml" "$lockfile"
         )
+        echo "! env: $name" >&2
 
         pass_no_args=1
         cleanups=""
