@@ -1,4 +1,11 @@
 #!/bin/bash
+# file-changed v0.1 (2022-05-02) (c7db8a10bebb3434)
+#
+# hashes the absolute path and contents of files you pass to it and stores in
+# your "~/.cache", if the exact hashes have been stored already returns 0, 1
+# otherwise
+#
+# passing -r|--reset clears the cached file states again
 set -eo pipefail
 
 usage() {
@@ -16,14 +23,14 @@ while :; do
             reset=1
             ;;
         --)
-            shift || usage
+            shift || usage 1
             break
             ;;
         -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
         *) break ;;
     esac
 
-    shift || usage
+    shift || usage 1
 done
 
 hash() { xxh128sum - | cut -d ' ' -f1; }
