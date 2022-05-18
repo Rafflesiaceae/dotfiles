@@ -43,6 +43,7 @@ args=(
     --delete 
     -e ssh 
     --out-format="%i %t %f"
+    --exclude=".syncy.json"
 )
 
 # append ignore patterns
