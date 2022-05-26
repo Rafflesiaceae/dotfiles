@@ -22,6 +22,15 @@ fi
 mmbenv=$1
 shift || die "pass an env, known envs:\n$(ls "$MAMBA_ROOT_PREFIX"/envs | sed 's/^/\t/')"
 
+force=
+case $mmbenv in
+    --force|-f)
+        force=1
+        mmbenv=$1
+        shift || die "pass an env, known envs:\n$(ls "$MAMBA_ROOT_PREFIX"/envs | sed 's/^/\t/')"
+        ;;
+esac
+
 while :; do
     case $1 in
         -h|-\?|--help)
@@ -42,7 +51,7 @@ pass_no_args=
 if [[ -e "$mmbenv" ]]; then 
     name=$(yq -r '.name' < "$mmbenv")
     echo "! env: $name" >&2
-    if file-changed "$mmbenv"; then
+    if file-changed "$mmbenv" || [[ "$force" ]]; then
         echo "! $mmbenv changed, rebuilding..." >&2
         cleanups="file-changed -r \"$mmbenv\""
 
@@ -66,7 +75,7 @@ if [[ -e "$mmbenv" ]]; then
 
         (
         set -x
-        conda-lock lock    --micromamba --lockfile "$lockfile" --file "$mmbenv"
+        conda-lock lock --micromamba --lockfile "$lockfile" --file "$mmbenv"
         # @XXX total joke, but conda-lock fails when passing a specific lockfile
         # path, so instead we move it to the default path :/
         if [[ -e "./conda-lock.yml" ]]; then
