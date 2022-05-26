@@ -144,6 +144,7 @@ sources = {
     "./.local/bin/syncy": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": { "linux": "" },
+    "./.local/bin/thu": { "linux": "" },
     "./.local/bin/thunar-kill-and-co": "",
     "./.local/bin/thuncb": "",
     "./.local/bin/tmux-oneshot": "",
