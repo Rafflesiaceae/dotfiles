@@ -679,11 +679,15 @@ autocmd FileType pascal setlocal commentstring=//\ %s
 au BufRead,BufNewFile *.gvy set filetype=groovy
 autocmd FileType groovy nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
 
+" nosh
+au BufRead,BufNewFile *.nosh set filetype=starlark
+au BufWritePre        *.nosh call s:AddExecutablebitPre()
+au BufWritePost       *.nosh call s:AddExecutablebitPost()
+
 augroup QuickFix
     " override :YcmComplete GoTo for QF
     au FileType qf nmap <buffer> <CR> <CR>
 augroup END
-
 " }}}
 
 " {{{ Custom Functions
