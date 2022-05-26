@@ -459,6 +459,11 @@ if __name__ == "__main__":
     main()
 EOF
             ;;
+        nosh) # {{{2
+            xicat "$1" <<'EOF'
+#!/usr/bin/env nosh
+EOF
+            ;;
     # }}}
     *)
     usage_and_die "ERROR: unknown ft-template $2"
