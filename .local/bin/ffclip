@@ -1,0 +1,57 @@
+#!/bin/bash
+set -eo pipefail
+
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+cleanups=()
+cleanup() {
+    bell
+    for cleanupScript in "${cleanups[@]}"; do
+        eval "$cleanupScript"
+    done
+}
+trap 'cleanup' EXIT
+
+
+inpf=$1
+shift || die "pass me an inpf"
+# @TODO fetch from cb
+from=$1
+shift || die "pass me an inpf"
+to=$1
+shift || die "pass me an inpf"
+
+
+inpf=$(realpath "$inpf")
+
+secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
+
+id="$( printf "%s:%s:%s" "$inpf" "$from" "$to" | secure_hashfn | cut -c -16 )"
+cutf=$HOME/tmp/cut_${id}.mp4
+
+
+if [[ ! -e "$cutf" ]]; then
+    cleanups+=("rm \"$cutf\"")
+    echo "                                                                          [[[[[[[[[[ ffcut  ]]]]]]]]]"
+    ( set -x;
+    ffcut "$inpf" "$from" "$to" "$cutf"
+    )
+    cleanups=()
+fi
+
+outf=$HOME/tmp/out_${id}.mp4
+if [[ ! -e "$outf" ]]; then
+    cleanups+=("rm \"$outf\"")
+    echo "                                                                          [[[[[[[[[[ ffsmoltwo  ]]]]]]]]]"
+    ( set -x;
+    ffsmoltwo "$cutf" "$outf"
+    )
+    cleanups=()
+fi
+
+[[ -e "ffmpeg2pass-0.log" ]]        && rm "ffmpeg2pass-0.log"
+[[ -e "ffmpeg2pass-0.log.mbtree" ]] && rm "ffmpeg2pass-0.log.mbtree"
+
+echo "$outf"
