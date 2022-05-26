@@ -1,3 +1,15 @@
 #!/bin/bash
-set -xeo pipefail
-bazel query "attr(visibility, \"//visibility:public\", ${1-//:*})"
+set -eo pipefail
+query=${1-//...:*}
+# bazel query "attr(visibility, \"//visibility:private\", ${1-//...:*})"
+
+# echo "      ↓↓↓ all"
+# (set -x; bazel query "$query")
+
+echo ""
+echo "      ↓↓↓ private"
+(set -x; bazel query "attr(visibility, \"//visibility:private\", \"$query\")")
+
+echo ""
+echo "      ↓↓↓ public"
+(set -x; bazel query "attr(visibility, \"//visibility:public\", \"$query\")")
