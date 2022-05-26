@@ -50,6 +50,152 @@ xicat() {
 # {{{1 single templates
 if [[ $# -eq 1 ]]; then 
     case "$1" in
+        bazel) # {{{2
+            icat "BUILD.bazel" <<'EOF'
+package(default_visibility = ["//visibility:public"])
+# load("@rules_idtech3//:index.bzl", "idtech3_make_pk3")
+load("@rules_pkg//:pkg.bzl", "pkg_zip")
+
+
+filegroup(
+    name = "obj-runfiles",
+    srcs = [
+        "convert-blend-to-obj.py",
+    ],
+)
+
+sh_binary(
+    name = "convert-blend",
+    srcs = ["convert-blend-to-obj.sh"],
+    data = [
+        "convert-blend-to-obj.py",
+    ],
+)
+EOF
+
+            icat "WORKSPACE.bazel" <<'EOF'
+workspace(name = "rules_SOME")
+
+# local_repository(
+#     name = "rules_idtech3",
+#     path = "/home/USER/workspace/rules_SOME",
+# )
+
+# rules_pkg {{{
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "rules_pkg",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+        "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
+    ],
+    sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
+)
+load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies", "rules_pkg_register_toolchains")
+rules_pkg_dependencies()
+rules_pkg_register_toolchains()
+EOF
+
+            icat "index.bzl" <<'EOF'
+load("@rules_pkg//:pkg.bzl", "pkg_zip")
+
+def zipit(name, package_variables):
+    pkg_zip(
+        name = name,
+        package_variables = package_variables,
+    )
+
+
+def _some_rule(ctx):
+    cfg = ctx.attr.cfg[Idtech3ConfigProvider]
+
+    # @TODO support multiple inputs
+    input_file = ctx.attr.input.files.to_list()[0]
+    texture_name = input_file.basename.rsplit(".", 1)[0]
+    output_file = ctx.actions.declare_file(
+        "textures/{}.{}".format(texture_name, ctx.attr.output_format)
+    )
+
+    jailbreak = ctx.attr._jailbreak.files.to_list()[0]
+
+    args = ctx.actions.args()
+    args.add_all(["magick", "convert", input_file])
+
+    resize = ctx.attr.modifiers.get("resize","100%")
+    if resize != "100%":
+        args.add("-resize", resize)
+
+    if ctx.attr.output_format == "jpg":
+        args.add_all([
+            "-quality", ctx.attr.modifiers.get("jpg_quality","100%"),
+            "-interlace", "none", # non-progressive
+        ])
+
+    args.add(output_file)
+
+    ctx.actions.run_shell(
+        # executable = jailbreak,
+        inputs = [input_file],
+        outputs = [output_file],
+        arguments = [],
+        # tools = runfiles.files,
+        command = "cat {} > {}".format(input_file.path, output_file.path),
+        execution_requirements = { "no-sandbox": "1" },
+    )
+
+    return [
+        DefaultInfo(
+            files = depset([output_file]),
+            # runfiles = ctx.runfiles(files = ctx.attr._jailbreak[DefaultInfo].default_runfiles.files.to_list()),
+            # runfiles = ctx.runfiles(files = ctx.attr._jailbreak[DefaultInfo].files.to_list()),
+        ), 
+        Idtech3ConfigProvider(
+            imagemagick_path = cfg.imagemagick_path,
+        ),
+    ]
+
+some_rule = rule(
+    implementation = _some_rule,
+    doc = "Some rule",
+    attrs = {
+        "input": attr.label(
+            doc = "Input file",
+            allow_single_file = True,
+            providers = [Idtech3ConfigProvider],
+            mandatory = True,
+        ),
+        "output_format": attr.string(
+            default = "jpg",
+            values = ["jpg", "tga"],
+        ),
+        "modifiers": attr.string_dict(),
+        "_jailbreak": attr.label(
+            default = "@rules_idtech3//tools:jailbreak",
+            executable = True,
+            cfg = "exec",
+        ),
+    },
+)
+
+EOF
+        ;;
+
+        conda-env|conda-lock) # {{{2
+            icat "environment.yml" <<'EOF'
+name: MYPKG
+channels:
+  - nodefaults
+  - conda-forge
+platforms:
+  - linux-64
+dependencies:
+  - python=3.7
+  - gcc>=10.0.0,<=11.0.0
+  - pip:
+    - requests==2.27.1
+EOF
+        ;;
+
         .editorconfig|editorconfig) # {{{2
             icat ".editorconfig" <<'EOF'
 [*]
