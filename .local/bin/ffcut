@@ -1,7 +1,7 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
-echo $*
+default_outf=cut_$(date +%s).mp4
 
 src=$1
 shift
@@ -9,6 +9,8 @@ from=$1
 shift
 to=$1
 shift
+outf=${1:-$default_outf}
+shift || true
 
 args=(
 	-i "$src"
@@ -26,7 +28,9 @@ args=(
 	-ss "$from"
 	-to "$to"
 
-	-y "cut_$(date +%s).mp4"
+    -hide_banner
+
+	-y "$outf"
 )
 
 (set -x;
