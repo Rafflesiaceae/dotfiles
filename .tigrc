@@ -13,6 +13,16 @@ set tab-size = 4
 set ignore-case = true
 
 # Keybindings
+# 
+#   !   Run the command in the foreground with output shown.
+#   @   Run the command in the background with no output.
+#   +   Run the command synchronously, and echo the first line
+#       of output to the status bar.
+#   ?   Prompt the user before executing the command.
+#   <   Exit Tig after executing the command.
+#   >   Re-open Tig instantly in the last displayed view after
+#       executing the command.
+#
 bind generic h scroll-left
 bind generic l scroll-right
 
@@ -43,7 +53,7 @@ bind main A >git commit --amend
 bind generic <F8> >git-debug-commitpush
 
 bind main c !?git checkout %(commit)
-bind main p ?git push
+bind main p ?"echo 'branch: %(branch)'; git push"
 bind main P ?git cherry-pick %(commit)
 bind generic T !@sh -c "git-stage-all-unstaged-changes"
 bind main  I !@sh -c "git-stage-all-unstaged-changes"
@@ -52,6 +62,7 @@ bind stage I !@sh -c "git-stage-all-unstaged-changes"
 bind status D !@?rm %(file)
 bind stage U @!git stage %(file)
 
+bind refs 1 @?git tag -d %(tag)
 bind refs D !?git push %(remote) --delete %(branch)
 bind refs C !?git checkout -b %(tag) %(tag)
 bind refs c !?git checkout -b %(tag) %(tag)
