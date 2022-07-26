@@ -1,0 +1,18 @@
+#!/bin/bash
+# set -eo pipefail
+
+last=
+while true; do
+    sleep 0.01
+
+    now=$(cb -o | tr -d '\0')
+    if [[ -z "$now" ]]; then
+        continue
+    fi
+    if [[ ${#now} -lt 512 ]]; then
+        if [[ "$now" != "$last" ]]; then
+            echo "$now"
+        fi
+        last=$now
+    fi
+done
