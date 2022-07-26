@@ -37,6 +37,7 @@ rg_preargs=(
 rg_postargs=()
 rg_moresearches=()
 
+no_editor=
 search_phrase=
 for arg in "$@"; do
     case $arg in
@@ -46,6 +47,9 @@ for arg in "$@"; do
             ;;
         --debug)
             set -x
+            ;;
+        --no-editor)
+            no_editor=1
             ;;
         --)
             from_pre_to_post=1
@@ -72,4 +76,8 @@ done
 # set -x
 echo "$search_phrase" >/tmp/agt-query
 rg "$search_phrase" "${rg_preargs[@]}" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt || die "no matches"
-vi /tmp/agt
+if [[ ! $no_editor ]]; then
+    vi /tmp/agt
+else
+    echo "/tmp/agt"
+fi
