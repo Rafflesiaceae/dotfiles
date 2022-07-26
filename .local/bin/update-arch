@@ -63,7 +63,6 @@ pushd "$HOME/.vim/plugged/YouCompleteMe"
 ./install.py \
     --clangd-completer \
     --go-completer \
-    --java-completer \
     --rust-completer \
     --ts-completer
 npm i --global vscode-json-languageserver # json
