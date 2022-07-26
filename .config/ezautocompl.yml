@@ -721,6 +721,10 @@ main (.golang): |
     }
 
 # groovy {{{1
+print to stderr (.groovy .java): System.err.println(MSG)
+read a file (.groovy): |
+    def text = new File("SOMEFILE").getText()
+
 new custom exception (.groovy): |
     public class MyCustomException extends Exception { MyCustomException(String msg){super(msg)} }
 
@@ -772,6 +776,10 @@ converter (.nim): |
     converter toBool(x: int): bool = x != 0
 
 # python {{{1
+
+cd/change dir to script parent location path (.python): |
+    # cd to parent dir of current script
+    os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
 require minimum python version (.python): |
     import sys
@@ -933,7 +941,7 @@ write to file (.python): |
 if regex matches (.python): |
     if re.search(r"chromium", wincmdline, flags=re.IGNORECASE):
 
-for key val in dict (.python): |
+for key value/entries in dict (.python): |
     for k, v in DICT.items():
         pass
 
@@ -965,6 +973,7 @@ print to stderr (.python): |
 read stdin (.python): contents = sys.stdin.read()
 
 get args (.python): |
+    args = sys.argv[1:]
     print(sys.argv)
 
 read a file (.python): |
@@ -1534,7 +1543,8 @@ on/trap error (.bash): |
     }
     trap 'on_error' ERR
 
-date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T
+date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T\ +%Z
+
 date-short-time (.cmd .sh .bash): date +%T
 date-posix (.cmd .sh .bash): date +%s
 date-posix with days/offset (.cmd .sh .bash): date -d "2 days ago" +%s
@@ -1643,6 +1653,11 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # various {{{1
+date-alphabetical-sort (.run):
+    cmd: bash
+    stdin: date +%Y.%m.%d\ %T\ +%Z | head -c -1
+
+vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.cpp .vim .various): // [RUN] bear -- clang++ $(pkg-config --cflags --libs libpcrecpp jsoncpp) "%" -o "%.out"
 
