@@ -52,7 +52,7 @@ class Task:
 
 
 def ensure_newline_at_end_of_string(s):
-    if s[:-1] != ["\n"]:
+    if s[-1] != "\n":
         return s + "\n"
     return s
 
@@ -72,7 +72,7 @@ def cli():
     # parser.add_argument("-f", "--any-flag", dest="any_flag",action="store_true", help="A flag")
     # parser.add_argument("-s", "--any-string", dest="any_string",type=str, default="default", help="A string")
     # parser.add_argument("-ss", "--any-strings", dest="any_strings", type=str, nargs="?", help="Multiple strings")
-    # parser.add_argument("-rg-ap", "--rg-args-post", dest="rg_args_post", type=str, nargs="*", default=[], help="arguments passed to ripgrep (post)")
+    parser.add_argument("-rg-ap", "--rg-args-post", dest="rg_args_post", type=str, nargs="*", default=[], help="arguments passed to ripgrep (post)")
 
     # parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
 
@@ -168,7 +168,6 @@ def main(args):
                             task_line = task.search[task.line_i]
 
                             if not task.is_within_match and task_line == line:
-                                # print(line)
                                 task.is_within_match = True
                                 task.first_match_indent = line_indent
                                 task.line_start = line_nr
