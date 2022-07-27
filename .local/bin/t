@@ -57,6 +57,14 @@ package(default_visibility = ["//visibility:public"])
 load("@rules_pkg//:pkg.bzl", "pkg_zip")
 
 
+genrule(
+    name = "foo",
+    srcs = ["foo.in"],
+    outs = ["foo.out"],
+    cmd = "./$(location build-foo.sh) $(SRCS) $@ > \"$@\"",
+    tools = ["build-foo.sh"],
+)
+
 filegroup(
     name = "obj-runfiles",
     srcs = [
