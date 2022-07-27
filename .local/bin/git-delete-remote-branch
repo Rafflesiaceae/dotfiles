@@ -17,8 +17,10 @@ prompt_continue() {
     printf "\n"
 }
 
-[[ $# -ne 1 ]] && die "pass me a branch"
+[[ $# -lt 1 ]] && die "pass me a branch"
 
 echo $ git push origin --delete "$1"
-prompt_continue
+if [[ "$2" != "-f" ]]; then
+    prompt_continue
+fi
 git push origin --delete "$1"
