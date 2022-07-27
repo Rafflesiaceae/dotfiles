@@ -75,7 +75,14 @@ done
 
 # set -x
 echo "$search_phrase" >/tmp/agt-query
-rg "$search_phrase" "${rg_preargs[@]}" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt || die "no matches"
+rg "$search_phrase" "${rg_preargs[@]}" "${rg_moresearches[@]}" --no-ignore --line-number --ignore-case "${rg_postargs[@]}" >/tmp/agt
+
+# e.g. exit code for being unable to traverse certain paths will be 2
+if [[ $? -eq 1 ]]; then
+    die "no matches"
+fi
+
+
 if [[ ! $no_editor ]]; then
     vi /tmp/agt
 else
