@@ -4,6 +4,8 @@ include=./config_user
 # https://mpv.io/manual/master/#properties
 # https://mpv.io/manual/master/#list-of-events
 
+audio-channels=stereo
+
 # e.g.:
 hwdec=auto
 sws-scaler=spline  # best software-scaler, won't get used if we use hwdec
