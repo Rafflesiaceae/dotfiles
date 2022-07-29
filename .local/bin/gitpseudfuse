@@ -113,7 +113,7 @@ watch_and_autocommit() {
             rm "${tmpfile}_tmp"
             # cat "$tmpfile"
             cat "$tmpfile" \
-                | entr -pds "\"$ego\" \"--autocommit\" \"$in\" \"$out\""
+                | entr -pdds "\"$ego\" \"--autocommit\" \"$in\" \"$out\""
         done
         popd >/dev/null || die "couldn't pop out from $1, wait what"
     } &
