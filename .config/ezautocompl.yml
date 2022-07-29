@@ -1464,6 +1464,13 @@ create temporary file (.sh .bash): |
     }
     trap 'cleanup_tmpfile' EXIT
 
+create temporary directory (.sh .bash): |
+    tmpdir=$(mktemp -d)
+    cleanup_tmpdir() {
+        rm -rf "$tmpdir"
+    }
+    trap 'cleanup_tmpdir' EXIT
+
 get parent directory of path (.sh .bash): parent=$(dirname "$file")
 
 check if dir exists (.sh .bash): |
