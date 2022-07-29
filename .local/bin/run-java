@@ -1,0 +1,51 @@
+#!/bin/bash
+# run-java v0.1 (2022-07-29) (d849971cb9864bd0)
+# runs a single .java file in an isolated classpath
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+[[ "$#" -lt 1 ]] && die "usage: <srcfile> [args...]"
+
+
+get_active_java_version() {
+    local result
+    local jvm_dir=/usr/lib/jvm
+    local default_name=default
+    local default_path=${jvm_dir}/${default_name}
+
+    path=$(readlink -e ${default_path})
+    if [ "x${path}" != "x/dev/null" ]; then
+        result="${path/${jvm_dir}\/}" # strip jvm_dir prefix
+        result="${result//[!0-9]/}"   # strip everything but digits
+    fi
+
+    [[ -n "$result" ]] || die "unknown version"
+    echo "$result"
+}
+
+active_java_version=$(get_active_java_version)
+export RUN_JAVA_JDK_VERSION="$active_java_version"
+
+
+# compile & run the .java source and passthrough cli args
+srcfile=$1
+shift
+if [[ "$active_java_version" -lt 11 ]]; then
+
+    tmpdir=$(mktemp -d)
+    cleanup_tmpdir() {
+        rm -rf "$tmpdir"
+    }
+    trap 'cleanup_tmpdir' EXIT
+
+    fnamewext=$(basename -- "$srcfile")
+    fname="${fnamewext%.*}"
+
+    javac -d "$tmpdir" "$srcfile"
+    java -cp "$tmpdir" "$fname" "$@"
+else
+    java "$srcfile" "$@"
+fi
