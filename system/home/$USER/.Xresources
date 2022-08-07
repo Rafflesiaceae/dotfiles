@@ -1,14 +1,15 @@
-! vi:syntax=xdefaults:commentstring=!\ %s:
-! [RUN] xrdb ~/.Xresources
+!! vi:syntax=xdefaults:commentstring=!\ %s:
+!! [RUN] xrdb ~/.Xresources
 
-!{{{1 XTerm
+!!{{{1 XTerm
 XTerm*termName: xterm-256color
 XTerm*locale: true
 XTerm*VT100.translations: #override <Btn1Up>: select-end(PRIMARY, CLIPBOARD, CUT_BUFFER0)
 XTerm*metaSendsEscape: true
 XTerm*font: "xft:Consolas:pixelsize=14"
 
-!{{{1 URxvt
+
+!!{{{1 URxvt
 URxvt.externalBorder: 0
 URxvt.fading: 0
 URxvt.font: xft:Consolas:size=11,xft:Fixed:size=11,xft:Nimbus Sans:size 11,xft:Symbola:size 11;xft:Meiryo:size 11
@@ -19,36 +20,51 @@ URxvt.saveLines: 5000
 URxvt.scrollBar: false
 URxvt.urgentOnBell: true
 
-URxvt.perl-ext-common: default,url-select,keyboard-select
+!! @INFO - 'matcher' doesnt support j/k movement and can cause slowdowns(?)
+!! @INFO - 'searchable-scrollback' doesnt support j/k movement
+! URxvt.perl-ext-common: bell-command,eval,readline,selection,url-select,keyboard-select,open-buffer-in-editor
+URxvt.perl-ext-common: bell-command,eval,readline,selection,url-select,keyboard-select,open-buffer-in-editor
 
-! plugin - url select
+!!{{{2 decent scroll behavior
+!! do not scroll with output
+URxvt*scrollTtyOutput: false
+
+!! scroll in relation to buffer (with mouse scroll or Shift+Page Up)
+URxvt*scrollWithBuffer: true
+
+!! scroll back to the bottom on keypress
+URxvt*scrollTtyKeypress: true
+
+!!{{{2 plugins
+!! plugin - url select
 URxvt.keysym.Mod4-Control-g: perl:url-select:select_next
 URxvt.url-select.launcher: /usr/bin/chromium
 URxvt.url-select.underline: true
 
-! plugin - search scrollback
+!! plugin - search scrollback
 URxvt.keysym.M-Escape: perl:keyboard-select:activate
 URxvt.keyboard-select.clipboard: true
 
-! bind <C-s-v> / <C-s-c>
-URxvt.keysym.Shift-Control-V: eval:paste_clipboard
-URxvt.keysym.Shift-Control-C: eval:selection_to_clipboard
+!! bind <C-s-v> / <C-s-c> / <C-s-j>
+URxvt.keysym.Control-Shift-C: eval:selection_to_clipboard
+URxvt.keysym.Control-Shift-V: eval:paste_clipboard
+URxvt.keysym.Control-Shift-J: perl:open-buffer-in-editor
 
-! print key prints to file
+!! print key prints to file
 URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
 
-!{{{1 XFT
+!!{{{1 XFT
 Xft.antialias:1
 Xft.autohint:0
-! Xft.dpi:98
+! Xft.dpi:144
+Xft.dpi:128
 Xft.hinting:1
 Xft.hintstyle:hintfull
 Xft.lcdfilter:lcddefault
 Xft.rgba:rgb
 
-!{{{1 Colors
-! Base16 Kokonai
-
+!!{{{1 Colors
+!! Base16 Kokonai
 #define base00 #272822
 #define base01 #383830
 #define base02 #49483e
@@ -88,8 +104,8 @@ Xft.rgba:rgb
 *.color14:      base0C
 *.color15:      base07
 
-! Note: colors beyond 15 might not be loaded (e.g., xterm, urxvt),
-! use 'shell' template to set these if necessary
+!! Note: colors beyond 15 might not be loaded (e.g., xterm, urxvt),
+!! use 'shell' template to set these if necessary
 *.color16:      base09
 *.color17:      base0F
 *.color18:      base01
