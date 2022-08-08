@@ -220,6 +220,14 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+override dependency to local one in go.mod (.golang): |
+    module github.com/pselle/foo
+
+    replace github.com/pselle/bar => /Users/pselle/Projects/bar
+
+    require (
+        github.com/pselle/bar v1.0.0
+    )
 int to string (.golang): strconv.Itoa(999)
 check if stdin is terminal/tty (.golang): |
     stat, _ := os.Stdin.Stat()
