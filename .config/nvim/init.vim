@@ -741,6 +741,13 @@ endfunction
 com! GetLink call s:GetLink()
 nmap <leader>gl :GetLink<CR>
 
+function! s:Path()
+    let pos = getcurpos()
+    echon system("raf-tools yamlpos \"".expand("%:p")."\" \"".pos[1]."\" \"".pos[2]."\"")
+endfunction
+com! Path call s:Path()
+nmap <leader>pq :Path<CR>
+
 function! CopyCurrentFullTag()
     let @+=tagbar#currenttag("%s", "", "f")
 endfunction
