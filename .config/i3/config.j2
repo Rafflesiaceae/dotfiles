@@ -221,12 +221,14 @@ for_window [class="Wine"] floating enable
 for_window [class="Xephyr"] floating enable
 for_window [class="snippicker"] floating enable
 for_window [title="^floating$"] floating enable
-for_window [title=".*-floating-.*"] floating enable
 for_window [title="File Operation Progress"] floating enable
 for_window [title="Firefox Preferences"] floating enable
 for_window [title="Thunderbird Preferences"] floating enable
 for_window [title="zenity"] floating enable
-for_window [title="zoom" window_type="_KDE_NET_WM_WINDOW_TYPE_OVERRIDE"] floating enable
+for_window [class="^zoom$" window_type="_KDE_NET_WM_WINDOW_TYPE_OVERRIDE"] floating enable
+for_window [class="^zoom$" title="^Zoom Meeting$"] floating disable
+for_window [class="^zoom$" title="^Zoom$"] floating disable
+for_window [class="^zoom$" title="^Zoom - Free Account$"] floating disable
 
 for_window [class="Calendar"] floating disable
 for_window [class="rdesktop"] floating disable
