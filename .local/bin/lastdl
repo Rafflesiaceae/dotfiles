@@ -9,12 +9,16 @@ usage() {
 
 cli_edit=
 cli_move=
+cli_sha=
 while :; do
     case $1 in
         -h|-\?|--help)
             usage; exit ;;
         -e|--edit)
             cli_edit=1
+            ;;
+        -sha|--sha)
+            cli_sha=1
             ;;
         -m|--move)
             cli_move=1
@@ -40,6 +44,8 @@ if [[ $cli_edit ]]; then
     "$EDITOR" "$latest"
 elif [[ $cli_move ]]; then
     ( set -x; mv "$latest" "$PWD" )
+elif [[ $cli_sha ]]; then
+    sha256sum "$(lastdl)"
 else
     echo "$latest"
 fi
