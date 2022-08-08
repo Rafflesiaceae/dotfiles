@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eo pipefail
+input=$(printf "%s" "$1" | base64 --decode)
+termpopup --fullterm "printf '%s' '$input' | sed 's/\\xef\\xbf\\xbf//g' | vim -"

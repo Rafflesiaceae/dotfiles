@@ -70,6 +70,7 @@ sources = {
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",
     "./.local/bin/edit-clipboard": "",
+    "./.local/bin/edit-from-base64-arg": "",
     "./.local/bin/ffclip": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
