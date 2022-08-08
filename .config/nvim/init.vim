@@ -167,6 +167,7 @@ let g:EditorConfig_max_line_indicator = "none"
 let g:ale_completion_enabled = 0
 let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
+let g:ale_linters_explicit = 1
 
 let g:ale_linters = {
 \   'python': [],
