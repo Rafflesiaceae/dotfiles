@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+[[ "$#" -ne 2 ]] && die "usage: <tag-name> <remote> (e.g.: v0.1.0 origin)"
+
+git tag "$1" || true
+git push "$2" "$1"
