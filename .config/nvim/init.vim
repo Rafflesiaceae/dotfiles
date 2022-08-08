@@ -1160,7 +1160,7 @@ Plug 'skywind3000/asyncrun.vim'
 
 Plug 'Valloric/YouCompleteMe'
 " Plug 'scrooloose/syntastic'
-Plug 'w0rp/ale'
+Plug 'dense-analysis/ale'
 " Plug 'dansomething/vim-eclim' ,{ 'for': ['java', 'php']}
 Plug 'majutsushi/tagbar'
 
