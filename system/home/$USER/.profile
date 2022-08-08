@@ -34,3 +34,6 @@ alias salt-minion=salt-minion --config-dir=\$HOME/.salt
 
 # MAKEFLAGS
 export MAKEFLAGS="$MAKEFLAGS -j 4"
+
+# ansible
+export ANSIBLE_NOCOWS=1
