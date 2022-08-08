@@ -246,7 +246,9 @@ def main():
             # request confirmation in the case that he output of a template has been changed, such changes will be lost and should be migrated to the actual template file
             # XXX I know this is a mess, just stick with it
 
-            if pathlib.exists(p.source_path_bk) and not filecmp.cmp(p.source_path, p.source_path_bk):
+            if pathlib.exists(p.source_path) and \
+                    pathlib.exists(p.source_path_bk) and \
+                    not filecmp.cmp(p.source_path, p.source_path_bk):
                 response_should_skip = False
                 while True:
                     response = input('"{}" has been changed since last invocation.\n(D)iscard changes/(S)kip file altogether/(V)iew differences (d/s/v) '.format(p.source_path))
