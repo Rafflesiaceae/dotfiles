@@ -1079,7 +1079,12 @@ com! Split call s:Split()
 " requires:
 "     skywind3000/asyncrun.vim
 func s:vuildSaveAndRun(cmd)
-    execute ":w"
+    if @% != ""
+        execute ":w"
+    else
+        execute ":w! /tmp/vuild.tmp"
+    endif
+
     execute ":AsyncRun -raw ".a:cmd
 endf
 
@@ -1133,6 +1138,10 @@ func! s:vuildRun()
         call s:vuildSaveAndRun("perl %")
     elseif filetype == "javascript"
         call s:vuildSaveAndRun("node %")
+    elseif filetype == "yaml"
+        call s:vuildSaveAndRun("yq . '%'")
+    elseif filetype == "json"
+        call s:vuildSaveAndRun("jq . '%'")
     else
         call s:vuildSaveAndRun("./%")
     endif
