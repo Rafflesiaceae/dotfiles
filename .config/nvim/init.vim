@@ -170,12 +170,13 @@ let g:ale_sign_warning = '⚠'
 let g:ale_linters_explicit = 1
 
 let g:ale_linters = {
-\   'python': [],
 \   'c': [],
 \   'cpp': [],
-\   'objc': [],
 \   'javascript': [],
 \   'markdown': [],
+\   'objc': [],
+\   'python': [],
+\   'sh': ['shellcheck'],
 \}
 
 " }}}
