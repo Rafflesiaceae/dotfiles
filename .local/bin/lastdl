@@ -17,7 +17,7 @@ while :; do
         -e|--edit)
             cli_edit=1
             ;;
-        -sha|--sha)
+        -c|-sha|--sha|--hash)
             cli_sha=1
             ;;
         -m|--move)
@@ -45,7 +45,15 @@ if [[ $cli_edit ]]; then
 elif [[ $cli_move ]]; then
     ( set -x; mv "$latest" "$PWD" )
 elif [[ $cli_sha ]]; then
-    sha256sum "$(lastdl)"
+    lastdl_path="$(lastdl)"
+    shasum() {
+        sum=$("$1" "$lastdl_path")
+        onlysum=$(printf "%s (%s)" "$sum" "$1" | awk '{ print $1 }')
+        printf "%s" "$onlysum" | cb -i
+        printf "%s ← copied to clibpoard (%s)\n" "$onlysum" "$1"
+    }
+    sha256sum "$lastdl_path"
+    shasum "sha512sum"
 else
     echo "$latest"
 fi
