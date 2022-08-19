@@ -1,16 +1,207 @@
 #!/bin/bash
+# what'suuuuuuuuuup
+# gitsup UPdates your Submodules (! WOW !)
+#
+# but it does so in a way that is *COOL*
+#
+# if you work inside of submodules, you'll probably create local branches inside
+# of the submodules, but when you do submodule update, then you are on a
+# detached HEAD :(
+#
+# but keep your own head on, because gitsup likes attached HEADs, rather then
+# detached HEADs, so it, like totally, first records if you are on a local
+# branch in each submodule, like, for real, and then it, no really, after
+# updating all the submodules, most definitely, puts your submodule back on a
+# local branch, determined by the following scheme:
+#
+# 1. if the commit-id matches the previously recorded local-branch,
+#    switch to it
+# 2. if the commit-id matches any other local branch, switch to that one
+# 3. if the commit-id matches a remote branch, check out that remote branch into
+#    a tracked local branch
+#
+# I'm sure by now you can't  →→ C U R B   Y O U R   E N T H U S I A S M ←←
+# so just give it a spin
 set -eo pipefail
-do_the_deed() { 
-    gitup
-    git subu
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
 }
-if [[ $# -gt 0 ]]; then
+
+trace_err() { ## print stack-traces on error
+    local line="${BASH_LINENO[0]}"
+    local src="${BASH_SOURCE[0]}"
+    echo "  ↑ from ${src}:${line} → $(sed "${line}q;d" "$src")"
+}; set -o errtrace; trap 'trace_err' ERR
+
+retry() {
+    :
+}
+
+secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
+nonsecure_hashfn() { local hash; hash=$(cksum -); printf "%s" "${hash%%\ *}"; }
+program_is_intalled() { command -v "$1" &>/dev/null; }
+get_remote_url() { git remote get-url origin; }
+
+cached=$HOME/.cache/gitsup
+[[ ! -d "$cached" ]] && { mkdir -p "$cached" || die "failed to create cached: $cached"; }
+
+## compose cache-file path by hashing the absolute path of every active submodule
+cache_file_of() { printf '%s/%s' "$cached" "$(printf "%s" "$1" | nonsecure_hashfn)"; }
+## update_submodules() { git submodule update --init --recursive --remote; }
+update_submodules() { git submodule update --init --recursive; }
+switch_branch() { [[ "$(git branch --show-current)" != "$1" ]] && git checkout --quiet "$1"; true; }
+## save absolute paths to all active submodules
+find_active_submodule_dirs() { git submodule--helper list | awk -v "top_level=$top_level" '{ print top_level "/" $4; }'; } #@XXX relies on undocumented internals
+
+restore_branch() {
+    submodule_full_path=$1
+    shift || die "pass restore_branch submodule_full_path"
+    previous_branch=$1
+    shift || die "pass previous_branch submodule_full_path"
+
+    submodule=${submodule_full_path##*/} ## rsplit("/", 1)
+
+    commitid="$(git rev-parse HEAD)"
+
+    ## first, try the previous branch
+    [[ -n "$previous_branch" ]] && {
+        [[ "$(git rev-parse "$previous_branch")" == "$commitid" ]] && {
+            switch_branch "$previous_branch"
+            return 0
+        }
+    }
+
+    ## second, look for another matching branch
+    local_branch=$(git for-each-ref --format='%(objectname)%09%(refname:short)' refs/heads/ | awk -v "commitid=$commitid" '$1 == commitid { print $2; exit; }' || true)
+    [[ -n "$local_branch" ]] && {
+        switch_branch "$local_branch"
+        return 0
+    }
+
+    ## lastly, create a new one
+    remote_branch_ref=$(git ls-remote --heads -- "$(get_remote_url)" | awk -v "commitid=$commitid" '$1 == commitid { print $2; exit; }' || true)
+    [[ -n "$remote_branch_ref" ]] && {
+        remote_branch=${remote_branch_ref#refs/heads/}
+        echo "> ($submodule) checkout  $remote_branch"
+        switch_branch "$remote_branch"
+        git pull --quiet --rebase
+        return 0
+    }
+
+    true
+}
+
+warn_about_obsolete_submodules() {
+    root_gitdir_modules=$(realpath "$(git rev-parse --git-dir)")/modules/
+
+    untracked_submodules=()
+    while read -r f; do
+        [[ ! -d "$f" ]] && continue
+
+        pushd "$f" >/dev/null
+
+        ## determine if this is a submodule of our root_gitdir
+        child_dir=$(pwd)
+        child_gitdir=$(git rev-parse --git-dir)
+        if [[ $child_gitdir == ${root_gitdir_modules}* ]]; then
+            untracked_submodules+=("$child_dir")
+        fi
+
+        popd >/dev/null 
+    done < <(git ls-files .  --others --directory)
+
+
+    [[ "${#untracked_submodules[@]}" == 0 ]] && return 0 ## already clean
+
+    echo "> WARNING Untracked submodules (outdated?) ↓↓"
+    for subm in "${untracked_submodules[@]}"; do
+        echo "${subm##*/}"
+    done
+    echo "> WARNING Untracked submodules (outdated?) ↑↑"
+
+    true
+}
+
+do_the_deed() { 
+    top_level="$(git rev-parse --show-toplevel 2>/dev/null)" || die "> not a git workspace"
+    cd "$top_level" || die "failed to cd to top_level: $top_level"
+
+    program_is_intalled "gitusers" && gitusers_active=$(gitusers -g || true)
+
+    program_is_intalled "gitup" && gitup ## optionally run 'gitup' if installed
+
+    active_submodule_dirs=$(find_active_submodule_dirs)
+
+    has_submodules=
+    [[ -n $active_submodule_dirs ]] && has_submodules=1
+
+    { ## record last active branch
+        while IFS= read -r submodule_full_path; do
+            cachef=$(cache_file_of "$submodule_full_path")
+
+            ## find current branch (if any)
+            cd "$submodule_full_path" || die "failed to switch to submodule_full_path: $submodule_full_path"
+            current_branch=$(git branch --show-current)
+
+            [[ -n "$current_branch" ]] && printf "%s\n" "$current_branch" > "$cachef"
+        done <<< "$active_submodule_dirs"
+
+        cd "$top_level" || die "failed to switch back to top_level: $top_level"
+    }
+
+    if [[ $has_submodules ]]; then
+        printf "> updating submodules..."
+        status=$(update_submodules)
+        if [[ -n "$status" ]]; then
+            printf "\n%s\n> updating submodules done\n" "$status"
+        else
+            printf " done\n"
+        fi
+
+        active_submodule_dirs=$(find_active_submodule_dirs)
+
+        printf "> checking out submodules..."
+        { ## restore active branch et. al.
+            while IFS= read -r submodule_full_path; do
+                cachef=$(cache_file_of "$submodule_full_path")
+
+                previous_branch=
+                [[ -e "$cachef" ]] && previous_branch=$(cat "$cachef")
+
+                cd "$submodule_full_path" || die "failed to switch to submodule_full_path: $submodule_full_path"
+
+                ## optionally run 'gitusers' if installed
+                [[ -n "$gitusers_active" ]] && {
+                    gitusers "$gitusers_active"
+                }
+
+                restore_branch "$submodule_full_path" "$previous_branch"
+            done <<< "$active_submodule_dirs"
+
+            cd "$top_level" || die "failed to switch back to top_level: $top_level"
+        }
+        printf "done\n"
+
+        warn_about_obsolete_submodules
+    fi
+
+    exit 0
+} 
+
+## "main"
+if [[ $# -gt 0 ]]; then # @TODO remove this?
+    ## remember our current branch
     current_branch_full=$(git symbolic-ref HEAD)
     current_branch=${current_branch_full#"refs/heads/"}
+
+    ## update submodules for all the beautiful branches
     for arg in "$@"; do
         git co "$arg"
         do_the_deed
     done
+
+    ## switch back to og branch
     git co "$current_branch"
 else
     do_the_deed
