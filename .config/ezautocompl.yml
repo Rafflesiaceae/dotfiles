@@ -31,7 +31,7 @@ resolve a dns/domain (.cmd): dig +short lwn.net
 
 dont prompt for password for ssh call (.cmd .ssh): -o PasswordAuthentication=no
 
-xargs for each line (.cmd .xargs): xargs -L 1
+xargs for each line (.cmd .xargs): xargs -rL 1
 xargs for each line w args (.cmd .xargs): xargs -I '{}' echo "{}"
 
 get current branch (.git .cmd): |
@@ -220,7 +220,7 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
-override dependency to local one in go.mod (.golang): |
+replace/override dependency to local one in go.mod (.golang): |
     module github.com/pselle/foo
 
     replace github.com/pselle/bar => /Users/pselle/Projects/bar
@@ -1215,6 +1215,8 @@ build args via array (.bash): |
     myfunc "${args[@]}"
 
 remove/delete last characters (.sh .bash): '"${var::-3}"'
+nonsecure hash function (.sh .bash): |
+    nonsecure_hashfn() { local hash; hash=$(cksum -); printf "%s" "${hash%%\ *}"; }
 secure hash function (.sh .bash): |
     secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
 swap stdout/stderr (.sh .bash): 3>&1 1>&2 2>&3
