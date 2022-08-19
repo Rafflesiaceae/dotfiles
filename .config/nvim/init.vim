@@ -530,6 +530,8 @@ nmap <leader>gr <Plug>(grammarous-open-info-window)
 nmap <leader>grn <Plug>(grammarous-move-to-next-error)
 nmap <leader>grp <Plug>(grammarous-move-to-previous-error)
 
+" autocmd BufRead /tmp/agt call search(readfile("/tmp/agt-query")[0])
+
 " automatically hightlight the agt-query when reading agt results
 autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys("/\<CR>")
 
@@ -950,7 +952,7 @@ function! s:AttemptToCdToGitDir()
 
     " if file startswith /tmp/agt → disable
     let agtprefix="/tmp/agt"
-    if expand("%")[0:len(agtprefix)-1] ==# agtprefix
+    if (expand("%")[0:len(agtprefix)-1] ==# agtprefix) || (expand("%") ==# "")
         let s:__attempt_cd_git_cache = 1
         return
     endif
@@ -970,7 +972,7 @@ function! s:AttemptToCdToGitDir()
         exe 'cd' cgd
     endif
 endfunction
-autocmd BufReadPost,BufNewFile * call s:AttemptToCdToGitDir()
+autocmd BufReadPost,BufNewFile,StdinReadPost * call s:AttemptToCdToGitDir()
 
 function! s:ToggleCD()
     let cwd = getcwd()
