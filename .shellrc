@@ -49,7 +49,7 @@ alias    ~='sed'
 alias   z@='zcat'
 
 if [[ $is_linux ]] || [[ $is_macos ]]; then
-    alias dmesg='dmesg --color always --time-format ctime'
+    alias dmesg='dmesg -H'
     alias rn="ranger"
 
     if [[ $is_linux ]]; then
