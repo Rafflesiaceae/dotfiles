@@ -9,13 +9,13 @@ usage() {
     echo "usage: [-l|--list]"
     exit 1
 }
-usage_and_die() {
-    printf '%s\n' "$1" >&2
-    usage
-}
+
+profiles=(
+)
+exit_wm() { i3-msg exit; }
 
 list() {
-    echo "supported profiles: [ main, ims, home ]"
+    echo "supported profiles: [ ${profiles[*]} ]"
     exit 0
 }
 
@@ -23,11 +23,6 @@ while :; do
     case $1 in
         -h|-\?|--help)
             usage; exit ;;
-        # -f|--file)
-            # [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
-            # file=$2
-            # shift || usage
-            # ;;
         -l|--list)
             list
             ;;
@@ -42,17 +37,14 @@ while :; do
     shift || usage
 done
 
-profiles=(
-    "main"
-    "ims"
-    "home"
-)
 
 profile=$1
 shift || list
 
+# `~/.xrandr.restart` needs to be sourced by your `~/.xprofile` if it exists
 set_restart_autorandr_profile() { echo "autorandr --change \"$1\"" > "$HOME/.xrandr.restart"; }
 get_dpi() { cat "$HOME/.Xresources" | sed -n "s/Xft\.dpi:\s*//p"; }
+set_dpi() { sed -i "s/Xft.dpi:.*/Xft.dpi:$1/" "$HOME/.Xresources"; }
 set_dpi_and_xrandr() { 
     dpi=$1
     shift || die "pass me dpi"
@@ -61,9 +53,9 @@ set_dpi_and_xrandr() {
     refresh-keyboard || true
     if [[ "$(get_dpi)" != "$dpi" ]]; then
         echo "setting dpi to $dpi";
-        sed -i "s/Xft.dpi:.*/Xft.dpi:$dpi/" "$HOME/.Xresources"; 
+        set_dpi "$dpi"
         set_restart_autorandr_profile "$autorandr_profile"
-        i3-msg exit
+        exit_wm
     else
         autorandr --change "$autorandr_profile"
     fi
