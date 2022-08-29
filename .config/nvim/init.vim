@@ -470,6 +470,7 @@ nnoremap <leader>m :buffers<CR>:buffer<Space>
 
 noremap <leader>gt :OpenTig<CR>
 noremap <leader>! :OpenTig<CR>
+noremap <leader>" :OpenTig expand("%:p")<CR>
 noremap <leader>C :OpenTerminal<CR>
 noremap <leader>T :OpenTerminal<CR>
 noremap <leader>gc :Git commit<CR>
@@ -719,14 +720,18 @@ endfunction
 com! Verify call s:Verify()
 nmap <leader>vv :Verify<CR>
 
-function! s:OpenTig()
+function! s:OpenTig(...)
     " @TODO show/use .git - dir instead of parent dir of file
     let pdir = expand('%:p:h')
     let toplevel = system('git-show-toplevel-name '.pdir)
     echom "OpenTig ".toplevel
-    silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c tig &"
+    if exists("a:1")
+        silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c 'tig \"" . a:1 . "\"' &"
+    else
+        silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c tig &"
+    endif
 endfunction
-com! OpenTig call s:OpenTig()
+com! -nargs=* OpenTig call s:OpenTig(<args>)
 
 function! s:OpenTerminal()
     " @TODO show/use .git - dir instead of parent dir of file
