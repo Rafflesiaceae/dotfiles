@@ -185,24 +185,22 @@ do_the_deed() {
 
         warn_about_obsolete_submodules
     fi
-
-    exit 0
 } 
 
 ## "main"
 if [[ $# -gt 0 ]]; then # @TODO remove this?
     ## remember our current branch
-    current_branch_full=$(git symbolic-ref HEAD)
-    current_branch=${current_branch_full#"refs/heads/"}
+    start_branch_full=$(git symbolic-ref HEAD)
+    start_branch=${start_branch_full#"refs/heads/"}
 
     ## update submodules for all the beautiful branches
     for arg in "$@"; do
-        git co "$arg"
+        git checkout --quiet "$arg"
         do_the_deed
     done
 
     ## switch back to og branch
-    git co "$current_branch"
+    git checkout --quiet "$start_branch"
 else
     do_the_deed
 fi
