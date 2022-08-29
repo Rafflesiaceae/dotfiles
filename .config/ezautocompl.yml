@@ -220,6 +220,11 @@ print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
 
 # golang {{{1
+check/test if application/program/command exists/is installed (.golang): |
+    path, err := exec.LookPath("PROG")
+    if err != nil {
+        panic(err)
+    }
 replace/override dependency to local one in go.mod (.golang): |
     module github.com/pselle/foo
 
@@ -729,6 +734,13 @@ main (.golang): |
     }
 
 # groovy {{{1
+for key value/entries in map (.groovy): |
+    [foo:90, bar:80].each{ key, val -> println("${key}: ${val}") }
+    [foo:90, bar:80].eachWithIndex{ entry, index -> println("${entry.key}: ${entry.value} ($index)") }
+
+    for (entry in [foo:90, bar:80]) {
+        println("$entry.key: $entry.value")
+    }
 print to stderr (.groovy .java): System.err.println(MSG)
 read a file (.groovy): |
     def text = new File("SOMEFILE").getText()
@@ -1186,6 +1198,8 @@ back/stacktrace an error (.bash): |
     }; set -o errtrace; trap 'trace_err' ERR
 read output into array (.bash):
     readarray -t VAR < <(CMD)
+read file into variable (.bash):
+    VAR=$(<FILE)
 if output contains/has line (.cmd .sh .bash): |
     if grep -q "SOMELINE" "SOMEFILE"; then
         echo "FOUND"
@@ -1611,7 +1625,7 @@ cli, parseargs argument parsing cli (.sh .bash): |
     while :; do
         case $1 in
             -h|-\?|--help)
-                usage; exit ;;
+                usage 0 ;;
             -f|--file)
                 [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
                 file=$2
