@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# jinja2 v0.1 (2022-08-31) (25fa18d040c7ae7c)
+# jinja2 v0.2 (2022-08-31) (3c1755995a5e109)
 # 
 # Uses jinja2 to template some contents according to some data given as
 # yaml and prints the result.
@@ -13,12 +13,17 @@ import yaml
 
 def read_resolve(thing):
     if thing == "-":
-        return sys.stdin.read().decode()
+        return sys.stdin.read()
     elif os.path.isfile(thing):
-        with open(thing) as f:
-            return f.read().decode()
+        with open(thing, "r") as f:
+            return f.read()
     else:
+        if thing.startswith('&') and len(thing) > 1 and thing[1:].isnumeric(): # fds
+            fd = int(thing[1:])
+            with os.fdopen(fd, "r") as f:
+                return f.read()
         return thing
+
 
 def main(args):
     template = read_resolve(args.template)
@@ -33,10 +38,10 @@ def main(args):
     print(template.render(**data))
 
 def cli():
-    parser = argparse.ArgumentParser(description="Uses jinja2 to template some contents according to some data given as yaml and prints the result.")
+    parser = argparse.ArgumentParser(description="Uses jinja2 to template some contents according to some data given as YAML and prints the result.")
 
-    parser.add_argument("template", metavar="template", type=str, help="Contents to template, either '-' for stdin, a path to a file to read, or the contents itself.")
-    parser.add_argument("data", metavar="data", type=str, help="Data to use during templating encoded as a YAML dict, either '-' for stdin, a path to a file to read, or the contents itself.")
+    parser.add_argument("template", metavar="template", type=str, help="Contents to template, either '-' for stdin, '&8' to read from fd 8, a path to a file to read, or the contents itself.")
+    parser.add_argument("data", metavar="data", type=str, help="Data to use during templating encoded as a YAML dict, either '-' for stdin, '&8' to read from fd 8, a path to a file to read, or the contents itself.")
     parser.add_argument("-e", "--inject-env", dest="inject_env", action="store_true", help="Injects the current ENV vars into 'data' to use during templating.")
 
     args = parser.parse_args(sys.argv[1:])
