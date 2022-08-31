@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# jinja2 v0.2 (2022-08-31) (3c1755995a5e109)
+# jinja2 v0.3 (2022-08-31) (865d4504f037b17f)
 # 
 # Uses jinja2 to template some contents according to some data given as
 # yaml and prints the result.
@@ -28,7 +28,7 @@ def read_resolve(thing):
 def main(args):
     template = read_resolve(args.template)
     data = read_resolve(args.data)
-    data = yaml.safe_load(data)
+    data = yaml.safe_load(data) if data != "" else {}
 
     if args.inject_env:
         data = { **os.environ, **data }
