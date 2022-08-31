@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+# jinja2 v0.1 (2022-08-31) (25fa18d040c7ae7c)
+# 
+# Uses jinja2 to template some contents according to some data given as
+# yaml and prints the result.
+# 
+# Requires: python-jinja2 python-yaml
+import argparse
+import jinja2
+import os
+import sys
+import yaml
+
+def read_resolve(thing):
+    if thing == "-":
+        return sys.stdin.read().decode()
+    elif os.path.isfile(thing):
+        with open(thing) as f:
+            return f.read().decode()
+    else:
+        return thing
+
+def main(args):
+    template = read_resolve(args.template)
+    data = read_resolve(args.data)
+    data = yaml.safe_load(data)
+
+    if args.inject_env:
+        data = { **os.environ, **data }
+
+    environment = jinja2.Environment()
+    template = environment.from_string(template)
+    print(template.render(**data))
+
+def cli():
+    parser = argparse.ArgumentParser(description="Uses jinja2 to template some contents according to some data given as yaml and prints the result.")
+
+    parser.add_argument("template", metavar="template", type=str, help="Contents to template, either '-' for stdin, a path to a file to read, or the contents itself.")
+    parser.add_argument("data", metavar="data", type=str, help="Data to use during templating encoded as a YAML dict, either '-' for stdin, a path to a file to read, or the contents itself.")
+    parser.add_argument("-e", "--inject-env", dest="inject_env", action="store_true", help="Injects the current ENV vars into 'data' to use during templating.")
+
+    args = parser.parse_args(sys.argv[1:])
+    main(args)
+
+if __name__ == "__main__":
+    cli()
