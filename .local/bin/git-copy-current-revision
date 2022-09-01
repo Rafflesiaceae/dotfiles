@@ -1,0 +1,4 @@
+#!/bin/sh
+rev=$(git rev-parse HEAD)
+echo "$rev"
+printf "%s" "$rev" | cb
