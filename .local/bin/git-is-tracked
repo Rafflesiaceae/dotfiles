@@ -1,3 +1,27 @@
 #!/bin/bash
 set -eo pipefail
-git ls-files --error-unmatch "$@" >/dev/null 2>/dev/null
+
+is_tracked() { [[ -e "$1" ]] && git ls-files --error-unmatch "$1" >/dev/null 2>/dev/null; }
+
+if [[ $# -lt 1 ]]; then
+    exit 1
+elif [[ $# -eq 1 ]]; then
+    is_tracked "$1"
+elif [[ $# -gt 1 ]]; then
+    if [[ "$1" == "--" ]]; then # don't list files if args start with --
+        shift
+        is_tracked "$@"
+    else # print a pretty list otherwise
+        failing=
+        for file in "$@" ; do
+            if is_tracked "$file"; then
+                printf "✓ "
+            else
+                printf "✗ "
+            fi
+            printf "%s\n" "$file" 
+        done
+        [[ $failing ]] && exit 1
+    fi
+fi
+
