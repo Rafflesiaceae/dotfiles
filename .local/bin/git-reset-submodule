@@ -1,0 +1,10 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+[[ -d "$1" ]] || "$1 is not a dir"
+rm -rf "$1"
+git restore -s@ -SW  -- "$1"

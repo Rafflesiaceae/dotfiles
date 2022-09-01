@@ -91,6 +91,7 @@ sources = {
     "./.local/bin/git-list-changed-files-in-commit": "",
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
+    "./.local/bin/git-reset-submodule": "",
     "./.local/bin/git-search-all-branches": "",
     "./.local/bin/git-show-toplevel-name": "",
     "./.local/bin/git-stage-all-unstaged-changes": "",
