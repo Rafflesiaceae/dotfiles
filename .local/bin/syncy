@@ -38,12 +38,17 @@ remote=$(jq --raw-output ".remote" "$HOME/.config/syncy.json" || die "could not 
 rsync_local="$locald"
 rsync_remote="$remote"/"$projd"
 
+backup_dir=$HOME/.cache/syncy/backups/$projd/
+mkdir -p "$backup_dir"
+
 args=(
     -avcr
     --delete 
     -e ssh 
     --out-format="%i %t %f"
     --exclude=".syncy.json"
+    --backup 
+    --backup-dir="$backup_dir"
 )
 
 # append ignore patterns
