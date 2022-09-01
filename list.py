@@ -83,6 +83,7 @@ sources = {
     "./.local/bin/git-create-tag": "",
     "./.local/bin/git-delete-remote-branch": "",
     "./.local/bin/git-delete-tag": "",
+    "./.local/bin/git-do-for-all-branches": "",
     "./.local/bin/git-drop": "",
     "./.local/bin/git-hookman": "",
     "./.local/bin/git-is-tracked": "",
