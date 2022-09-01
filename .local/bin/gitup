@@ -1,15 +1,21 @@
 #!/bin/bash
 function switch_if_necessary() {
     if [[ "$(git rev-parse --abbrev-ref HEAD)" != "$1" ]]; then
-        git --quiet checkout "$1" || exit 9
+        git checkout --quiet "$1" || exit 9
         return $?
     fi
 }
 
-if [[ "$*" == *-h* ]]; then
-  printf "usage: gitup [BRANCH]...\npulls given branch\n"
-  exit 255
-fi
+# "cli"
+switch=
+for arg do
+  shift
+  case "$arg" in
+      -h|--help) printf "usage: gitup [-c|--change|-s|--switch] [BRANCH]...\npulls given branch\n"; exit 0;;
+      -c|--change|-s|--switch) switch=1; continue ;;
+  esac
+  set -- "$@" "$arg"
+done
 
 # default to current branch
 if [[ $# -eq 0 ]]; then
@@ -32,11 +38,11 @@ for branch in "$@"; do
 done
 
 
-switch_if_necessary "$previous_branch" || exit 6
+[[ $switch ]] || { switch_if_necessary "$previous_branch" || exit 6; }
 
 now_stash_ref=$(git stash list | sed -rn "s/(stash@\{[^\}]+\}).*${now}$/\1/p") || exit 7
 if [[ "$now_stash_ref" ]]; then
-  git stash pop --quiet -q "$now_stash_ref"; popret=$?
+  git stash pop --quiet "$now_stash_ref"; popret=$?
   case $popret in
       0) ;;
       1)
