@@ -1,0 +1,22 @@
+#!/bin/bash
+set -eo pipefail
+
+get_remote_url() { git remote get-url "$remote"; }
+
+remote=origin
+
+remote_branches=()
+branches=()
+
+while read -r line; do
+    line=${line#refs/heads/}
+    remote_branches+=("$line")
+    branches+=("$line")
+done  < <(git ls-remote --heads -- "$(get_remote_url)" | awk '{ print $2; }')
+
+echo "> remote update"
+git remote update "$remote"
+echo "> fetching"
+git fetch --quiet "$remote" "${branches[@]}"
+echo "> grep"
+git grep "$@" "${remote_branches[@]}"
