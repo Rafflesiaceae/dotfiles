@@ -1,0 +1,79 @@
+#!/bin/sh
+usage() { printf "usage: [no-]staged / [no-]unstaged / any / both / neither/no/none\n"; }
+
+staged=
+no_staged=
+unstaged=
+no_unstaged=
+any=
+case "$1" in
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    staged)
+        staged=1
+        no_staged=
+        ;;
+    no-staged)
+        staged=1
+        no_staged=1
+        ;;
+    unstaged)
+        unstaged=1
+        no_unstaged=
+        ;;
+    no-unstaged)
+        unstaged=1
+        no_unstaged=1
+        ;;
+    any)
+        any=1
+        unstaged=1
+        staged=1
+        ;;
+    both)
+        unstaged=1
+        no_unstaged=
+        staged=1
+        no_staged=
+        ;;
+    neither|no|none)
+        unstaged=1
+        no_unstaged=1
+        staged=1
+        no_staged=1
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac
+
+hit=
+if [ $unstaged ]; then
+    res=
+    ! git update-index --refresh >/dev/null 2>/dev/null && res=1
+    if [ $res ]; then
+        hit=1
+    fi
+
+    if [ ! $any ] && [ "$no_unstaged" = "$res" ]; then
+        exit 1
+    fi
+fi
+if [ $staged ]; then
+    res=
+    ! git diff --staged --quiet && res=1
+    if [ $res ]; then
+        hit=1
+    fi
+
+    if [ ! $any ] && [ "$no_staged" = "$res" ]; then
+        exit 1
+    fi
+fi
+
+if [ $any ] && [ ! $hit ]; then
+    exit 1
+fi
