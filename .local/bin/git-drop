@@ -6,7 +6,7 @@ die() {
     exit "${2-1}"
 }
 
-[[ "$(git update-index --refresh; git diff-index --quiet HEAD --;)" == "" ]] || die "repo has staged/unstaged changes, these would be lost"
+git-has-changes no-staged || die "repo has staged/unstaged changes, these would be lost"
 
 
 if [[ $# -gt 0 ]] && [[ $1 == "-" ]]; then
