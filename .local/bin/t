@@ -437,7 +437,7 @@ elif [[ $# -eq 2 ]]; then
     case $2 in # template
         sh|bash|.sh) # {{{2
             xicat "$1" <<'EOF'
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 EOF
