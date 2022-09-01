@@ -1045,8 +1045,8 @@ cli / argparse (.python): |
     parser.add_argument("integers", metavar="N", type=int, nargs="+", help="an integer for the accumulator")
 
     parser.add_argument("-e", "--any-enum", dest="any_enum", type=str, choices=["lf", "cr", "crlf"], default="cr", help="Some enums")
-    parser.add_argument("-f", "--any-flag", dest="any_flag",action="store_true", help="A flag")
-    parser.add_argument("-s", "--any-string", dest="any_string",type=str, default="default", help="A string")
+    parser.add_argument("-f", "--any-flag", dest="any_flag", action="store_true", help="A flag")
+    parser.add_argument("-s", "--any-string", dest="any_string", type=str, default="default", help="A string")
     parser.add_argument("-ss", "--any-strings", dest="any_strings", type=str, nargs="?", help="Multiple strings")
 
     parser.add_argument("rest", nargs=argparse.REMAINDER, help=argparse.SUPPRESS)
@@ -1344,6 +1344,9 @@ write heredoc to file with sudo rights (.sh .bash): |
     ...
     EOF
 
+literal match regex/matching a literal string in file/literal substring (.bash): |
+    grep -P -q "\\Q$VAR\\E" FILE && echo "found substring"
+
 extract/match regex groups (.bash): |
     if [[ "$line" =~ ^(.*):\ \"([^\"]+)\"$ ]]; then
         echo "${BASH_REMATCH[0]}" # full string
@@ -1444,12 +1447,14 @@ check/test if application/program/command exists/is installed (.sh .bash): |
 
 prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
     prompt_continue() {
+        [[ $absolute_yes ]] && return
         tput sc
         while true; do
-            read -p "${1:-Continue?} (y/n) " -n 1 -r yn
+            read -p "${1:-Continue?} (y/Y/n) " -n 1 -r yn
             case $yn in
-                [Yy]*) break;;
-                [Nn]*) printf "\n"; exit 1;;
+                [Y]*) declare -g absolute_yes=1; break ;;
+                [y]*) break ;;
+                [Nn]*) printf "\n"; exit 1 ;;
                 *) tput el1; tput rc ;;
             esac
         done
