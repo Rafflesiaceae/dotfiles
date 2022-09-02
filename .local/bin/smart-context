@@ -116,6 +116,19 @@ if [[ $# -eq 1 ]]; then
                 clip_restore
             fi
             ;;
+        jenkins-env)
+            win_refresh
+            url=$(chromium_get_url)
+            if [[ "$url" =~ ^([^\/]+\/\/[^\/]+).*$ ]]; then
+                url_prefix="${BASH_REMATCH[1]}"
+
+                clip_store
+                echo "${url_prefix}/pipeline-syntax/globals" | clip_in
+                xkey ctrl+v
+                xkey Return
+                clip_restore
+            fi
+            ;;
         jenkins-job-dsl)
             win_refresh
             # win=$(xdotool getactivewindow)
@@ -224,6 +237,9 @@ if [[ $cmdline == *chromium* ]]; then
     chromium_jenkins() {
         add_content <<EOF
 $content
+jenkins env:
+    cmd: [bash, -c, "smart-context jenkins-env"]
+    copy-to-clipboard: false
 jenkins job dsl:
     cmd: [bash, -c, "smart-context jenkins-job-dsl"]
     copy-to-clipboard: false
