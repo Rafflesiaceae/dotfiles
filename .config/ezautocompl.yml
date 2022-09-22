@@ -155,7 +155,8 @@ add new user (.linux .cmd):  useradd -m USERNAME
 add new group (.linux .cmd): groupadd GROUP
 add user to group (.linux .cmd): usermod -aG GROUP USER
 list/show application with open ports (.linux .ssh): sudo ss -tulpn
-update mirrorlist (.arch .linux .cmd): tmpfile=$(mktemp); curl -L -s 'https://archlinux.org/mirrorlist/?country=AT&country=DE&protocol=https&use_mirror_status=on' | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 5 - > "$tmpfile"; sudo mv "$tmpfile" "/etc/pacman.d/mirrorlist"
+update mirrorlist (.arch .linux .cmd): tmpfile=$(mktemp); curl -L -s 'https://archlinux.org/mirrorlist/?country=AT&country=DE&protocol=https&use_mirror_status=on' | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 5 - > "$tmpfile"; sudo sed -n 'w /etc/pacman.d/mirrorlist' < "$tmpfile"
+
 
 create new svn branch (.svn .cmd): svn copy \\\n
     "http://from" \\\n
