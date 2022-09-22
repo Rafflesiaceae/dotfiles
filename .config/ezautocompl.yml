@@ -797,6 +797,20 @@ converter (.nim): |
 
 # python {{{1
 
+swallow/dont print traceback on ctrl-c (.python): |
+    # don't print traceback on ctrl-c
+    import signal
+    signal.signal(signal.SIGINT, lambda _1, _2: sys.exit(1))
+
+prompt/ask confirm/continue (.python): |
+    def prompt_continue():
+        while True:
+            response=input("Continue? (y/n) ")
+            if response == "y":
+                break
+            elif response == "n":
+                sys.exit(1)
+
 cd/change dir to script parent location path (.python): |
     # cd to parent dir of current script
     os.chdir(os.path.dirname(os.path.realpath(__file__)))
@@ -1054,13 +1068,13 @@ cli / argparse (.python): |
     args = parser.parse_args(sys.argv[1:])
 
 dataclass (.python): |
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
     from typing import *
 
     @dataclass
     class InventoryItem:
         name: str
-        unit_prices: List[float]
+        unit_prices: List[float] = field(default_factory=list)
         quantity_on_hand: int = 0
 
         def total_costs(self) -> List[float]:
@@ -1520,9 +1534,11 @@ for each line in file (.sh .bash): |
 
 for each line of output (.bash): |
     while read -r line; do
-        [[ "$line" == *"$(basename "$0")" ]] && continue # skip this script itself
-        # all subprocesses here will inherit the command as stdin, not the tty, so we need to set it explicitly again
-        vimdiff "$PWD/$line" "/$line" < /dev/tty
+        {
+            [[ "$line" == *"$(basename "$0")" ]] && continue # skip this script itself
+            # all subprocesses here will inherit the command as stdin, not the tty, so we need to set it explicitly again
+            vimdiff "$PWD/$line" "/$line"
+        } < /dev/tty
     done < <(find . -type f -name fname)
 
 if string ends with substring / suffix (.sh .bash): |
@@ -1625,7 +1641,7 @@ echo heredoc (.sh .bash): |
 cli, parseargs argument parsing cli (.sh .bash): |
     usage() {
         echo "usage: [-h|--help] <file>"
-        exit "${1-0}"
+        exit "${1:-1}"
     }
     while :; do
         case $1 in
@@ -1640,7 +1656,7 @@ cli, parseargs argument parsing cli (.sh .bash): |
                 shift || usage
                 break
                 ;;
-            -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+            -?*) printf 'ERROR: Unknown option: %s\n' "$1" >&2; usage ;;
             *) break ;;
         esac
 
