@@ -88,6 +88,7 @@ sources = {
     "./.local/bin/git-delete-tag": "",
     "./.local/bin/git-do-for-all-branches": "",
     "./.local/bin/git-drop": "",
+    "./.local/bin/git-go-back": "",
     "./.local/bin/git-has-changes": "",
     "./.local/bin/git-hookman": "",
     "./.local/bin/git-is-branch-same-as-tracking": "",

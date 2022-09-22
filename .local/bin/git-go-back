@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# git-go-back v0.1 (2022-09-10) (6c0854382db8c337)
+# go back to a still existing previously checked out branch ( W O W )
+set -eo pipefail
+
+# parse reflog
+checkout_history=()
+while read -r line; do
+    if [[ "$line" =~ ^checkout:\ moving\ from\ ([^\ ]+)\ to\ ([^\ ]+)$ ]]; then
+        to="${BASH_REMATCH[2]}"
+        checkout_history+=("$to")
+    fi
+done < <(git reflog --since="7 day ago" --format=%gs)
+
+# filter duplicates
+remove_duplicates() { awk '!a[$0]++'; }
+readarray -t checkout_history < <(printf "%s\n" "${checkout_history[@]}" | remove_duplicates)
+
+# filter dead branches
+readarray -t nondead_local_branches < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+nondead_checkout_history=()
+for br in "${checkout_history[@]}" ; do
+    # shellcheck disable=SC2076
+    if [[ " ${nondead_local_branches[*]} " =~ " ${br} " ]]; then
+        nondead_checkout_history+=("$br")
+    fi
+done
+
+# prompt and checkout
+uncaused_will_or_conscious_choice=$(printf "%s\n" "${nondead_checkout_history[@]}" | fzf) || exit 0
+git checkout --quiet "$uncaused_will_or_conscious_choice"
