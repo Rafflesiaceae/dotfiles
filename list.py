@@ -127,6 +127,7 @@ sources = {
     "./.local/bin/mmbr": "",
     "./.local/bin/music-to-youtube": "",
     "./.local/bin/music-youtube-dl": "",
+    "./.local/bin/mvn-download-all-dependencies": "",
     "./.local/bin/mvn-fetch": "",
     "./.local/bin/npmis":  { "linux": "" },
     "./.local/bin/npmisd": { "linux": "" },
