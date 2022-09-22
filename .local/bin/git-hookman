@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
+hook_dir=$(git rev-parse --git-path hooks)
+
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
@@ -9,18 +11,23 @@ usage() {
     prefix_tab() { sed 's/^/\t/'; }
     filter_cases() { sed -rn 's/\s+(.*)\)\s*# \{arg/\1/p' | sort | prefix_tab; }
     echo "usage: <hook-template>"
-    [[ -f "./.git/hooks/installed" ]] && {
+    [[ -f "${hook_dir}/installed" ]] && {
         echo "found the following currently installed hooks:"
-        cat "./.git/hooks/installed" | sed 's/^/\t/'
+        cat "${hook_dir}/installed" | sed 's/^/\t/'
         echo ""
     }
     echo "all available hooks:"
     cat "$0" | filter_cases
     exit 0
 }
+function trace_err () {
+    local line="${BASH_LINENO[0]}"
+    local src="${BASH_SOURCE[0]}"
+    echo "  ↑ from ${src}:${line} → $(sed "${line}q;d" "$src")"
+}; set -o errtrace; trap 'trace_err' ERR
 
-hook_prepare_commit_msg=.git/hooks/prepare-commit-msg
-hook_pre_commit=.git/hooks/pre-commit
+hook_prepare_commit_msg=${hook_dir}/prepare-commit-msg
+hook_pre_commit=${hook_dir}/pre-commit
 
 mkdirpf() {
     file=$1
@@ -63,11 +70,7 @@ find_or_add_line() {
     echo "$target_line" >> "$file"
 }
 find_or_add_line_sh() { find_or_add_line "$1" "$2" "sh"; }
-add_hook_as_installed() { find_or_add_line "$1" "./.git/hooks/installed" ""; }
-
-if [[ ! -d ".git" ]]; then
-    die "not a git directory"
-fi
+add_hook_as_installed() { find_or_add_line "$1" "${hook_dir}/installed" ""; }
 
 # hooks
 gerrit() {
