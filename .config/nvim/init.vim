@@ -167,9 +167,10 @@ let g:EditorConfig_max_line_indicator = "none"
 let g:ale_completion_enabled = 0
 let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
-let g:ale_linters_explicit = 1
 
+let g:ale_linters_explicit = 1
 let g:ale_linters = {
+\   'bash': ['shellcheck'],
 \   'c': [],
 \   'cpp': [],
 \   'javascript': [],
@@ -545,6 +546,15 @@ autocmd BufWritePre  *.sh call s:AddExecutablebitPre()
 autocmd BufWritePost *.sh call s:AddExecutablebitPost()
 
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+
+function! DetectShFiletype()
+    if getline(1) =~# '^#!.*\<bash\>'
+        set filetype=bash
+    else
+        set filetype=sh
+    endif
+endfunction
+autocmd BufRead,BufNewFile,BufWrite *.sh call DetectShFiletype()
 
 " JSON
 autocmd FileType json setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
