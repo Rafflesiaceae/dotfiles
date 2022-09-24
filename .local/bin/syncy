@@ -47,8 +47,6 @@ args=(
     -e ssh 
     --out-format="%i %t %f"
     --exclude=".syncy.json"
-    --backup 
-    --backup-dir="$backup_dir"
 )
 
 # append ignore patterns
@@ -98,6 +96,10 @@ printf "\n\n"
 case $rsync_choice in
     r)
         header "receiving opposite of listed changes from remote.."
+        args+=(
+            --backup 
+            --backup-dir="$backup_dir"
+        )
         (set -x; rsync "${args[@]}" "$rsync_remote/" "$rsync_local") || die "failed receiving changes from remote"
         ;;
     s)
