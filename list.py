@@ -51,6 +51,7 @@ sources = {
     "./.local/bin/agt-all-branches": "",
     "./.local/bin/ahk-ezautocompl.ahk": { "windows": "" },
     "./.local/bin/ansiclean": "",
+    "./.local/bin/arch-pkgbuild-clone": "",
     "./.local/bin/asc": "",
     "./.local/bin/aurss": { "linux": "" },
     "./.local/bin/bazel-list": "",
