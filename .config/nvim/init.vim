@@ -1195,7 +1195,7 @@ Plug 'skywind3000/asyncrun.vim'
 
 Plug 'Valloric/YouCompleteMe'
 " Plug 'scrooloose/syntastic'
-Plug 'dense-analysis/ale'
+Plug 'Rafflesiaceae/ale'
 " Plug 'dansomething/vim-eclim' ,{ 'for': ['java', 'php']}
 Plug 'majutsushi/tagbar'
 
