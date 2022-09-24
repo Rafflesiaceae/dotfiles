@@ -548,13 +548,14 @@ autocmd BufWritePost *.sh call s:AddExecutablebitPost()
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 
 function! DetectShFiletype()
-    if getline(1) =~# '^#!.*\<bash\>'
+    let first_line=getline(1)
+    if first_line =~# '^#!.*\<bash\>'
         set filetype=bash
-    else
+    elseif first_line =~# '^#!.*\<sh\>' || first_line =~# '^#!.*\<dash\>' || first_line =~# '^#!.*\<zsh\>'
         set filetype=sh
     endif
 endfunction
-autocmd BufRead,BufNewFile,BufWrite *.sh call DetectShFiletype()
+autocmd BufRead,BufNewFile,BufWrite * call DetectShFiletype()
 
 " JSON
 autocmd FileType json setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
