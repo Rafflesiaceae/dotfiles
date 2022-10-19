@@ -135,6 +135,7 @@ sources = {
     "./.local/bin/npmisd": { "linux": "" },
     "./.local/bin/num-set-desc": { "linux": "" },
     "./.local/bin/parcellite-history": "",
+    "./.local/bin/patch-create": "",
     "./.local/bin/polyfill-tree": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",

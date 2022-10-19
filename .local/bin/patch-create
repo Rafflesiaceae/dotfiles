@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+[[ $# -ne 2 ]] && die "usage: <from> <to>"
+
+pfile="$(date +%s).patch"
+printf "diff -aur %s %s\n" "$1" "$2" > "$pfile"
+diff -aur "$1" "$2" >> "$pfile" || true
+echo "$pfile"
