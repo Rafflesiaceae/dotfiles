@@ -45,10 +45,10 @@ URxvt.url-select.underline: true
 URxvt.keysym.M-Escape: perl:keyboard-select:activate
 URxvt.keyboard-select.clipboard: true
 
-!! bind <C-s-v> / <C-s-c> / <C-s-j>
+!! bind <C-s-v> / <C-s-c> / <C-s-l>
 URxvt.keysym.Control-Shift-C: eval:selection_to_clipboard
 URxvt.keysym.Control-Shift-V: eval:paste_clipboard
-URxvt.keysym.Control-Shift-J: perl:open-buffer-in-editor
+URxvt.keysym.Control-Shift-L: perl:open-buffer-in-editor
 
 !! print key prints to file
 URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
