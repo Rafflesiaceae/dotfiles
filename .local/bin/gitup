@@ -32,7 +32,7 @@ previous_branch=$(git rev-parse --abbrev-ref HEAD) || exit 3
 
 for branch in "$@"; do
     switch_if_necessary "$branch" || exit 4
-    printf "> pulling changes..."
+    printf "> pulling changes (%s) ..." "$branch"
     git pull --quiet --rebase || exit 5
     printf "done\n"
 done
