@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+prompt_continue() {
+    [[ $absolute_yes ]] && return
+    tput sc
+    while true; do
+        read -p "${1:-Continue?} (y/n) " -n 1 -r yn
+        case $yn in
+            [Y]*) declare -g absolute_yes=1; break ;;
+            [y]*) break ;;
+            [Nn]*) printf "\n"; exit 1 ;;
+            *) tput el1; tput rc ;;
+        esac
+    done
+    printf "\n"
+}
+
+cmd="sudo bash -c 'mkinitcpio -P && grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg'"
+
+echo "+ $cmd"
+prompt_continue
+eval "$cmd"

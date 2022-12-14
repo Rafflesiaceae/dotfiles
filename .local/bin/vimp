@@ -1,0 +1,6 @@
+#!/usr/bin/env dash
+set -e
+fbase="${1%/*}"
+
+mkdir -p "$fbase"
+vim "$1"
