@@ -199,6 +199,7 @@ dev=(
     python-pipenv
     python-pynvim
     python-requests
+    python-yaml
     qt5-tools
     qtcreator
     rustup
