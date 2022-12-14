@@ -79,6 +79,7 @@ bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip
 bind generic <C-s> !@?git stash
 
 bind generic E !@code -g %(file):%(lineno)
+bind diff 7 !git diff %(commit)^ %(commit)
 
 # Colors
 color author green default
