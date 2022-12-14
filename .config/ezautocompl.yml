@@ -4,6 +4,9 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+list default include paths of gcc/g++ (.cmd):
+    echo | g++ -E -Wp,-v -
+
 what package owns file (.cmd .centos .rpm): rpm -q --whatprovides "$( which SOMEPACKAGE )"
 
 show shared library dependencies of an ELF file (.cmd): |
@@ -12,6 +15,7 @@ show shared library dependencies of an ELF file (.cmd): |
 run a command for each match in find (.cmd): |
     find . -type f -name "*.txt" -exec echo "{}" \;
 
+git get/show current commit/revision (.cmd .git): git rev-parse HEAD
 git shallow clone (.cmd .git): git clone --depth 1 https://github.com/git/git.git
 remove first n characters (.cmd .sh .bash): cut -c 5-
 get size of a file (.cmd .sh .bash): stat --printf="%s" FILE
@@ -798,6 +802,25 @@ converter (.nim): |
 
 # python {{{1
 
+load yaml (.python): |
+    import yaml
+
+    f = yaml.load(
+        """
+        - Hesperiidae
+        - Papilionidae
+        - Apatelodidae
+        - Epiplemidae
+        """,
+        Loader=yaml.CLoader
+    )
+
+list directory (.python): |
+    from os import walk
+
+    for (root, dirs, files) in walk(PATH):
+        pass
+
 swallow/dont print traceback on ctrl-c (.python): |
     # don't print traceback on ctrl-c
     import signal
@@ -1201,15 +1224,15 @@ enum (.json-schema): |
     }
 
 # bash {{{1
-shellcheck disable single run (.sh .bash): |
-    # shellcheck disable=SC2039
+shellcheck ignore/disable single run (.sh .bash): |
+    # shellcheck disable=SC2086
 clean/remove dir/file (.sh .bash): |
     clean() { { [ -d "$1" ] && rm -rf "$1" ;} || { [ -f "$1" ] && rm "$1"; } || true; }
 back/stacktrace an error (.bash): |
+    bash_source_realpath="$(realpath "${BASH_SOURCE[0]}")"
     function trace_err () {
         local line="${BASH_LINENO[0]}"
-        local src="${BASH_SOURCE[0]}"
-        echo "  ↑ from ${src}:${line} → $(sed "${line}q;d" "$src")"
+        echo "  ↑ from ${bash_source_realpath}:${line} → $(sed "${line}q;d" "$bash_source_realpath")"
     }; set -o errtrace; trap 'trace_err' ERR
 read output into array (.bash):
     readarray -t VAR < <(CMD)
@@ -1611,21 +1634,21 @@ func is_nohup (.sh .bash): |
 die (.sh .bash): |
     die() {
         printf '%b\n' "$1" >&2
-        exit "${2-1}"
+        exit "${2:-1}"
     }
 
 die usage usage_and_die (.sh .bash): |
     die() {
         printf '%b\n' "$1" >&2
-        exit "${2-1}"
+        exit "${2:-1}"
     }
     usage() {
         echo "usage: [-h|--help] <file>"
-        exit "${1-0}"
+        exit "${1:-0}"
     }
     usage_and_die() {
         printf '%b\n' "$1" >&2
-        usage "${2-1}"
+        usage "${2:-1}"
     }
 
 foreach argument (.sh .bash): |
