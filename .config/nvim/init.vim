@@ -1203,7 +1203,7 @@ Plug 'nathanaelkane/vim-indent-guides'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'skywind3000/asyncrun.vim'
 
-Plug 'Valloric/YouCompleteMe'
+Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
 " Plug 'scrooloose/syntastic'
 Plug 'Rafflesiaceae/ale'
 " Plug 'dansomething/vim-eclim' ,{ 'for': ['java', 'php']}
@@ -1224,7 +1224,7 @@ Plug 'EinfachToll/DidYouMean'
 Plug 'tommcdo/vim-exchange'
 
 " Beauty
-Plug 'bling/vim-airline'
+Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 Plug 'mhinz/vim-startify'
 
