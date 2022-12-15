@@ -3,18 +3,26 @@ set -e
 connected_ip=
 connected_http=
 
+i=0
 while [ ! "$connected_ip" ] || [ ! "$connected_http" ]; do
-    printf "💤"
-
     if [ ! "$connected_ip" ] && ping -w 2 -c 1 8.8.8.8 >/dev/null 2>&1; then
-        printf "\n> ping succeeded - got ip\n"
+        printf "<✓-ping>"
         connected_ip=1
     fi
-
-    if [ ! "$connected_http" ] && curl --max-time 3 "https://www.google.com/" >/dev/null 2>&1; then
-        printf "\n> curl succeeded - got http\n"
+    if [ ! "$connected_http" ] && timeout 3s curl "https://www.google.com/" >/dev/null 2>&1; then
+        printf "<✓-curl>"
         connected_http=1
     fi
 
+    if [ ! "$connected_ip" ] || [ ! "$connected_http" ]; then
+        printf "💤"
+    fi
+
     sleep 1
+    i=$((i+1))
 done
+printf "\n"
+
+if [ "$i" -gt 3 ]; then
+    notify-send "internet-wait-for" "back online!"
+fi
