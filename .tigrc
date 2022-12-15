@@ -53,7 +53,7 @@ bind main A >git commit --amend
 bind generic <F8> >git-debug-commitpush
 
 bind main c !?git checkout %(commit)
-bind main p ?"echo 'branch: %(branch)'; git push"
+bind main p ?sh -c "echo 'branch: %(branch)'; git push"
 bind main P ?git cherry-pick %(commit)
 bind generic T !@sh -c "git-stage-all-unstaged-changes"
 bind main  I !@sh -c "git-stage-all-unstaged-changes"
