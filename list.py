@@ -177,6 +177,7 @@ sources = {
     "./.local/bin/update-grub": "",
     "./.local/bin/update-numdots": "",
     "./.local/bin/update-ycm": "",
+    "./.local/bin/vim-resave": "",
     "./.local/bin/vimdiff-first-with-rest": "",
     "./.local/bin/vimdirdiff": { "linux": "" },
     "./.local/bin/vimp": "",

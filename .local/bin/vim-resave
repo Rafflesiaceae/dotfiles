@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+for file in "$@" ; do
+    # skip non-existing files
+    if [[ ! -e "$file" ]]; then
+        echo "> doesn't exist: ${file}"
+        continue
+    fi
+
+    # skip any non-text files
+    case "$(uchardet "$file")" in
+        ASCII|UTF-8)
+            ;;
+        *)
+            echo "> not text-file: ${file}"
+            continue
+            ;;
+    esac
+
+    vim --headless +"set noendofline" +"w" +"FixFileFormat" +"q" "$file"
+    printf "\n"
+done
