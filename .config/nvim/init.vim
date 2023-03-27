@@ -707,6 +707,16 @@ augroup END
 " }}}
 
 " {{{ Custom Functions
+function! s:FixFileFormat()
+    let ff = &fileformat
+    if ff == "dos"
+        silent exec "!unix2dos \"".expand("%:p")."\""
+    else
+        silent exec "!dos2unix \"".expand("%:p")."\""
+    endif
+endfunction
+com! FixFileFormat call s:FixFileFormat()
+
 function! s:Verify()
     set list
     let lnr=line('$')
@@ -1277,6 +1287,8 @@ Plug 'elixir-editors/vim-elixir' ,{ 'for': 'ex' }
 
 Plug 'spacewander/openresty-vim'
 Plug 'nickhutchinson/vim-systemtap'
+
+Plug 'rhysd/conflict-marker.vim'
 
 " Plug 'tpope/vim-sexp-mappings-for-regular-people'
 " Plug 'guns/vim-sexp'
