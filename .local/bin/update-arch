@@ -1,12 +1,27 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# shellcheck disable=SC1083
+
 set -eo pipefail
+
+echo {{{1 run this script in tmux
+if [[ "$1" != "--run" ]]; then
+    if tmux has-session -t "update-arch" 2>/dev/null; then
+        tmux attach-session -t "update-arch"
+        exit 0
+    fi
+
+    tmux new-session -d -s "update-arch" "$0" "--run" "$@"
+    tmux attach-session -t "update-arch"
+    exit 0
+fi
+shift
 
 echo {{{1 record itself
 if [[ "$1" != "--no-record" ]]; then
     title=".update_arch_$(date +%s)"
     echo "recording output to $HOME/$title.cast"
     asciinema rec \
-        --command "\"$0\" --no-record" \
+        --command "\"$0\" --run --no-record" \
         --title "$title" \
         --quiet \
         "$HOME/$title.cast"
@@ -31,11 +46,8 @@ makepkg -i --noconfirm --needed --skippgpcheck
 popd
 
 echo {{{1 update some AUR packages
-yay -S --answerdiff "None" --answerclean "None" \
-    deadbeef-git
-
-echo {{{1 update vim plugins
-nvim +'PlugUpdate --sync' +qa
+yay -S --answerdiff "None" --answerclean "None" --noprovides \
+    aur/deadbeef
 
 echo {{{1 update amr
 amrloc="$HOME/.amr"
@@ -57,6 +69,12 @@ makepkg-and-install "rxvt-unicode-patched"  "force" # needs recompilation when p
 makepkg-and-install "xkeyboard-config-desc"
 
 popd
+
+echo {{{1 update grub
+update-grub
+
+echo {{{1 update vim plugins
+nvim +'PlugUpdate --sync' +qa
 
 echo {{{1 update YCM
 pushd "$HOME/.vim/plugged/YouCompleteMe"

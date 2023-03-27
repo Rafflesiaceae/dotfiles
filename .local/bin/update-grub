@@ -9,7 +9,7 @@ prompt_continue() {
         case $yn in
             [Y]*) declare -g absolute_yes=1; break ;;
             [y]*) break ;;
-            [Nn]*) printf "\n"; exit 1 ;;
+            [Nn]*) printf "\n"; exit 0 ;;
             *) tput el1; tput rc ;;
         esac
     done
