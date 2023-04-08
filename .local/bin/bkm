@@ -1,0 +1,28 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+baks_root="${HOME}/baks"
+mkdir -p "$baks_root"
+
+for arg in "$@"; do
+    src=$(realpath "$arg")
+    target=${src#"$HOME/"}
+    target="${baks_root}/${target}"
+    if [[ ! -e "$src" ]]; then
+        die "src: '$src' doesnt exist"
+    fi
+    if [[ -e "$target" ]]; then
+        bk "$target"
+    fi
+
+    parent=$(dirname "$target")
+
+    ( 
+        mkdir -p "$parent"
+        mv "$src" "$target"
+    )
+done

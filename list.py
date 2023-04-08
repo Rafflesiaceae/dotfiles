@@ -57,6 +57,7 @@ sources = {
     "./.local/bin/bazel-list": "",
     "./.local/bin/bell": "",
     "./.local/bin/bk": "",
+    "./.local/bin/bkm": "",
     "./.local/bin/blank-screen": "",
     "./.local/bin/cb": "",
     "./.local/bin/cbwatch": "",
