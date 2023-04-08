@@ -1,5 +1,5 @@
 #!/bin/bash
-# gitpseudfuse v0.8 (2021-07-05) (6a5cc9a0945cd9ef)
+# gitpseudfuse v0.10 (2022-09-13) (b0aaeeb05ca4f97d)
 #
 # pass the path to a json file that contains a plain object that maps
 # "from"-dirs, that you want to have reflected in a git-repo, to "to"-dirs a
@@ -27,11 +27,50 @@ ego=$(realpath "$0")
 
 [[ $# -ne 1 ]] && [[ $# -ne 3 ]] && die "pass me a json file fam"
 
+usage() {
+    echo "usage: [-h|--help] [-v|--version] <input-json-file>"
+    exit "${1-0}"
+}
+guid=5218
+autocommit=
+autocommit_in=
+autocommit_out=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage; exit ;;
+        -g|--guid)
+            guid=$1
+            ;;
+        --autocommit)
+            autocommit=1  
+            auto_die() { die "if you give me 3 args fam, 1st must be '--autocommit', but the script calls itself that way so why are you doing this manually anyway"; }
+            shift || auto_die
+            autocommit_in=$1
+            shift || auto_die
+            autocommit_out=$1
+            ;;
+        -v|--version)
+            echo "gitpseudfuse version 0.10"
+            exit 0
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+
 # {{{1 autocommit (script starts itself on file changes)
-if [[ $# -eq 3 ]]; then
-    [[ $1 != "--autocommit" ]] && die "if you give me 3 args fam, 1st must be '--autocommit', but the script calls itself that way so why are you doing this manually anyway"
-    in=$2
-    out=$3
+if [[ $autocommit ]]; then
+    [[ $autocommit ]] && 
+    in=$autocommit_in
+    out=$autocommit_out
     info() { printf "[${ccolors[$GITPSEUDFUSE_INDEX]}+${creset}] %b\n" "$1"; }
     autocommit() {
         [[ ! -d "$in" ]] && die "in dir doesnt exist $in"
@@ -41,6 +80,7 @@ if [[ $# -eq 3 ]]; then
             init=1
             info "setting up $out"
             mkdir -p "$out"
+            chown ":$guid" "$out"
             cd "$out" || die "couldnt cd into $out"
             git init . --bare --initial-branch=main || die "couldn't init git dir"
         fi
