@@ -192,6 +192,9 @@ def main(args):
                                 else:
                                     # reset
                                     task.reset()
+        except UnicodeDecodeError:
+            # print(f"skipped binary file {affected_file}")
+            continue
         except Exception as e:
             print(f"happened during {affected_file}")
             raise e
