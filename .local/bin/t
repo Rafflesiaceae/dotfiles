@@ -192,10 +192,9 @@ EOF
             icat "environment.yml" <<'EOF'
 name: MYPKG
 channels:
-  - nodefaults
   - conda-forge
-platforms:
-  - linux-64
+  - anaconda
+  - nodefaults
 dependencies:
   - python=3.7
   - gcc>=10.0.0,<=11.0.0
