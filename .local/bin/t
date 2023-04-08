@@ -457,7 +457,7 @@ networks:
 EOF
         ;;
         make|Makefile) # {{{2
-            xicat "Makefile" <<'EOF'
+            icat "Makefile" <<'EOF'
 .PHONY: *
 .ONESHELL:
 SHELL := bash
