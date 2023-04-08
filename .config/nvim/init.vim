@@ -1275,7 +1275,7 @@ Plug 'Rafflesiaceae/vim-xml-indent'
 " Plug 'python-rope/ropevim'
 " Plug 'vim-scripts/DoxyGen-Syntax'
 
-Plug 'fatih/vim-go'                        ,{ 'for': 'go'  }
+Plug 'fatih/vim-go'
 " Plug 'flyinshadow/php_localvarcheck.vim' ,{ 'for': 'php' }
 Plug 'lifepillar/pgsql.vim'                ,{ 'for': 'sql' }
 " Plug 'modille/groovy.vim'                ,{ 'for': 'groovy' }
@@ -1309,16 +1309,17 @@ Plug 'jigish/vim-thrift'
 Plug 'mitei/gyp.vim'                    ,{ 'for': 'gyp' }
 Plug 'gutenye/json5.vim'
 Plug 'elzr/vim-json'
-Plug 'mogelbrod/vim-jsonpath'
 Plug 'cappyzawa/starlark.vim'           ,{ 'for': 'starlark' }
 Plug 'saltstack/salt-vim'
 Plug 'zchee/vim-flatbuffers'
 Plug 'cespare/vim-toml'
 Plug 'LnL7/vim-nix'
+Plug 'michaeljsmith/vim-indent-object'
 
 Plug 'wsdjeg/vim-fetch'
 
 Plug 'will133/vim-dirdiff'
+Plug 'AndrewRadev/linediff.vim'
 
 call SourceIfExists("~/.config/nvim/local_custom_imports")
 
