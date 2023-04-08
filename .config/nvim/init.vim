@@ -559,6 +559,7 @@ autocmd BufWritePost *.sh call s:AddExecutablebitPost()
 
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
 
+" detect filetype sh
 function! DetectShFiletype()
     let first_line=getline(1)
     if first_line =~# '^#!.*\<bash\>'
@@ -568,6 +569,16 @@ function! DetectShFiletype()
     endif
 endfunction
 autocmd BufRead,BufNewFile,BufWrite * call DetectShFiletype()
+
+" detect filetype ansible
+function! DetectAnsibleFiletype()
+    let last_line=getline('w$')
+    if last_line == '# code: language=ansible'
+        set filetype=ansible
+    endif
+endfunction
+autocmd BufRead,BufNewFile,BufWrite *.yml call DetectAnsibleFiletype()
+au BufRead,BufNewFile *.ansible.yml set filetype=ansible
 
 " JSON
 autocmd FileType json setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
