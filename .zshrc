@@ -1,6 +1,6 @@
-# aliases
+# functions
 function \$() { $*; }
-f() { # colored find / searches current tree recursively
+function f() { # colored find / searches current tree recursively
     find . -iregex ".*$@" -printf '%P\0' 2> >(grep -v "Permission denied" ) | xargs -r0 ls --color=auto -1d
     # declare -A lscolormap
 
@@ -22,21 +22,35 @@ f() { # colored find / searches current tree recursively
     # find . -iregex ".*$@" 2> >(grep -v "Permission denied" ) 1> >(while IFS='$\n' read -r line;  do; ls --color=auto -1d "$line"; done; )
 }
 
-cdgit() {
+function cdgit() {
     cd "$(git rev-parse --show-toplevel)"
+}
+
+function pyselect2() {
+    if [[ "$PATH" =~ "bin_override_py2" ]]; then
+        echo "Already set python2 as default"
+        echo "TODO: switch to python3"
+    else
+        export PATH="$HOME/.local/bin_override_py2/:$PATH"
+    fi
 }
 
 ## basic
 bindkey -e # emacs default binds
 REPORTTIME=5 # show time if command takes longer than 5 seconds
 
+fpath=("$HOME/.zsh" $fpath)
+
 autoload -Uz compinit && compinit
 autoload -U colors && colors
 
 ## various
-#  By default, if a command line contains a globbing expression which doesn't match anything, Zsh will print the error message you're seeing, and not run the command at all. - This disables it.
+#  By default, if a command line contains a globbing expression which doesn't
+#  match anything, Zsh will print the error message you're seeing, and not run
+#  the command at all. - This disables it.
 unsetopt nomatch
 
+## colors
 # {{{ base16 colorscheme - kokonai
 # Base16 Kokonai - Shell color setup script
 
@@ -145,10 +159,26 @@ unset color_foreground
 unset color_background
 unset color_cursor
 # }}}
-# {{{ edit command line with <C-k>
-autoload edit-command-line; zle -N edit-command-line
-bindkey "^k" edit-command-line
+# {{{ custom man colorscheme
+man() {
+    env \
+        LESS_TERMCAP_mb=$'\E[1;5;48;5;31m' \
+        LESS_TERMCAP_md=$'\E[01;38;5;16m' \
+        LESS_TERMCAP_me=$'\E[0m' \
+        LESS_TERMCAP_se=$'\E[0m' \
+        LESS_TERMCAP_so=$'\E[00;38;5;15m' \
+        LESS_TERMCAP_ue=$'\E[0m' \
+        LESS_TERMCAP_us=$'\E[04;38;5;00;33m' \
+        man $*
+    }
 # }}}
+# {{{ LS_COLORS
+# to setup:
+# $ git clone "https://github.com/trapd00r/LS_COLORS.git" "~/.lsdcolors"
+[[ -f "$HOME/.lsdcolors/LS_COLORS" ]] && eval $(dircolors -b "$HOME/.lsdcolors/LS_COLORS")
+# }}}
+
+## basic
 # {{{ history
 HISTFILE=~/.histfile # where to save history to disk
 HISTSIZE=10000        # how many lines of history to keep in memory
@@ -170,15 +200,7 @@ setopt pushdignoredups
 ## This reverts the +/- operators.
 setopt pushdminus
 # }}}
-
-__execute_precmds() {
-    local fn
-    for fn (precmd $precmd_functions); do
-        (( $+functions[$fn] )) && $fn
-    done
-}
-
-# {{{ Dirstack
+# {{{ dirstack
 DIRSTACKSIZE=200
 DIRSTACKFILE="$HOME/.cache/zsh/dirs"
 if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]]; then
@@ -191,77 +213,8 @@ fi
 
 chpwd() { print -l $PWD ${(u)dirstack} >$DIRSTACKFILE; }
 # }}}
-# {{{ fzf - cd to Dirstack
-cd_to_dirstack() {
-    local newdir=$(cat "$HOME/.cache/zsh/dirs" | fzf) || exit 1
-    cd "$newdir"
 
-    __execute_precmds()
-
-    zle .reset-prompt
-    zle .accept-line
-}
-zle -N cd_to_dirstack{,}
-bindkey '^Z' cd_to_dirstack
-# }}}
-# {{{ fzf - write Dirstack
-write_dirstack() {
-    local newdir=$(cat "$HOME/.cache/zsh/dirs" | fzf) || exit 1
-    LBUFFER="${LBUFFER}${newdir}"
-
-    __execute_precmds()
-
-    zle .reset-prompt
-}
-
-zle      -N  write_dirstack{,}
-bindkey '^F' write_dirstack
-# }}}
-# {{{ fzf - most recent home
-most_recent_home() {
-    local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
-    LBUFFER="${LBUFFER}${newdir}"
-
-    __execute_precmds()
-
-    zle .reset-prompt
-    zle .accept-line
-}
-zle      -N  most_recent_home{,}
-bindkey '^[f' most_recent_home
-# }}}
-# {{{ fzf - list git branches
-list_git_branches_via_fzf() {
-    local branch=$(git branch | awk -F ' +' '! /\(no branch\)/ {print $2}' | fzf) || exit 1
-    LBUFFER+="$branch"
-    zle .reset-prompt
-}
-zle -N list_git_branches_via_fzf{,}
-bindkey '^G' list_git_branches_via_fzf
-# }}}
-# {{{ k8s - list pods
-list_k8s_pods_via_fzf() {
-    local podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || exit 1
-    pod=$(echo "$podline" | awk '{ print $1 }')
-    namespace=$(echo "$podline" | awk '{ print $2 }')
-    LBUFFER+="-n $namespace $pod"
-    zle .reset-prompt
-}
-zle -N list_k8s_pods_via_fzf{,}
-bindkey '^[p' list_k8s_pods_via_fzf
-# {{{ docker - list containers
-list_docker_containers_via_fzf() {
-    local psout=$(docker ps) || exit 1
-    local header=$(echo "$psout" | head -n 1)
-    local choices=$(echo "$psout" | tail -n +2)
-    local choice=$(echo "$choices" | fzf --header "$header") || exit 1
-    container=$(echo "$choice" | awk '{ print $1 }')
-    LBUFFER+="$container"
-    zle .reset-prompt
-}
-zle -N list_docker_containers_via_fzf{,}
-bindkey '^[d' list_docker_containers_via_fzf
-# }}}
+## prompt/rprompt
 # {{{ RPROMPT
 local zsh_git_prompt=$HOME/.zsh/zsh-git-prompt/zshrc.sh
 local has_zsh_git_prompt=
@@ -300,7 +253,7 @@ function TRAPUSR1() {
 
         # conda-env
         if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-            parts+=('%B'"$CONDA_DEFAULT_ENV"'%b')
+            parts+=('%B'"${CONDA_DEFAULT_ENV:0:28}"'%b')
         fi
 
         # rprompt_cmd
@@ -321,49 +274,7 @@ function TRAPEXIT() {
     [[ -f "/tmp/zsh_prompt_$$" ]] && rm "/tmp/zsh_prompt_$$"
 }
 # }}}
-# {{{ Autocomplete ssh config hosts
-h=()
-if [[ -r ~/.ssh/config ]]; then
-    h=($h ${${${(@M)${(f)"$(cat ~/.ssh/config)"}:#Host *}#Host }:#*[*?]*})
-fi
-# if [[ -r ~/.ssh/known_hosts ]]; then
-#   h=($h ${${${(f)"$(cat ~/.ssh/known_hosts{,2} || true)"}%%\ *}%%,*}) 2>/dev/null
-# fi
-if [[ $#h -gt 0 ]]; then
-    zstyle ':completion:*:ssh:*' hosts $h
-    zstyle ':completion:*:slogin:*' hosts $h
-fi
-# }}}
-# {{{ Show vi-mode
-# function zle-line-init zle-keymap-select {
-#     RPS1="${${KEYMAP/vicmd/-- NORMAL --}/(main|viins)/-- INSERT --}"
-#     RPS2=$RPS1
-#     zle reset-prompt
-# }
-
-# zle -N zle-line-init
-# zle -N zle-keymap-select
-# }}}
-# {{{ edit which current buffer (F5)
-edit_which_current_buffer() {
-    trimmed_buffer=$(echo "$BUFFER" | awk '{$1=$1;print}') # trim string
-    file=$(which "$trimmed_buffer")
-    if [[ -L "$file" ]]; then # resolve symlinks
-        file=$(readlink "$file")
-    fi
-    "$EDITOR" "$file"
-}
-zle -N edit_which_current_buffer
-bindkey '^[[15~' edit_which_current_buffer # F5
-# }}}
-# {{{ edit file from xsel primary
-edit_xsel_primary() {
-    "$EDITOR" "$(xsel -o)"
-}
-zle -N edit_xsel_primary
-bindkey '^[[17~' edit_xsel_primary # F6
-# }}}
-# {{{ Show last exit-code
+# {{{ PROMPT: Show last exit-code
 function show_last_exit_code() {
     local last_exit_code=$?
     if [[ $last_exit_code -eq 0 ]]; then
@@ -384,38 +295,146 @@ function show_last_exit_code() {
 setopt PROMPT_SUBST
 PROMPT='$(show_last_exit_code) %n %{$fg[yellow]%}%~ %{$reset_color%}%% '
 # }}}
-# {{{ Custom Man Color Scheme
-man() {
-    env \
-        LESS_TERMCAP_mb=$'\E[1;5;48;5;31m' \
-        LESS_TERMCAP_md=$'\E[01;38;5;16m' \
-        LESS_TERMCAP_me=$'\E[0m' \
-        LESS_TERMCAP_se=$'\E[0m' \
-        LESS_TERMCAP_so=$'\E[00;38;5;15m' \
-        LESS_TERMCAP_ue=$'\E[0m' \
-        LESS_TERMCAP_us=$'\E[04;38;5;00;33m' \
-        man $*
-    }
-# }}}
-# {{{ LS_COLORS
-# to setup:
-# $ git clone "https://github.com/trapd00r/LS_COLORS.git" "~/.lsdcolors"
-[[ -f "$HOME/.lsdcolors/LS_COLORS" ]] && eval $(dircolors -b "$HOME/.lsdcolors/LS_COLORS")
-# }}}
 
-function pyselect2() {
-    if [[ "$PATH" =~ "bin_override_py2" ]]; then
-        echo "Already set python2 as default"
-        echo "TODO: switch to python3"
-    else
-        export PATH="$HOME/.local/bin_override_py2/:$PATH"
-    fi
+__execute_precmds() {
+    local fn
+    for fn (precmd $precmd_functions); do
+        (( $+functions[$fn] )) && $fn
+    done
 }
 
-# argcomplete {{{
+# {{{ fzf - cd to Dirstack <C-z>
+cd_to_dirstack() {
+    local newdir=$(cat "$HOME/.cache/zsh/dirs" | fzf) || exit 1
+    cd "$newdir"
+
+    __execute_precmds()
+
+    zle .reset-prompt
+    zle .accept-line
+}
+zle -N cd_to_dirstack{,}
+bindkey '^Z' cd_to_dirstack
+# }}}
+# {{{ fzf - pick file below current dir <C-f>
+pick_file() {
+    # local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
+    local file=$(find * -type f | fzf) || exit 1
+    LBUFFER+="$file"
+
+    __execute_precmds()
+
+    zle .reset-prompt
+}
+zle      -N  pick_file{,}
+bindkey '^F' pick_file
+# }}}
+# {{{ fzf - most recent file from home <Alt-h>
+most_recent_home() {
+    local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
+    LBUFFER+="${newdir}"
+
+    __execute_precmds()
+
+    zle .reset-prompt
+}
+zle      -N  most_recent_home{,}
+bindkey '^[h' most_recent_home
+# }}}
+# {{{ fzf - list git branches <C-g>
+list_git_branches_via_fzf() {
+    local branch=$(git branch | awk -F ' +' '! /\(no branch\)/ {print $2}' | fzf) || exit 1
+    LBUFFER+="$branch"
+    zle .reset-prompt
+}
+zle -N list_git_branches_via_fzf{,}
+bindkey '^G' list_git_branches_via_fzf
+# }}}
+# {{{ k8s - list pods <C-p>
+list_k8s_pods_via_fzf() {
+    local podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || exit 1
+    pod=$(echo "$podline" | awk '{ print $1 }')
+    namespace=$(echo "$podline" | awk '{ print $2 }')
+    LBUFFER+="-n $namespace $pod"
+    zle .reset-prompt
+}
+zle -N list_k8s_pods_via_fzf{,}
+bindkey '^[p' list_k8s_pods_via_fzf
+# }}}
+# {{{ docker - list containers <Alt-d>
+list_docker_containers_via_fzf() {
+    local psout=$(docker ps) || exit 1
+    local header=$(echo "$psout" | head -n 1)
+    local choices=$(echo "$psout" | tail -n +2)
+    local choice=$(echo "$choices" | fzf --header "$header") || exit 1
+    container=$(echo "$choice" | awk '{ print $1 }')
+    LBUFFER+="$container"
+    zle .reset-prompt
+}
+zle -N list_docker_containers_via_fzf{,}
+bindkey '^[d' list_docker_containers_via_fzf
+# }}}
+# {{{ show vi-mode
+# function zle-line-init zle-keymap-select {
+#     RPS1="${${KEYMAP/vicmd/-- NORMAL --}/(main|viins)/-- INSERT --}"
+#     RPS2=$RPS1
+#     zle reset-prompt
+# }
+
+# zle -N zle-line-init
+# zle -N zle-keymap-select
+# }}}
+# {{{ expand command line with <C-v>
+expand_command_line() {
+    cbcontents=$(xclip -o 2>/dev/null)
+    BUFFER="${BUFFER//\%\%/$cbcontents}"
+}
+zle -N expand_command_line
+bindkey "^v" expand_command_line
+# }}}
+# {{{ edit command line with <C-k>
+autoload edit-command-line; zle -N edit-command-line
+bindkey "^k" edit-command-line
+# }}}
+# {{{ edit which current buffer <F5>
+edit_which_current_buffer() {
+    trimmed_buffer=$(echo "$BUFFER" | awk '{$1=$1;print}') # trim string
+    file=$(which "$trimmed_buffer")
+    if [[ -L "$file" ]]; then # resolve symlinks
+        file=$(readlink "$file")
+    fi
+    "$EDITOR" "$file"
+}
+zle -N edit_which_current_buffer
+bindkey '^[[15~' edit_which_current_buffer # F5
+# }}}
+# {{{ edit file from xsel primary <F6>
+edit_xsel_primary() {
+    "$EDITOR" "$(xsel -o)"
+}
+zle -N edit_xsel_primary
+bindkey '^[[17~' edit_xsel_primary # F6
+# }}}
+
+## autocompletion
+# basic autocomplete settings {{{
 autoload -U bashcompinit
 bashcompinit
-
+# }}}
+# {{{ autocomplete ssh config hosts
+h=()
+if [[ -r ~/.ssh/config ]]; then
+    h=($h ${${${(@M)${(f)"$(cat ~/.ssh/config)"}:#Host *}#Host }:#*[*?]*})
+fi
+# if [[ -r ~/.ssh/known_hosts ]]; then
+#   h=($h ${${${(f)"$(cat ~/.ssh/known_hosts{,2} || true)"}%%\ *}%%,*}) 2>/dev/null
+# fi
+if [[ $#h -gt 0 ]]; then
+    zstyle ':completion:*:ssh:*' hosts $h
+    zstyle ':completion:*:slogin:*' hosts $h
+fi
+# }}}
+# autocomplete python argcomplete {{{
 # $ register-python-argcomplete {{{
 # Run something, muting output or redirecting it to the debug stream
 # depending on the value of _ARC_DEBUG.
@@ -467,12 +486,14 @@ function argcomplete() {
     complete -o nospace -o default -o bashdefault -F _python_argcomplete $*
 }
 
-# autocompletion for q
-complete -C "q --list" q
-
 # manage your list of argcomplete supported commands in your ~/.zshrc.local with entries like this:
 # argcomplete "my-cool-script" "my-other-cool-script"
+
 # }}}
+# autocomplete q {{{
+complete -C "q --list" q
+# }}}
+
 
 # settings shared between different shells
 [ -f ~/.shellrc ] && source ~/.shellrc
@@ -481,5 +502,7 @@ complete -C "q --list" q
 
 # for local zshrc settings outside of dotfiles
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
+
+# @TODO clean local functions here bleeding into interactive shell context/scope
 
 true # or else one-liner conditionals bleed their status into last_exit_code
