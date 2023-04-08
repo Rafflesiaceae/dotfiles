@@ -572,12 +572,13 @@ autocmd BufRead,BufNewFile,BufWrite * call DetectShFiletype()
 
 " detect filetype ansible
 function! DetectAnsibleFiletype()
-    let last_line=getline('w$')
+    let last_line=getline('$')
     if last_line == '# code: language=ansible'
         set filetype=ansible
+        set syn=yaml
     endif
 endfunction
-autocmd BufRead,BufNewFile,BufWrite *.yml call DetectAnsibleFiletype()
+au BufRead,BufNewFile,BufWrite *.yml call DetectAnsibleFiletype()
 au BufRead,BufNewFile *.ansible.yml set filetype=ansible
 
 " JSON
