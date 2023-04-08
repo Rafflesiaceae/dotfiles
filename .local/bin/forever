@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/dash
 while true; do
-    $*
+    "$@"
 done
