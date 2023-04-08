@@ -1,0 +1,19 @@
+#!/usr/bin/env dash
+set -e
+if [ $# -lt 1 ]; then
+    echo "> pass path to a file"
+fi
+file=$1
+file="$(realpath "$file")"
+filed="$(dirname "$file")"
+cd "$filed"
+toplevel=$(git-show-toplevel-path)
+rel_file="${file#"${toplevel}/"}"
+
+
+current_commit=$(git rev-parse --short "${2:-HEAD}")
+tmp_filename=${current_commit}-$(basename "$file")
+tmp_file="/tmp/${tmp_filename}"
+git show "${current_commit}:${rel_file}" > "$tmp_file"
+
+termpopup -ft --no-wait --title "$tmp_filename" "vim \"${tmp_file}\""
