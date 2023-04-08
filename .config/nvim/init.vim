@@ -97,6 +97,7 @@ let g:ycm_echo_current_diagnostic = 1
 
 let g:ycm_filetype_blacklist = {
       \ 'tagbar' : 1,
+      \ 'java' : 1,
       \ 'qf' : 1,
       \ 'notes' : 1,
       \ 'unite' : 1,
@@ -178,6 +179,7 @@ let g:ale_linters = {
 \   'c': [],
 \   'cpp': [],
 \   'javascript': [],
+\   'java': [],
 \   'markdown': [],
 \   'objc': [],
 \   'python': [],
