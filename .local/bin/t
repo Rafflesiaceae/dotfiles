@@ -457,6 +457,22 @@ networks:
     driver: bridge
 EOF
         ;;
+        make|Makefile) # {{{2
+            xicat "$1" <<'EOF'
+.PHONY: *
+.ONESHELL:
+SHELL := bash
+
+VERSION=
+
+help:
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+build:
+	@set -eo pipefail
+	echo building...
+EOF
+            ;;
     # }}}
     *)
     usage_and_die "ERROR: unknown template $1"
