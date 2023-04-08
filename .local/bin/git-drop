@@ -6,7 +6,7 @@ die() {
     exit "${2-1}"
 }
 
-git-has-changes no-staged || die "repo has staged/unstaged changes, these would be lost"
+git-has-changes none || die "repo has staged/unstaged changes, these would be lost"
 
 
 if [[ $# -gt 0 ]] && [[ $1 == "-" ]]; then
