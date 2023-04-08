@@ -5,7 +5,7 @@ die() {
 }
 
 usage() {
-    echo "usage: cb [-a|--append] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
+    echo "usage: cb [-a|--append] [-e|--edit] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
     exit 1
 }
 
@@ -15,6 +15,7 @@ usage_and_die() {
 }
 
 cli_append=
+cli_edit=
 cli_in=
 cli_out=
 cli_str=
@@ -22,9 +23,12 @@ cli_tee=
 while :; do
     case $1 in
         -h|-\?|--help)
-            usage; exit ;;
+            usage ;;
         -a|--append)
             cli_append=1
+            ;;
+        -e|--edit)
+            cli_edit=1
             ;;
         -i|--in)
             cli_in=1
@@ -63,7 +67,16 @@ clip_in() {
     fi
 }
 
-if [[ $cli_out ]]; then
+if [[ $cli_edit ]]; then
+    tmpfile=$(mktemp)
+    cleanup_tmpfile() {
+        rm -f "$tmpfile"
+    }
+    trap 'cleanup_tmpfile' EXIT INT
+    clip_out > "$tmpfile" 
+    "$EDITOR" "$tmpfile"
+    sed -z '$ s/\n$//' < "$tmpfile" | clip_in
+elif [[ $cli_out ]]; then
     clip_out
 elif  [[ $cli_in ]]; then
     clip_in
