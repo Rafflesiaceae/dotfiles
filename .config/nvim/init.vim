@@ -80,6 +80,9 @@ set textwidth=80
 autocmd BufEnter * :syntax sync minlines=1000 
 
 " Configurations
+" {{{ NeoVIM Nonsense
+let g:editorconfig = v:false
+" }}}
 " {{{ YouCompleteMe
 let g:ycm_confirm_extra_conf = 0 " don't ask for confirmation
 let g:ycm_add_preview_to_completeopt = 1
