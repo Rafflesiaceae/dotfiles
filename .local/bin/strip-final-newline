@@ -1,0 +1,2 @@
+#!/usr/bin/env dash
+sed -z '$ s/\n$//' < "$1" | sponge "$1"

@@ -1,0 +1,6 @@
+#!/usr/bin/env dash
+set -e
+current_command=$(git-current-command)
+if [ -n "$current_command" ]; then
+    git "$current_command" --abort
+fi

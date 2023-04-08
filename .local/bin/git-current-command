@@ -1,0 +1,19 @@
+#!/usr/bin/env dash
+set -e
+
+gitdir="$(git-show-toplevel-path)/.git"
+if [ -e "${gitdir}/MERGE_HEAD" ]; then
+    echo "merge"
+    exit 0
+elif [ -e "${gitdir}/REBASE_HEAD" ]; then
+    echo "rebase"
+    exit 0
+elif [ -e "${gitdir}/CHERRY_PICK_HEAD" ]; then
+    echo "cherry-pick"
+    exit 0
+elif [ -e "${gitdir}/REVERT_HEAD" ]; then
+    echo "revert"
+    exit 0
+fi
+
+exit 1
