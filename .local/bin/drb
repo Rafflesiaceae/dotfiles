@@ -5,14 +5,19 @@ die() {
     exit "${2-1}"
 }
 usage() {
-    echo "usage: <image> <bash-script>/<bash-command>"
+    echo "usage: <image> <bash-script>|<bash-command>"
     exit 1
 }
 
 img=$1; shift || usage
 inp=$1; shift || usage
+
+if [[ -e "$img" ]]; then
+    # @TODO
+fi
+
 if [[ -f "$inp" ]]; then
-    docker run "$@" -i "$img" bash -l < "$inp"
+    docker run --rm "$@" -i "$img" bash -l < "$inp"
 else
-    docker run "$@" -it "$img" bash -cl "$inp"
+    docker run --rm "$@" -it "$img" bash -cl "$inp"
 fi
