@@ -1273,6 +1273,8 @@ enum (.json-schema): |
     }
 
 # bash {{{1
+strip final newline (.cmd .sh .bash): |
+    sed -z '$ s/\n$//'
 shellcheck ignore/disable single run (.sh .bash): |
     # shellcheck disable=SC2086
 clean/remove dir/file (.sh .bash): |
