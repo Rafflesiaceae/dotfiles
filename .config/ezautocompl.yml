@@ -4,6 +4,19 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+find all objects, filter and edit in place (.cmd .jq): |
+    file=./somefile.json
+    jq '
+        walk(
+            if type == "object" and has("tool") and .tool == "wittgenstein" then
+                del(.)
+            else
+                .
+            end
+        )
+        | del(..|nulls)  # ← remove all null values
+    ' "$file" | sponge "$file"
+
 list default include paths of gcc/g++ (.cmd):
     echo | g++ -E -Wp,-v -
 
@@ -140,6 +153,7 @@ list archive (.cmd): tar -tvf archive.tar
 youtube-dl download all subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --all-subs"
 youtube-dl download specific/eng subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --sub-lang en"
 
+change passphrase on key (.cmd .ssh): ssh-keygen -p -f "$FILE"
 check priv key (.cmd .ssh): FILE=""; ssh-keygen -lf "$FILE"; ssh-keygen -yf "$FILE"
 # https://wiki.archlinux.org/index.php/SSH_keys#Ed25519
 create key (.cmd .ssh): ssh-keygen -o -t ed25519 -C "user@hostname" -f OUTPUTFILE
@@ -147,6 +161,8 @@ create key (.cmd .ssh): ssh-keygen -o -t ed25519 -C "user@hostname" -f OUTPUTFIL
 # https://superuser.com/a/692184
 create random text (.cmd): base64 --wrap=0 /dev/urandom | head -c 64
 create random bytes (.cmd): head -c $(( 128 * 1024 )) < /dev/urandom
+
+create random sha1 hash (.cmd): tmp_hash=$(head -n 4096 /dev/urandom | openssl sha1 -r); tmp_hash=${tmp_hash%%\ *}
 
 7zip extract archive into subdir (.cmd): 7z e ISOPATH -o./out
 
@@ -376,7 +392,18 @@ get string reader from string (.golang):
 
 base/top-level/background context (.golang): context.Background()
 
-write bytes to file(.golang): |
+write/stream to a string / stringstream / string writer (.golang): |
+    buf := new(bytes.Buffer)
+    buf.String()
+
+open file to write (.golang): |
+  f, err := os.Create("PATH")
+  if err != nil {
+      panic(err)
+  }
+  defer f.Close()
+
+write bytes to file (.golang): |
   d1 := []byte("hello\ngo\n")
   err := ioutil.WriteFile("/tmp/dat1", d1, 0755)
   if err != nil {
@@ -572,6 +599,21 @@ abspath / realpath (.golang): |
         panic(err)
     }
 
+concatenate strings via string builder (.golang): |
+    var sb strings.Builder
+    for _, str := range strs {
+        sb.WriteString(str)
+    }
+    return sb.String()
+
+check if symlink (.golang): |
+    fi, err := os.Lstat(path)
+    check(err)
+
+    if fi.Mode() & os.ModeSymlink == os.ModeSymlink {
+        // This is a symlink
+    }
+
 check stat if symlink and resolve (.golang): |
     if fi.Mode()&os.ModeSymlink != 0 {
         link, err := os.Readlink(fi.Name())
@@ -739,6 +781,13 @@ main (.golang): |
     }
 
 # groovy {{{1
+extract regex groups (.groovy): |
+    def result = ("main-alt-3" =~ /^([^-]+)\-(alt\-.*)$/).findAll()
+    def match1 = result[0]
+    assert match1[0] == "main-alt-3"
+    assert match1[1] == "main"
+    assert match1[2] == "alt-3"
+
 for key value/entries in map (.groovy): |
     [foo:90, bar:80].each{ key, val -> println("${key}: ${val}") }
     [foo:90, bar:80].eachWithIndex{ entry, index -> println("${entry.key}: ${entry.value} ($index)") }
@@ -1234,6 +1283,8 @@ back/stacktrace an error (.bash): |
         local line="${BASH_LINENO[0]}"
         echo "  ↑ from ${bash_source_realpath}:${line} → $(sed "${line}q;d" "$bash_source_realpath")"
     }; set -o errtrace; trap 'trace_err' ERR
+join array (.bash):
+    contents=$(IFS=$'\n'; echo "${ARRAY[*]}")
 read output into array (.bash):
     readarray -t VAR < <(CMD)
 read file into variable (.bash):
@@ -1527,16 +1578,16 @@ check if string is number (.sh .bash): |
 create temporary file (.sh .bash): |
     tmpfile=$(mktemp)
     cleanup_tmpfile() {
-        rm "$tmpfile"
+        rm -f "$tmpfile"
     }
-    trap 'cleanup_tmpfile' EXIT
+    trap 'cleanup_tmpfile' EXIT INT
 
 create temporary directory (.sh .bash): |
     tmpdir=$(mktemp -d)
     cleanup_tmpdir() {
         rm -rf "$tmpdir"
     }
-    trap 'cleanup_tmpdir' EXIT
+    trap 'cleanup_tmpdir' EXIT INT
 
 get parent directory of path (.sh .bash): parent=$(dirname "$file")
 
@@ -1598,7 +1649,7 @@ extract/split file base,name,extension from path (.sh .bash): |
 
 kill background processes along with main process (.sh .bash): |
     bgpids=()
-    trap '2>/dev/null kill "${bgpids[@]}"' EXIT
+    trap '2>/dev/null kill "${bgpids[@]}"' EXIT INT
     longrunningprocess1 & bgpids+=("$!")
     longrunningprocess2 & bgpids+=("$!")
     wait
@@ -1611,7 +1662,7 @@ defer exit (.sh .bash): |
             eval "$cleanupScript"
         done
     }
-    trap 'cleanup' EXIT
+    trap 'cleanup' EXIT INT
 
 on/trap error (.bash): |
     on_error() {
@@ -1745,6 +1796,8 @@ vim modeline for setting indentation settings (.vim .various): |
   # vim: set ts=4 sw=4 et:
 vim modeline for setting comment string (.vim .various): |
   # vim: set commentstring=#\ %s:
+vim modeline always emit tabs not spaces (.vim .various): |
+  # vim: set softtabstop=0 noexpandtab:
 show term cursor again via tput (.gdb): 'shell tput cnorm'
 
 utf8/unicode symbols (.various): |
