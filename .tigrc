@@ -72,6 +72,7 @@ bind generic <C-P> ?git format-patch -1 -N %(commit)
 
 # copy commit ID to clipboard
 bind generic V !@sh -c "termpopup --no-escape --no-float --no-wait -- git show \\\"%(commit)\\\" \\\| vim -"
+bind generic <C-G> +@sh -c "termpopup --no-escape --no-float -- git-review ';' echo '' ';' echo '→ DONE ←' ';' sleep 1; echo git-review done"
 bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
 bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)\""
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
