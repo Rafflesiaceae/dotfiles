@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# git-go-back v0.1 (2022-09-10) (6c0854382db8c337)
+# git-go-back v0.2 (2023-01-24) (776086aa4c3899c3)
 # go back to a still existing previously checked out branch ( W O W )
 set -eo pipefail
 
@@ -26,6 +26,11 @@ for br in "${checkout_history[@]}" ; do
     fi
 done
 
-# prompt and checkout
-uncaused_will_or_conscious_choice=$(printf "%s\n" "${nondead_checkout_history[@]}" | fzf) || exit 0
-git checkout --quiet "$uncaused_will_or_conscious_choice"
+if [[ -n "$1" ]]; then
+    printf "%s\n" "${nondead_checkout_history[$1]}"
+else
+    # prompt and checkout
+    uncaused_will_or_conscious_choice=$(printf "%s\n" "${nondead_checkout_history[@]}" | fzf) || exit 0
+    git checkout --quiet "$uncaused_will_or_conscious_choice"
+fi
+
