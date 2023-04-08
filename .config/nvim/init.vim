@@ -87,6 +87,7 @@ let g:editorconfig = v:false
 let g:ycm_confirm_extra_conf = 0 " don't ask for confirmation
 let g:ycm_add_preview_to_completeopt = 1
 let g:ycm_autoclose_preview_window_after_completion = 0
+let g:ycm_autoclose_preview_window_after_insertion = 0
 let g:ycm_key_list_select_completion   = ['<TAB>',   '<Down>', '<C-j>']
 let g:ycm_key_list_previous_completion = ['<S-TAB>', '<Up>',   '<C-k>']
 let g:ycm_complete_in_comments = 1
@@ -368,6 +369,7 @@ au BufRead,BufNewFile *.gd set filetype=gdscript
 au FileType gdscript set list
 " }}}
 
+noremap <leader>d :Linediff<CR>
 
 inoremap <M-o> <ESC>o
 
@@ -431,6 +433,7 @@ map <leader>F :CtrlSFUpdate<CR>
 xmap <C-f> <Plug>CtrlSFVwordPath<CR>
 
 map <C-t> :Tabularize /
+nnoremap <silent> <C-y> :YcmCompleter GetType<CR>
 
 " @TODO only in diffmode ( https://vi.stackexchange.com/a/2706 ?)
 " nnoremap <silent> <leader>dp V:diffput<cr>
@@ -477,6 +480,7 @@ noremap <leader>! :OpenTig<CR>
 noremap <leader>" :OpenTig expand("%:p")<CR>
 noremap <leader>C :OpenTerminal<CR>
 noremap <leader>T :OpenTerminal<CR>
+noremap <leader>P :!open-file-in-current-revision %<CR>
 noremap <leader>gc :Git commit<CR>
 noremap <leader>gd :Gdiff<CR>
 noremap <leader>gb :Git blame<CR>
@@ -505,6 +509,9 @@ set wildcharm=<tab>
 nnoremap <leader>2 :YcmCompleter RefactorRename <C-r><C-w>
 nnoremap <BS> :YcmCompleter <tab>
 nnoremap <CR> :YcmCompleter GoTo<CR>
+nnoremap <leader>R :YcmCompleter RefactorRename <C-r><C-w>
+nnoremap <leader>t :YcmCompleter GoToType<CR>
+nnoremap <silent> <c :pclose<CR>
 nnoremap <silent> <h :YcmCompleter GetDoc<CR>
 nnoremap <silent> <n :cn<CR>
 nnoremap <silent> <p :cp<CR>
@@ -669,6 +676,7 @@ autocmd FileType nim nnoremap <silent> <buffer> <BS> :YcmCompleter GoToReference
 " PG/SQL
 autocmd FileType sql nnoremap <silent> <buffer> <leader>c :!pgsanity %:p<CR>
 
+" Git commits
 autocmd FileType gitcommit set tw=72
 
 " JSON
