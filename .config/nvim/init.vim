@@ -1371,3 +1371,10 @@ au FileType starlark set filetype=starlark.python
 " {{{ PKGBUILD 
 autocmd BufRead,BufNewFile PKGBUILD set filetype=sh
 " }}}
+
+" @XXX @WORKAROUND
+" fixup for editorconfig-vim on neovim 
+" see https://github.com/editorconfig/editorconfig-vim/issues/163
+augroup _editorconfig
+autocmd BufEnter * :EditorConfigReload
+augroup END
