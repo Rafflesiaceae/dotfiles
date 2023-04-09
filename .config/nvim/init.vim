@@ -381,6 +381,9 @@ au BufRead,BufNewFile *.gd set filetype=gdscript
 " au BufRead,BufNewFile *.usher set filetype=gdscript
 au FileType gdscript set list
 " }}}
+" {{{ ansible-vim
+let g:ansible_unindent_after_newline = 1
+" }}}
 
 noremap <leader>d :Linediff<CR>
 
