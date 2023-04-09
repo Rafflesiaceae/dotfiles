@@ -407,7 +407,8 @@ nnoremap <silent> <2-LeftMouse> :let @/='\V\<'.escape(expand('<cword>'), '\').'\
 " goto on t-click
 nnoremap <silent> <3-LeftMouse> :YcmCompleter GoTo<cr>
 
-map <C-n> :NERDTreeToggle<CR>
+" ↓ https://vi.stackexchange.com/a/18489
+nnoremap <silent> <expr> <C-n> g:NERDTree.IsOpen() ? "\:NERDTreeClose<CR>" : bufexists(expand('%')) ? "\:NERDTreeFind<CR>" : "\:NERDTree<CR>"
 nmap <S-Enter> O<Esc>
 
 vnoremap // y/\V<C-R>"<CR>
