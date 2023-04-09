@@ -1,6 +1,11 @@
 set runtimepath^=~/.vim runtimepath+=~/.vim/after
 let &packpath = &runtimepath
 
+" Mappings we can't use:
+"   <C-m> → is Return in Terminals
+"   <C-h> → jump to left window split
+"   <C-l> → jump to right window split
+
 if filereadable("/etc/vimrc")
     source /etc/vimrc
 endif
