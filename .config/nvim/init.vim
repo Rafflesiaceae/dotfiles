@@ -743,6 +743,12 @@ au BufRead,BufNewFile *.nosh set filetype=starlark
 au BufWritePre        *.nosh call s:AddExecutablebitPre()
 au BufWritePost       *.nosh call s:AddExecutablebitPost()
 
+" <leader>j autoformatting/testing
+augroup _leader_j
+autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+augroup END
+
+
 augroup QuickFix
     " override :YcmComplete GoTo for QF
     au FileType qf nmap <buffer> <CR> <CR>
