@@ -56,6 +56,7 @@ sources = {
     "./.local/bin/aurss": { "linux": "" },
     "./.local/bin/bazel-list": "",
     "./.local/bin/bell": "",
+    "./.local/bin/bitee": "",
     "./.local/bin/bk": "",
     "./.local/bin/bkm": "",
     "./.local/bin/blank-screen": "",

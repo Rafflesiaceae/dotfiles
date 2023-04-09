@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# tee a command's stdout/stderr seperately
+set -eo pipefail
+
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+usage() {
+    echo "usage: [-a] [-m] [-o <stdout-file>] [-e <stderr-file>] cmds..."
+    exit "${1:-1}"
+
+}
+stdin_path=/tmp/bitee_stdin
+stdout_path=/tmp/bitee_stdout
+stderr_path=/tmp/bitee_stderr
+append=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage 0 ;;
+        -a)
+            append="-a"
+            ;;
+        -i)
+            [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
+            stdin_path=$2
+            shift || usage
+            ;;
+        -e)
+            [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
+            stderr_path=$2
+            shift || usage
+            ;;
+        -o)
+            [[ ! "$2" ]] && die "ERROR: '$1' requires a non-empty option argument."
+            stdout_path=$2
+            shift || usage
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'ERROR: Unknown option: %s\n' "$1" >&2; usage ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+if [[ "$append" ]]; then
+    marker="> $(date +%Y.%m.%d\ %T\ +%Z) $*"
+    echo "$marker" >> "$stdout_path"
+    echo "$marker" >> "$stderr_path"
+    echo "$marker" >> "$stdin_path"
+fi
+
+{ cat | tee $append "$stdin_path"; } | ("$@") 1> >(tee $append "$stdout_path") 2> >(tee $append "$stderr_path" >&2)
