@@ -443,6 +443,7 @@ xmap <C-f> <Plug>CtrlSFVwordPath<CR>
 
 map <C-t> :Tabularize /
 nnoremap <silent> <C-y> :YcmCompleter GetType<CR>
+nmap <silent> <S-k> :YcmCompleter GetHover<CR>
 
 " @TODO only in diffmode ( https://vi.stackexchange.com/a/2706 ?)
 " nnoremap <silent> <leader>dp V:diffput<cr>
