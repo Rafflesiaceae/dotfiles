@@ -1,0 +1,10 @@
+formatter:
+  indent: 2
+  indentless_arrays: false
+  line_ending: lf
+  pad_line_comments: 2
+  retain_line_breaks: true
+  scan_folded_as_literal: true
+  type: basic
+
+# vim: set ft=yaml:

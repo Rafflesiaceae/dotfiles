@@ -6,6 +6,7 @@ sources = {
 
     "./.config/.bazelrc": "./.bazelrc",
     "./.config/.ripgreprc": { "linux": "" },
+    "./.config/.yamlfmt": "",
     "./.config/alacritty/alacritty.yml.j2": { "linux": "", "windows": "AppData/Roaming/alacritty/alacritty.yml" },
     "./.config/dunst/dunstrc": { "linux": "" },
     "./.config/ezautocompl.yml": "",
