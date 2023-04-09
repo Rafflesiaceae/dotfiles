@@ -1249,6 +1249,7 @@ Plug 'skywind3000/asyncrun.vim'
 Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
 " Plug 'scrooloose/syntastic'
 Plug 'Rafflesiaceae/ale'
+Plug 'Rafflesiaceae/vim-yaml'
 " Plug 'dansomething/vim-eclim' ,{ 'for': ['java', 'php']}
 Plug 'majutsushi/tagbar'
 
