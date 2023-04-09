@@ -124,6 +124,11 @@ let g:ycm_godef_binary_path  = $HOME.'/.go/bin/godef-gomod'
 let g:ycm_language_server = 
   \ [ 
   \   {
+  \     'name': 'ansible',
+  \     'cmdline': [ 'ansible-lsp' ],
+  \     'filetypes': [ 'yaml', 'ansible' ],
+  \   },
+  \   {
   \     'name': 'nim',
   \     'cmdline': [ $HOME.'/.nimble/bin/nimlsp' ],
   \     'filetypes': [ 'nim' ],
@@ -582,8 +587,7 @@ autocmd BufRead,BufNewFile,BufWrite * call DetectShFiletype()
 function! DetectAnsibleFiletype()
     let last_line=getline('$')
     if last_line == '# code: language=ansible'
-        set filetype=ansible
-        set syn=yaml
+        set filetype=yaml.ansible
     endif
 endfunction
 au BufRead,BufNewFile,BufWrite *.yml call DetectAnsibleFiletype()
@@ -708,7 +712,10 @@ autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 autocmd FileType json5 setlocal commentstring=//\ %s
 
 " YAML
-autocmd FileType yaml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+autocmd FileType yaml,yaml.ansible setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+autocmd FileType yaml,yaml.ansible setlocal indentkeys-=0# " stop comments from increasing indent
+autocmd FileType yaml,yaml.ansible filetype indent off
+autocmd FileType yaml,yaml.ansible set equalprg=cat
 
 " MARKDOWN
 autocmd FileType markdown setlocal list
@@ -1334,7 +1341,7 @@ Plug 'martinda/Jenkinsfile-vim-syntax'
 " Plug 'gu-fan/riv.vim'
 Plug 'pboettch/vim-cmake-syntax'
 Plug 'Glench/Vim-Jinja2-Syntax'
-Plug 'chase/vim-ansible-yaml'
+Plug 'pearofducks/ansible-vim'
 Plug 'jigish/vim-thrift'
 Plug 'mitei/gyp.vim'                    ,{ 'for': 'gyp' }
 Plug 'gutenye/json5.vim'

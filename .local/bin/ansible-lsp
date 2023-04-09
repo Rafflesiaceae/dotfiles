@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eo pipefail
+if command -v ansible-language-server &>/dev/null; then
+    bitee -i "${HOME}/ansible-lsp-inputs" -o "${HOME}/ansible-lsp-outputs" -e "${HOME}/ansible-lsp-outputs-error" -- ansible-language-server --stdio
+fi
