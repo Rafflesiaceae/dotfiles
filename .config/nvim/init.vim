@@ -126,7 +126,7 @@ let g:ycm_language_server =
   \   {
   \     'name': 'ansible',
   \     'cmdline': [ 'ansible-lsp' ],
-  \     'filetypes': [ 'yaml', 'ansible' ],
+  \     'filetypes': [ 'ansible' ],
   \   },
   \   {
   \     'name': 'nim',
