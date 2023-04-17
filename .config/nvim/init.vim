@@ -444,10 +444,11 @@ nnoremap <leader>l :e!<CR>
 inoremap <C-e> <C-o>de
 
 map <C-g> :CtrlSF 
-map <C-f> :CtrlSF<CR>
-map <leader>f :CtrlSFToggle<CR>
+nmap <C-f> :CtrlSF<CR>
+vmap <C-f> <Plug>CtrlSFVwordExec<CR>
+nmap <leader>f :CtrlSFToggle<CR>
+vmap <leader>f <Plug>CtrlSFVwordExec
 map <leader>F :CtrlSFUpdate<CR>
-xmap <C-f> <Plug>CtrlSFVwordPath<CR>
 
 map <C-t> :Tabularize /
 nnoremap <silent> <C-y> :YcmCompleter GetType<CR>
