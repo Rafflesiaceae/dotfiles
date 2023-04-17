@@ -1,2 +1,6 @@
 #!/usr/bin/env dash
-sed -z '$ s/\n$//' < "$1" | sponge "$1"
+if [ $# -gt 0 ]; then
+    sed -z '$ s/\n$//' < "$1" | sponge "$1"
+else
+    sed -z '$ s/\n$//'
+fi
