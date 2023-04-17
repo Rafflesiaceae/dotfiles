@@ -443,9 +443,10 @@ read stdin (.golang): bytes, err := ioutil.ReadAll(os.Stdin)
 pop off array (.golang): fooArr = fooArr[:len(fooArr)-1]
 
 try to cast a type (.golang): |
-    if s, ok := fooVal.(string); ok {
+    s, ok := fooVal.(string)
+    if !ok {
+        panic(fmt.Errorf("failed to cast to string"))
     }
-
 
 check type runtime / type switch (.golang): |
     switch t := foo.(type) {
