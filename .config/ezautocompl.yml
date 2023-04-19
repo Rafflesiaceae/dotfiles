@@ -820,6 +820,35 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # nim {{{1
+write to file (.nim): |
+    let f = open(filename, fmWrite)
+    let strm = newFileStream(f)
+    defer: strm.close()
+read file filestream (.nim): |
+    let f = open(filename, fmRead)
+    let strm = newFileStream(f)
+    defer: strm.close()
+defer (.nim): |
+    var f = open("numbers.txt", fmWrite)
+    defer: close(f)
+enum (.nim): |
+    type
+      Direction = enum
+        north,
+        east,
+        south,
+        west,
+string to stringstream (.nim): |
+    import std/streams
+
+    var strm = newStringStream("""The first line
+    the second line
+    the third line""")
+
+    var line = ""
+
+    while strm.readLine(line):
+      echo line
 print to stderr (.nim): |
     writeLine(stderr, MSG)
     flushFile(stderr)
