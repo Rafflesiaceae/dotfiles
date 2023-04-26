@@ -6,3 +6,4 @@ pkgs_dirs:
     - '/home/MYUSER/.conda/pkgs'
 envs_dirs:
     - '/home/MYUSER/.conda/envs'
+# vim: set ft=yaml syn=yaml:
