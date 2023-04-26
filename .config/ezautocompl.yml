@@ -4,6 +4,7 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+reload udev rules (.cmd): sudo udevadm control --reload-rules
 listen for/monitor any udev actions/changes/events (.cmd): sudo udevadm monitor
 find all objects, filter and edit in place (.cmd .jq): |
     file=./somefile.json
