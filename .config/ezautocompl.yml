@@ -4,6 +4,7 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+listen for/monitor any udev actions/changes/events (.cmd): sudo udevadm monitor
 find all objects, filter and edit in place (.cmd .jq): |
     file=./somefile.json
     jq '
@@ -820,6 +821,10 @@ subprocess / spawn / communicate (.lua): |
   fp:close()
 
 # nim {{{1
+string to int (.nim): |
+    import std/parseutils
+    parseInt("100")
+
 write to file (.nim): |
     let f = open(filename, fmWrite)
     let strm = newFileStream(f)
