@@ -34,6 +34,11 @@ locald=$(dirname "$syncyfile")
 projd=$(basename "$locald")
 
 remote=$(jq --raw-output ".remote" "$HOME/.config/syncy.json" || die "could not find '~/.config/syncy.json:.remote'")
+precmd=$(jq --raw-output ".precmd" "$HOME/.config/syncy.json")
+
+if [[ -n "$precmd" && "$precmd" != "null" ]]; then
+    (eval "$precmd")
+fi
 
 rsync_local="$locald"
 rsync_remote="$remote"/"$projd"
