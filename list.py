@@ -80,6 +80,7 @@ sources = {
     "./.local/bin/ffclip": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
+    "./.local/bin/ffsmoltwo": "",
     "./.local/bin/file-changed": "",
     "./.local/bin/find-upwards": "",
     "./.local/bin/focuswindow": { "linux": "" },

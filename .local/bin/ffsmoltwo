@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+inp=$1
+outp=$2
+bitrate=$3
+
+args=(
+    -filter_complex "[0:v]scale=1280:-2:flags=lanczos+accurate_rnd" \
+
+    -c:v libx264
+    -pix_fmt yuv420p   # don't use funky color-spaces
+    -b:v "${bitrate:-2000}k"
+)
+audio_args=(
+    -c:a aac -b:a "${4:-256}k" # use Xkbs aac audio
+    -filter:a "loudnorm=I=-16:TP=-3:LRA=4" # loudnorm
+	-ac 2              #map audio to stereo
+    # -ac 1              # map audio to mono
+)
+high_qual_audio_args=(
+    -c:a aac -b:a "${4:-512}k" # use Xkbs aac audio
+    # -filter:a "loudnorm=I=-16:TP=-3:LRA=4" # loudnorm
+	-ac 2              #map audio to stereo
+)
+
+ffmpeg -y -i "$inp" "${args[@]}" -pass 1 -an -f null /dev/null && \
+ffmpeg -y -i "$inp" "${args[@]}" -pass 2 "${audio_args[@]}" "${outp:-ffsmoltwo.mp4}"
