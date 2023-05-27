@@ -51,6 +51,9 @@ xicat() {
 if [[ $# -eq 1 ]]; then 
     case "$1" in
         bazel) # {{{2
+            icat ".bazelrc" <<'EOF'
+common --enable_bzlmod
+EOF
             icat "BUILD.bazel" <<'EOF'
 package(default_visibility = ["//visibility:public"])
 # load("@rules_idtech3//:index.bzl", "idtech3_make_pk3")
@@ -81,27 +84,22 @@ sh_binary(
 )
 EOF
 
-            icat "WORKSPACE.bazel" <<'EOF'
-workspace(name = "rules_SOME")
-
-# local_repository(
-#     name = "rules_idtech3",
-#     path = "/home/USER/workspace/rules_SOME",
-# )
-
-# rules_pkg {{{
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-http_archive(
-    name = "rules_pkg",
-    urls = [
-        "https://mirror.bazel.build/github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
-        "https://github.com/bazelbuild/rules_pkg/releases/download/0.7.0/rules_pkg-0.7.0.tar.gz",
-    ],
-    sha256 = "8a298e832762eda1830597d64fe7db58178aa84cd5926d76d5b744d6558941c2",
+            icat "MODULE.bazel" <<'EOF'
+module(
+    name = "cool_local_project",
+    version = "0.0.1",
 )
-load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies", "rules_pkg_register_toolchains")
-rules_pkg_dependencies()
-rules_pkg_register_toolchains()
+
+# {{{ rules_pkg
+bazel_dep(name = "rules_pkg", version = "0.9.1")
+
+# {{{ rules_python
+bazel_dep(name = "rules_python", version = "0.21.0")
+EOF
+
+            icat "WORKSPACE.bazel" <<'EOF'
+# Empty file indicating the root of a Bazel workspace.
+# Dependencies and setup are in ./MODULE.bazel.
 EOF
 
             icat "index.bzl" <<'EOF'
