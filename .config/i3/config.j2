@@ -8,6 +8,8 @@ force_focus_wrapping yes
 
 show_marks yes
 
+tiling_drag off # https://github.com/i3/i3/issues/5155
+
 # {{{ bindsym
 {# we just repeat this whole bindsym block for each mod_key in `mod_keys` #}
 {% for mod in i3.mod_keys|default(["Mod3"]) %}
@@ -200,7 +202,7 @@ bar {
     position bottom
     status_command »i3.statuscmd or 'i3status'«
     {% if not i3.show_systray %}
-    tray_output none 
+    tray_output none
     {% endif %}
 
     font pango:Consolas 12
