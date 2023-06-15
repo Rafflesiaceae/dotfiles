@@ -28,7 +28,7 @@ usage_and_die() {
 writtenFiles=()
 
 icat() {
-    [[ -f "$1" ]] && { 
+    [[ -f "$1" ]] && {
         echo "$1 already exists"
         sleep 1
 
@@ -48,7 +48,7 @@ xicat() {
 }
 
 # {{{1 single templates
-if [[ $# -eq 1 ]]; then 
+if [[ $# -eq 1 ]]; then
     case "$1" in
         bazel) # {{{2
             icat ".bazelrc" <<'EOF'
@@ -154,7 +154,7 @@ def _some_rule(ctx):
             files = depset([output_file]),
             # runfiles = ctx.runfiles(files = ctx.attr._jailbreak[DefaultInfo].default_runfiles.files.to_list()),
             # runfiles = ctx.runfiles(files = ctx.attr._jailbreak[DefaultInfo].files.to_list()),
-        ), 
+        ),
         Idtech3ConfigProvider(
             imagemagick_path = cfg.imagemagick_path,
         ),
@@ -321,16 +321,16 @@ EOF
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-  
+
     <groupId>com.otto.neurath</groupId>
     <artifactId>otto-neurath</artifactId>
     <version>0.1-SNAPSHOT</version>
-  
+
     <properties>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
     </properties>
-  
+
     <dependencies>
         <dependency>
             <groupId>redis.clients</groupId>
@@ -374,7 +374,7 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN apt-get update -qq && apt-get upgrade -y
 
-RUN apt-get install --no-install-recommends -y \ 
+RUN apt-get install --no-install-recommends -y \
         build-essential make pkg-config ca-certificates curl unzip python git-core cmake \
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
