@@ -18,8 +18,11 @@ args=(
 	-c:v copy
 	-c:a copy
 
+    # -map 0:a:1 # select 2nd audio track
+    # -map 0:v:0 # select 1st video track
+
     # re-encode - this needs to happen if we want frame-precision
-    -c:v libx264 
+    -c:v libx264
     -preset ultrafast
     -crf 0
 
