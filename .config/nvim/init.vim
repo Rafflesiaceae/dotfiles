@@ -562,6 +562,7 @@ inoremap <silent> <RightMouse> <C-o>:call ClipboardPasteInline()<CR>
 vnoremap <silent> <RightMouse> "+y
 
 " grammar
+let g:grammarous#jar_url = 'https://www.languagetool.org/download/LanguageTool-5.9.zip'
 nmap <leader>gr <Plug>(grammarous-open-info-window)
 nmap <leader>grn <Plug>(grammarous-move-to-next-error)
 nmap <leader>grp <Plug>(grammarous-move-to-previous-error)
