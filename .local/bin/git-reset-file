@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+if [[ "$#" -ne 2 ]]; then
+    die "usage: <path> <commit-hash>"
+fi
+
+toplevel_path=$(git-show-toplevel-path)
+
+path=$(realpath "$1")
+relpath=${path#"${toplevel_path}/"}
+
+echo "+ git show ${2}:'${relpath}' > '${path}'"
+git show "$2":"$relpath" > "$path"

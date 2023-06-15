@@ -105,6 +105,7 @@ sources = {
     "./.local/bin/git-list-changed-files-in-commit": "",
     "./.local/bin/git-rebase-noninteractive": "",
     "./.local/bin/git-remote-copy-url": "",
+    "./.local/bin/git-reset-file": "",
     "./.local/bin/git-reset-submodule": "",
     "./.local/bin/git-reset-to-tracked": "",
     "./.local/bin/git-search-all-branches": "",
