@@ -756,6 +756,9 @@ autocmd FileType hcl setlocal expandtab shiftwidth=2 tabstop=2
 " Terraform
 au BufRead,BufNewFile *.tfstate* set filetype=json
 
+" scons
+au BufRead,BufNewFile SConscript,SConstruct set filetype=python
+
 " <leader>j autoformatting/testing
 augroup _leader_j
 autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
