@@ -749,6 +749,12 @@ au BufRead,BufNewFile *.nosh set filetype=starlark
 au BufWritePre        *.nosh call s:AddExecutablebitPre()
 au BufWritePost       *.nosh call s:AddExecutablebitPost()
 
+" HCL
+autocmd FileType hcl setlocal expandtab shiftwidth=2 tabstop=2
+
+" Terraform
+au BufRead,BufNewFile *.tfstate* set filetype=json
+
 " <leader>j autoformatting/testing
 augroup _leader_j
 autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
@@ -1368,6 +1374,7 @@ Plug 'zchee/vim-flatbuffers'
 Plug 'cespare/vim-toml'
 Plug 'LnL7/vim-nix'
 Plug 'michaeljsmith/vim-indent-object'
+Plug 'jvirtanen/vim-hcl', { 'commit': '1e1116c17a5774851360ea8077f349e36fc733c1' }
 
 Plug 'wsdjeg/vim-fetch'
 
