@@ -457,16 +457,18 @@ EOF
         make|Makefile) # {{{2
             icat "Makefile" <<'EOF'
 .PHONY: *
-.ONESHELL:
 SHELL := bash
+.ONESHELL:
+.SHELLFLAGS := -eo pipefail -c
+.SILENT:
 
 VERSION=
 
 help:
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-30s\033[0m %s\n", $$1, $$2 } /^# \{\{\{/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 7) } ' $(MAKEFILE_LIST)
 
-build:
-	@set -eo pipefail
+# {{{ Build
+build: ## build
 	echo building...
 EOF
             ;;
