@@ -134,6 +134,11 @@ let g:ycm_language_server =
   \     'filetypes': [ 'nim' ],
   \   },
   \   {
+  \     'name': 'terraform',
+  \     'cmdline': [ $HOME.'/workspace/terraform-ls/terraform-ls', 'serve'],
+  \     'filetypes': [ 'hcl' ],
+  \   },
+  \   {
   \     'name': 'json',
   \     'cmdline': [ $HOME.'/.node_modules/bin/vscode-json-languageserver', '--stdio' ],
   \     'filetypes': [ 'json' ],
