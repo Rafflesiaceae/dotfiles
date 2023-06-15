@@ -1433,6 +1433,13 @@ first word of a string (.sh .bash): cut -d ' ' -f1
 
 check if directory is empty (.sh .bash): is_dir_empty() { ! find "$1" -mindepth 1 -maxdepth 1 | read -r REPLY; }
 
+assign heredoc to variable (.sh .bash): |
+    read -r -d '' VAR <<'EOF' || true
+    abc'asdf"
+    $(dont-execute-this)
+    foo"bar"''
+    EOF
+
 cat heredoc to file (.sh .bash): |
     cat <<EOF > FILE
     ...
