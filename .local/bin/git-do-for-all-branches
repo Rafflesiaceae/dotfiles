@@ -12,10 +12,12 @@ prompt_continue() {
     tput sc
     while true; do
         read -p "Continue? (y/n/s) → " -n 1 -r yn
+        echo "$yn"
         case $yn in
-            [Yy]*) break;;
-            [Ss]*) printf "skip"; break;;
-            [Nn]*) printf "\n"; exit 1;;
+            Y) printf "all_yes"; break;;
+            y) break;;
+            [Ss]) printf "skip"; break;;
+            [Nn]) printf "\n"; exit 1;;
             *) tput el1; tput rc ;;
         esac
     done
@@ -54,16 +56,22 @@ shift || usage
 get_remote_url() { git remote get-url "$remote"; }
 git ls-remote --heads -- "$(get_remote_url)" | awk '{ print $2; }' | while read -r line; do
     line=${line#refs/heads/}
-    echo "$line"
+    echo "> $line"
 
-    [[ ! $no_prompt ]] && { 
+    [[ ! $no_prompt ]] && {
         prompt_res=$(prompt_continue </dev/tty)
-        if [[ "$prompt_res" == *"skip"* ]]; then
-            echo "kipping"
-            continue
-        else
-            echo ""
-        fi
+        case "$prompt_res" in
+            *all_yes*)
+                no_prompt=1
+                ;;
+            *skip*)
+                echo "skipping"
+                continue
+                ;;
+            *)
+                echo ""
+                ;;
+        esac
     }
 
     export branch="$line"
