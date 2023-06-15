@@ -762,6 +762,7 @@ au BufRead,BufNewFile SConscript,SConstruct set filetype=python
 " <leader>j autoformatting/testing
 augroup _leader_j
 autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+autocmd FileType nix noremap <leader>j :silent !nixpkgs-fmt %<CR>
 augroup END
 
 
