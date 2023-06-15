@@ -117,6 +117,7 @@ sources = {
     "./.local/bin/git-submodule-apply": "",
     "./.local/bin/git-undo-keep-changes": "",
     "./.local/bin/git-unstage": "",
+    "./.local/bin/gitm": "",
     "./.local/bin/gitpseudfuse": "",
     "./.local/bin/gitr": "",
     "./.local/bin/gitsup": "",
