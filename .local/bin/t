@@ -51,9 +51,14 @@ xicat() {
 if [[ $# -eq 1 ]]; then
     case "$1" in
         bazel) # {{{2
+            icat ".bazeliskrc" <<'EOF'
+USE_BAZEL_VERSION=6.2.0
+EOF
+
             icat ".bazelrc" <<'EOF'
 common --enable_bzlmod
 EOF
+
             icat "BUILD.bazel" <<'EOF'
 package(default_visibility = ["//visibility:public"])
 # load("@rules_idtech3//:index.bzl", "idtech3_make_pk3")
@@ -182,7 +187,6 @@ some_rule = rule(
         ),
     },
 )
-
 EOF
         ;;
 
