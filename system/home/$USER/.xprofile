@@ -15,5 +15,6 @@ xsetroot -cursor_name left_ptr
 
 # autostart
 parcellite -d &
+nm-applet &
 lazy-user-session-bus init
 lazy-user-session-bus send refresh-keyboard

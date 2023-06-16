@@ -15,8 +15,8 @@ general {
 # optional
 order += "read_file i3status_additional"
 order += "path_exists VPN"
-order += "wireless _first_"
-order += "ethernet _first_"
+# order += "wireless _first_"
+# order += "ethernet _first_"
 
 # warnings
 order += "disk /"
