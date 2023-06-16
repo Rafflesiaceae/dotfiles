@@ -210,7 +210,8 @@ dev=(
     yarn
 )
 network=(
-    connman
+    networkmanager
+    network-manager-applet
 )
 printer=(
     cups
