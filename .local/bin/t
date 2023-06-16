@@ -50,6 +50,155 @@ xicat() {
 # {{{1 single templates
 if [[ $# -eq 1 ]]; then
     case "$1" in
+        ansible) # {{{2
+            icat ".ansible-lint" <<'EOF'
+---
+exclude_paths:
+  - ./requirements.yml
+
+# mock_modules:
+#   - postgresql_db
+#   - postgresql_user
+#   - postgresql_privs
+#   - postgresql_pg_hba
+
+warn_list:
+  - command-instead-of-shell  # Use shell only when shell functionality is required
+  - deprecated-local-action  # Do not use 'local_action', use 'delegate_to: localhost'
+  - literal-compare  # Don't compare to literal True/False
+  - name[play]
+  - package-latest  # Package installs should not use latest
+  - risky-shell-pipe  # Shells that use pipes should set the pipefail option
+
+skip_list:
+  - command-instead-of-shell  # ignore: not worth saving a bunch of seconds or having to noaq legit uses
+  - fqcn  # ignore: see https://github.com/ansible/ansible-lint/issues/2050
+  - name[missing]  # ignore: some tasks are self-describing
+  - name[template]  # ignore: Jinja templates should only be at the end of 'name'
+  - yaml[line-length]  # ignore: not worth the troubles
+
+  - experimental  # @XXX @TODO these fail for unexplained reasons, unsure why, disabling for now
+  - package-latest  # @TODO maybe enable again?
+  - risky-file-permissions  # @XXX @TODO these fail for unexplained reasons, might be a bug, disabling for now
+EOF
+
+            icat ".yamlfmt" <<'EOF'
+---
+# for https://github.com/google/yamlfmt
+formatter:
+  disallow_anchors: true
+  include_document_start: true
+  indent: 2
+  indentless_arrays: false
+  line_ending: lf
+  pad_line_comments: 2
+  retain_line_breaks: true
+  scan_folded_as_literal: true
+  type: basic
+
+# vim: set ft=yaml:
+EOF
+
+            icat ".yamllint" <<'EOF'
+---
+rules:
+  anchors:
+    forbid-undeclared-aliases: true
+    forbid-duplicated-anchors: true
+
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+    min-spaces-inside-empty: -1
+    max-spaces-inside-empty: -1
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 0
+    min-spaces-inside-empty: -1
+    max-spaces-inside-empty: -1
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: 1
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  comments:
+    require-starting-space: true
+    ignore-shebangs: true
+    min-spaces-from-content: 2
+  comments-indentation: {}
+
+  document-start:
+    present: true
+
+  float-values:
+    forbid-inf: true
+    forbid-nan: true
+    forbid-scientific-notation: true
+    require-numeral-before-decimal: true
+
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 0
+  empty-values:
+    forbid-in-block-mappings: true
+    forbid-in-flow-mappings: true
+
+  hyphens:
+    max-spaces-after: 1
+  indentation:
+    check-multi-line-strings: false
+    indent-sequences: true
+    spaces: 2
+  trailing-spaces: {}
+
+  key-duplicates: {}
+
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
+
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: true
+
+# vim: set ft=yaml:
+EOF
+
+            icat "ansible.cfg" <<'EOF'
+[defaults]
+default_transport = ssh
+deprecation_warnings = false
+force_valid_group_names = ignore
+forks = 8
+gather_subset = !hardware
+host_key_checking = False
+log_path = ./logs/ansible-log
+nocows = 1
+
+# for submodules
+library = some-submodule/library/:another-submodule/library/
+roles_path = some-submodule/roles/:another-submodule/roles/
+
+# if this file has its executable bit set, it will be executed and its stdout
+# will be used, otherwise it will be read plaintext ↓
+vault_password_file = ~/.vault.password
+ask_vault_pass = false
+
+# Use the YAML callback plugin for better structured log output
+# https://docs.ansible.com/ansible/latest/collections/community/general/yaml_callback.html
+stdout_callback = community.general.yaml
+bin_ansible_callbacks = True
+
+[ssh_connection]
+control_path = %(directory)s/%%h-%%p-%%r
+pipelining = True
+EOF
+        ;;
+
         bazel) # {{{2
             icat ".bazeliskrc" <<'EOF'
 USE_BAZEL_VERSION=6.2.0
