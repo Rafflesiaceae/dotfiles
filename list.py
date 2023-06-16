@@ -26,6 +26,7 @@ sources = {
     "./.config/rofi/config.rasi": { "linux": "" },
     "./.config/rofi/themes/Kokonai.rasi": { "linux": "" },
     "./.config/systemd/user/ssh-agent.service": { "linux": "" },
+    "./.config/systemd/user/warn-battery.service": { "linux": "" },
     "./.config/yt-dlp.conf": { "linux": "" },
 
     "./.config/Code/User/keybindings.json.j2": {

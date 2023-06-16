@@ -1,0 +1,9 @@
+[Unit]
+Description=Warn via notify-send about low battery
+
+[Service]
+Type=exec
+ExecStart=/bin/dash -c "${HOME}/.local/bin/warn-battery"
+
+[Install]
+WantedBy=default.target
