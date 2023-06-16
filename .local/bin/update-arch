@@ -19,12 +19,12 @@ shift
 echo {{{1 record itself
 if [[ "$1" != "--no-record" ]]; then
     title=".update_arch_$(date +%s)"
-    echo "recording output to $HOME/$title.cast"
+    echo "recording output to ${HOME}/${title}.cast"
     asciinema rec \
         --command "\"$0\" --run --no-record" \
         --title "$title" \
         --quiet \
-        "$HOME/$title.cast"
+        "${HOME}/${title}.cast"
     exit 0
 fi
 
@@ -36,10 +36,10 @@ echo {{{1 update official packages
 sudo pacman -Syu --noconfirm
 
 echo {{{1 update yay
-aurloc="$HOME/.aur"
+aurloc="${HOME}/.aur"
 mkdir -p "$aurloc"
-mkdir -p "$aurloc/yay"
-pushd "$aurloc/yay"
+mkdir -p "${aurloc}/yay"
+pushd "${aurloc}/yay"
 wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
 tar xvfz "yay.tar.gz" -C ../
 makepkg -i --noconfirm --needed --skippgpcheck
@@ -50,7 +50,7 @@ yay -S --answerdiff "None" --answerclean "None" --noprovides \
     aur/deadbeef
 
 echo {{{1 update amr
-amrloc="$HOME/.amr"
+amrloc="${HOME}/.amr"
 [[ ! -d "$amrloc" ]] && git clone "https://github.com/Rafflesiaceae/pkgbuilds.git" "$amrloc"
 pushd "$amrloc"
 git pull
@@ -77,7 +77,7 @@ echo {{{1 update vim plugins
 nvim +'PlugUpdate --sync' +qa
 
 echo {{{1 update YCM
-pushd "$HOME/.vim/plugged/YouCompleteMe"
+pushd "${HOME}/.vim/plugged/YouCompleteMe"
 ./install.py \
     --clangd-completer \
     --go-completer \
