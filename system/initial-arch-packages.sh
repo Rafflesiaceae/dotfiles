@@ -33,7 +33,7 @@ fi
 
 echo "> rank and write /etc/pacman.d/mirrorlist"
 if [[ ! -f "/etc/pacman.d/mirrorlist" ]]; then
-    tmpfile=$(mktemp) 
+    tmpfile=$(mktemp)
     curl -L -s 'https://archlinux.org/mirrorlist/?country=AT&country=DE&protocol=https&use_mirror_status=on' | sed -e 's/^#Server/Server/' -e '/^#/d' | rankmirrors -n 5 - >"$tmpfile"
     sudo mv "$tmpfile" "/etc/pacman.d/mirrorlist"
 fi
@@ -53,6 +53,7 @@ base=(
     curl
     dbus
     docker
+    docker-buildx
     docker-compose
     dos2unix
     entr
