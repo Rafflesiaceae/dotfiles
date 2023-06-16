@@ -1313,6 +1313,14 @@ enum (.json-schema): |
     }
 
 # bash {{{1
+find latest file matching pattern (.sh .bash): |
+    unset -v latest
+    for file in "$HOME/.update_arch_"*".cast"; do
+        if [[ -z "$latest" ]] || [[ "$file" -nt "$latest" ]]; then
+            latest=$file
+        fi
+    done
+
 strip final newline (.cmd .sh .bash): |
     sed -z '$ s/\n$//'
 shellcheck ignore/disable single run (.sh .bash): |
