@@ -200,6 +200,7 @@ sources = {
     "./.local/bin/vimp": "",
     "./.local/bin/vims": "",
     "./.local/bin/vtt-extract": "",
+    "./.local/bin/warn-battery": "",
     "./.local/bin/watch-build": { "linux": "" },
     "./.local/bin/watch-go": { "linux": "" },
     "./.local/bin/watch-single": { "linux": "" },

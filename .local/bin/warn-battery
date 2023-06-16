@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# checks battery status via 'acpi', if below 18min, will send a critical
+# notification via notify-send every minute
+#
+# REQUIRES: acpi notify-send
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+hrs=
+mins=
+secs=
+
+while true; do
+    sleep 60
+
+    # parse battery status
+    bat_line=$(acpi -b)
+    if [[ "$bat_line" =~ ^Battery.*\ ([0-9:]+)\ remaining$ ]]; then
+        remaining_raw="${BASH_REMATCH[1]}"
+        IFS=':' read -ra remaining <<< "$remaining_raw"
+        hrs="${remaining[0]}"
+        mins="${remaining[1]}"
+        secs="${remaining[2]}"
+    else
+        continue
+    fi
+
+    # check
+    if [[ "$hrs" -eq 0 ]] && [[ "$mins" -lt 18 ]]; then
+        notify-send --urgency=critical "LOW BATTERY" "${remaining_raw} remaining"
+    fi
+
+done
