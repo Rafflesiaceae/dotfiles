@@ -25,6 +25,7 @@ sources = {
     "./.config/ranger/rifle.conf": { "linux": "" },
     "./.config/rofi/config.rasi": { "linux": "" },
     "./.config/rofi/themes/Kokonai.rasi": { "linux": "" },
+    "./.config/systemd/user/i3status-additional.service": { "linux": "" },
     "./.config/systemd/user/ssh-agent.service": { "linux": "" },
     "./.config/systemd/user/warn-battery.service": { "linux": "" },
     "./.config/yt-dlp.conf": { "linux": "" },

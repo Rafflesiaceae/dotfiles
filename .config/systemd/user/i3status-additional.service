@@ -1,0 +1,9 @@
+[Unit]
+Description=Write additional info to i3status
+
+[Service]
+Type=exec
+ExecStart=/bin/dash -c "${HOME}/.local/bin/i3status-additional"
+
+[Install]
+WantedBy=default.target
