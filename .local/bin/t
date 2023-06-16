@@ -670,11 +670,11 @@ EOF
         ;;
         make|Makefile) # {{{2
             icat "Makefile" <<'EOF'
-.PHONY: *
 SHELL := bash
-.ONESHELL:
 .SHELLFLAGS := -eo pipefail -c
+.ONESHELL:
 .SILENT:
+.PHONY: *
 
 VERSION :=
 SOME_ENV_VAR := ${SOME_ENV_VAR}
