@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# prints additional info to i3status in pango format
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
+}
+
+case "$1" in
+    tick) # "main"
+        print_contents() {
+            printf "🏃<span foreground='#FD0000'>%s</span>" "error"
+            printf "🏃<span foreground='#FDA202'>%s</span>" "warning"
+            printf "🏃<span foreground='#AD8F5C'>%s</span>" "not-normal"
+            printf "🏃%s" "normal"
+        }
+
+        out=$(print_contents)
+        if [[ -n "$out" ]]; then
+            printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
+            printf "%s" "$out"
+            printf "</span>)</span> \n"
+        fi
+        ;;
+    *) # daemon
+        pipetmpf=/tmp/.i3status.additional.tmp
+        pipef=/tmp/.i3status.additional
+        cleanup() {
+            printf "" > "$pipef"
+        }
+        trap 'cleanup' EXIT INT
+        while :; do
+            ("$0" tick || echo "???") > "$pipetmpf"
+            mv "$pipetmpf" "$pipef" || true
+            sleep 10
+        done
+        ;;
+esac
+
