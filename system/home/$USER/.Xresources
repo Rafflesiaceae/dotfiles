@@ -15,7 +15,7 @@ URxvt.font: xft:Consolas:size=11,xft:Fixed:size=11,xft:Nimbus Sans:size 11,xft:S
 URxvt.internalBorder: 0
 URxvt.iso14755: False
 URxvt.iso14755_52:  false
-URxvt.saveLines: 5000
+URxvt.saveLines: 50000
 URxvt.scrollBar: false
 URxvt.urgentOnBell: true
 
