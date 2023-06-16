@@ -19,5 +19,7 @@ prompt_continue() {
 cmd="sudo bash -c 'mkinitcpio -P && grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg'"
 
 echo "+ $cmd"
-prompt_continue
+if [[ "$1" != "-y" ]]; then
+    prompt_continue
+fi
 eval "$cmd"

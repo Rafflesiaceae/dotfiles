@@ -83,7 +83,7 @@ makepkg-and-install "xkeyboard-config-desc"
 popd
 
 echo {{{1 update grub
-update-grub
+update-grub -y
 
 echo {{{1 update vim plugins
 nvim +'PlugUpdate --sync' +qa
