@@ -108,6 +108,7 @@ use_default_rules: true
 
 exclude_paths:
   - ./requirements.yml
+  - ./some/dir/**
 
 # mock_modules:
 #   - postgresql_db
@@ -116,23 +117,23 @@ exclude_paths:
 #   - postgresql_pg_hba
 
 warn_list:
-  - command-instead-of-shell # Use shell only when shell functionality is required
-  - deprecated-local-action  # Do not use 'local_action', use 'delegate_to: localhost'
-  - literal-compare          # Don't compare to literal True/False
+  - command-instead-of-shell  # Use shell only when shell functionality is required
+  - deprecated-local-action   # Do not use 'local_action', use 'delegate_to: localhost'
+  - literal-compare           # Don't compare to literal True/False
   - name[play]
-  - package-latest           # Package installs should not use latest
-  - risky-shell-pipe         # Shells that use pipes should set the pipefail option
+  - package-latest            # Package installs should not use latest
+  - risky-shell-pipe          # Shells that use pipes should set the pipefail option
 
 skip_list:
-  - command-instead-of-shell # ignore: not worth saving a bunch of seconds or having to noaq legit uses
-  - fqcn                     # ignore: see https://github.com/ansible/ansible-lint/issues/2050
-  - name[missing]            # ignore: some tasks are self-describing
-  - name[template]           # ignore: Jinja templates should only be at the end of 'name'
-  - yaml[line-length]        # ignore: not worth the troubles
+  - command-instead-of-shell  # ignore: not worth saving a bunch of seconds or having to noaq legit uses
+  - fqcn                      # ignore: see https://github.com/ansible/ansible-lint/issues/2050
+  - name[missing]             # ignore: some tasks are self-describing
+  - name[template]            # ignore: Jinja templates should only be at the end of 'name'
+  - yaml[line-length]         # ignore: not worth the troubles
 
-  - experimental           # @XXX @TODO these fail for unexplained reasons, unsure why, disabling for now
-  - package-latest         # @TODO maybe enable again?
-  - risky-file-permissions # @XXX @TODO these fail for unexplained reasons, might be a bug, disabling for now
+  - experimental              # @XXX @TODO these fail for unexplained reasons, unsure why, disabling for now
+  - package-latest            # @TODO maybe enable again?
+  - risky-file-permissions    # @XXX @TODO these fail for unexplained reasons, might be a bug, disabling for now
 
 # vim: set ft=yaml:
 EOF
