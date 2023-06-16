@@ -53,6 +53,8 @@ if [[ $# -eq 1 ]]; then
         ansible) # {{{2
             icat ".ansible-lint" <<'EOF'
 ---
+use_default_rules: true
+
 exclude_paths:
   - ./requirements.yml
 
@@ -63,23 +65,25 @@ exclude_paths:
 #   - postgresql_pg_hba
 
 warn_list:
-  - command-instead-of-shell  # Use shell only when shell functionality is required
+  - command-instead-of-shell # Use shell only when shell functionality is required
   - deprecated-local-action  # Do not use 'local_action', use 'delegate_to: localhost'
-  - literal-compare  # Don't compare to literal True/False
+  - literal-compare          # Don't compare to literal True/False
   - name[play]
-  - package-latest  # Package installs should not use latest
-  - risky-shell-pipe  # Shells that use pipes should set the pipefail option
+  - package-latest           # Package installs should not use latest
+  - risky-shell-pipe         # Shells that use pipes should set the pipefail option
 
 skip_list:
-  - command-instead-of-shell  # ignore: not worth saving a bunch of seconds or having to noaq legit uses
-  - fqcn  # ignore: see https://github.com/ansible/ansible-lint/issues/2050
-  - name[missing]  # ignore: some tasks are self-describing
-  - name[template]  # ignore: Jinja templates should only be at the end of 'name'
-  - yaml[line-length]  # ignore: not worth the troubles
+  - command-instead-of-shell # ignore: not worth saving a bunch of seconds or having to noaq legit uses
+  - fqcn                     # ignore: see https://github.com/ansible/ansible-lint/issues/2050
+  - name[missing]            # ignore: some tasks are self-describing
+  - name[template]           # ignore: Jinja templates should only be at the end of 'name'
+  - yaml[line-length]        # ignore: not worth the troubles
 
-  - experimental  # @XXX @TODO these fail for unexplained reasons, unsure why, disabling for now
-  - package-latest  # @TODO maybe enable again?
-  - risky-file-permissions  # @XXX @TODO these fail for unexplained reasons, might be a bug, disabling for now
+  - experimental           # @XXX @TODO these fail for unexplained reasons, unsure why, disabling for now
+  - package-latest         # @TODO maybe enable again?
+  - risky-file-permissions # @XXX @TODO these fail for unexplained reasons, might be a bug, disabling for now
+
+# vim: set ft=yaml:
 EOF
 
             icat ".yamlfmt" <<'EOF'
@@ -172,11 +176,12 @@ EOF
 [defaults]
 default_transport = ssh
 deprecation_warnings = false
+executable = /bin/bash
 force_valid_group_names = ignore
 forks = 8
 gather_subset = !hardware
 host_key_checking = False
-log_path = ./logs/ansible-log
+log_path = ./ansible.log
 nocows = 1
 
 # for submodules
@@ -364,6 +369,10 @@ insert_final_newline = true
 trim_trailing_whitespace = true
 indent_style = space
 
+[*.go]
+indent_style = tab
+indent_size = 4
+
 [*.nim]
 indent_size = 2
 
@@ -374,24 +383,23 @@ indent_size = 4
 indent_size = 2
 
 [*.{c,cc,cpp,h,hh,hpp}]
-indent_style = tab
 indent_size = 3
 
 [Makefile]
 indent_style = tab
+indent_size = 4
+trim_trailing_whitespace = false
 
 [meson.build]
-indent_size = 4
 indent_style = tab
+indent_size = 4
 
 # serialization & markup
 
 [*.{json,jsonl,json5}]
-indent_style = tab
 indent_size = 2
 
 [*.{yaml,yml}]
-indent_style = space
 indent_size = 2
 
 [*.md]
