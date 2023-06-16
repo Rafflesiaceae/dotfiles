@@ -12,6 +12,18 @@ if [[ "$1" != "--run" ]]; then
 
     tmux new-session -d -s "update-arch" "$0" "--run" "$@"
     tmux attach-session -t "update-arch"
+
+    # find latest .cast file
+    unset -v latest_cast_file
+    for file in "${HOME}/.update_arch_"*".cast"; do
+        if [[ -z "$latest_cast_file" ]] || [[ "$file" -nt "$latest_cast_file" ]]; then
+            latest_cast_file=$file
+        fi
+    done
+
+    # cat it
+    asciinema cat "$latest_cast_file"
+
     exit 0
 fi
 shift
