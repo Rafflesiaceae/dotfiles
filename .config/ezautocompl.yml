@@ -57,6 +57,11 @@ get current branch (.git .cmd): |
     current_branch_full=$(git symbolic-ref HEAD)
     current_branch=${current_branch_full#"refs/heads/"}
 
+search and replace multiple in one command in place (.sed .cmd): |
+    sed \
+        -e 's///g' \
+        -e 's///g' \
+        -i "./SOMEFILE"
 remove/delete all lines matching (.sed .cmd): sed -i '/PATTERN/d' FILE
 add empty line at beginning of file (.sed .cmd): sed -i '1i\\' FILE
 add a prefix to each line (.sed .cmd): sed 's/^/prefix/'
