@@ -115,3 +115,5 @@ disk "/" {
 read_file uptime {
         path = "/proc/uptime"
 }
+
+# vim: set ft=conf:
