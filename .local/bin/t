@@ -51,6 +51,59 @@ xicat() {
 if [[ $# -eq 1 ]]; then
     case "$1" in
         ansible) # {{{2
+            icat "Makefile.ansible" <<'EOF'
+lint: ## Lint ansible files via ansible-lint (args: ARGS)
+	@set -xeo pipefail
+	./ansible-env.sh -- ansible-lint --strict ${ARGS}
+
+autoformat:  ## Autoformat all yaml files via 'yamlfmt'
+	@set -xeo pipefail
+	find . -iname "*.yml" \
+		-not -path "./subdir/*" -and \
+		-not -path "./requirements.yml" \
+	| xargs yamlfmt
+
+list-hosts:
+	@set -eo pipefail
+	hosts=""
+	read_instance_hosts() {
+		hosts="$$(printf "%s\n%s" "$${hosts}" "$$(ANSIBLE_VERBOSITY=0 ansible all --list-hosts -i inventory/$${1} | tail -n +2)")"
+	}
+
+	read_instance_hosts "testing"
+	read_instance_hosts "staging"
+	read_instance_hosts "production"
+
+	echo "$${hosts}" | sort | uniq -u | sed '/^[[:space:]]*$$/d'
+
+verify-host-connections: ## Verify local SSH keys being able to connect to hosts
+	@set -eo pipefail
+	failed_hosts=()
+	while read -r host; do
+		(
+			set -x
+			ssh-keygen -R "$${host}"
+			ssh \
+				-o ConnectTimeout=10 \
+				-o PasswordAuthentication=no \
+				"$${host}" -- ':'
+		) < /dev/tty >&2 || { failed_hosts+=("$${host}"); }
+	done < <(make -s list-hosts)
+
+	failed_hosts_count=$${#failed_hosts[@]}
+	if [[ "$${failed_hosts_count}" -gt 0 ]]; then
+		echo "" >&2
+		echo "✘ Failed to connect to $${failed_hosts_count} hosts! ↓" >&2
+		for host in "$${failed_hosts[@]}" ; do
+			echo "$${host}"
+		done
+		exit 1
+	else
+		echo "" >&2
+		echo "✓ All hosts were successfully reachable." >&2
+	fi
+EOF
+
             icat ".ansible-lint" <<'EOF'
 ---
 use_default_rules: true
