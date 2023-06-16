@@ -1,9 +1,15 @@
-#!/bin/sh
-yt-dlp $* \
-    --output "$HOME/Music/%(title)s_%(id)s.%(ext)s" \
-    --format bestaudio \
-    --extract-audio \
+#!/usr/bin/env bash
+args=(
+    --output "$HOME/Music/%(title)s_%(id)s.%(ext)s"
+    --format bestaudio
+    --extract-audio
     --no-mtime
 
-    # --audio-format mp3 \
-    # --audio-quality 0 \
+    # --audio-format mp3
+    # --audio-quality 0
+)
+if [ "$#" -gt 0 ]; then
+    yt-dlp "$(cb)" "${args[@]}"
+else
+    yt-dlp "$@" "${args[@]}"
+fi
