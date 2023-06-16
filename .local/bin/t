@@ -53,31 +53,29 @@ if [[ $# -eq 1 ]]; then
         ansible) # {{{2
             icat "Makefile.ansible" <<'EOF'
 lint: ## Lint ansible files via ansible-lint (args: ARGS)
-	@set -xeo pipefail
-	./ansible-env.sh -- ansible-lint --strict ${ARGS}
+	set -x
+	ansible-lint --strict --show-relpath --offline --project-dir . ${ARGS}
 
 autoformat:  ## Autoformat all yaml files via 'yamlfmt'
-	@set -xeo pipefail
+	set -x
 	find . -iname "*.yml" \
 		-not -path "./subdir/*" -and \
 		-not -path "./requirements.yml" \
 	| xargs yamlfmt
 
 list-hosts:
-	@set -eo pipefail
 	hosts=""
 	read_instance_hosts() {
 		hosts="$$(printf "%s\n%s" "$${hosts}" "$$(ANSIBLE_VERBOSITY=0 ansible all --list-hosts -i inventory/$${1} | tail -n +2)")"
 	}
-
+	    #
 	read_instance_hosts "testing"
 	read_instance_hosts "staging"
 	read_instance_hosts "production"
-
+	    #
 	echo "$${hosts}" | sort | uniq -u | sed '/^[[:space:]]*$$/d'
 
 verify-host-connections: ## Verify local SSH keys being able to connect to hosts
-	@set -eo pipefail
 	failed_hosts=()
 	while read -r host; do
 		(
@@ -89,7 +87,7 @@ verify-host-connections: ## Verify local SSH keys being able to connect to hosts
 				"$${host}" -- ':'
 		) < /dev/tty >&2 || { failed_hosts+=("$${host}"); }
 	done < <(make -s list-hosts)
-
+	    #
 	failed_hosts_count=$${#failed_hosts[@]}
 	if [[ "$${failed_hosts_count}" -gt 0 ]]; then
 		echo "" >&2
