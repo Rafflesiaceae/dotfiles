@@ -9,10 +9,27 @@ die() {
 case "$1" in
     tick) # "main"
         print_contents() {
-            printf "🏃<span foreground='#FD0000'>%s</span>" "error"
-            printf "🏃<span foreground='#FDA202'>%s</span>" "warning"
-            printf "🏃<span foreground='#AD8F5C'>%s</span>" "not-normal"
-            printf "🏃%s" "normal"
+            result=()
+
+            # show count of running docker containers
+            docker_containers=""
+            docker_containers=$(docker ps --format table | wc -l || true)
+            if [[ "$docker_containers" -gt 1 ]]; then
+                result+=("$(printf "🐋<span foreground='#1F97EE'>%s</span>" "$((docker_containers - 1))")")
+            fi
+
+            # show count of failed systemd units
+            systemd_failed_units=$(systemctl list-units --state=failed | tail -n 1 | awk '{ print $1 }')
+            if [[ "$systemd_failed_units" -gt 0 ]]; then
+                result+=("$(printf "systemd-failed:<span foreground='#FD0000'>%s</span>" "$((systemd_failed_units))")")
+            fi
+
+            echo "${result[@]}"
+
+            ## printf "🏃<span foreground='#FD0000'>%s</span>" "error"
+            ## printf "🏃<span foreground='#FDA202'>%s</span>" "warning"
+            ## printf "🏃<span foreground='#AD8F5C'>%s</span>" "not-normal"
+            ## printf "🏃%s" "normal"
         }
 
         out=$(print_contents)
