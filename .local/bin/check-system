@@ -22,7 +22,7 @@ while :; do
         -h|-\?|--help)
             usage; exit ;;
         -j|--journal)
-            journalctl --priority=3 --since "120min ago" --output=json | jq --sort-keys "${journald_errors_jq_filter}"
+            journalctl --priority=3 --boot --catalog
             exit 0
             ;;
         --)
@@ -83,7 +83,7 @@ check_problematic_active_unit() {
 check_problematic_active_unit "connman-vpn.service"
 
 # {{{1 check for non-trivial journalctls last 2hrs
-journald_errors_nontrivial=$(journalctl --priority=3 --since "120min ago" --output=json | jq -c "$journald_errors_jq_filter")
+journald_errors_nontrivial=$(journalctl --priority=3 --boot --output=json | jq -c "$journald_errors_jq_filter")
 journald_errors_nontrivial_count=$(printf "%s" "$journald_errors_nontrivial" | wc -l)
 if [[ $journald_errors_nontrivial_count -gt 0 ]]; then
     warn "you have $journald_errors_nontrivial_count nontrivial journald errors, to see them run: check-system -j"
