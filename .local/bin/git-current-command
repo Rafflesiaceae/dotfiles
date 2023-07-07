@@ -8,6 +8,9 @@ if [ -e "${gitdir}/MERGE_HEAD" ]; then
 elif [ -e "${gitdir}/REBASE_HEAD" ]; then
     echo "rebase"
     exit 0
+elif [ -d "${gitdir}/rebase-merge" ]; then
+    echo "rebase"
+    exit 0
 elif [ -e "${gitdir}/CHERRY_PICK_HEAD" ]; then
     echo "cherry-pick"
     exit 0
