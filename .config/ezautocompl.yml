@@ -810,9 +810,61 @@ read a file (.groovy): |
 new custom exception (.groovy): |
     public class MyCustomException extends Exception { MyCustomException(String msg){super(msg)} }
 
-# jenkins {{{1
-print/list contents of workspace (.jenkins): |
-    sh 'find . -name "*"'
+
+# ansible {{{1
+handler/notify example (.ansible): |
+    # e.g. in a task
+    - name: Trigger Handler.Example
+      ansible.builtin.debug: {msg: "Notify a handle example"}
+      notify: Handler.Example
+
+    # e.g. in a playbook
+    # ... tasks: ...
+    handlers:
+      - name: Handler.Example
+        ansible.builtin.script: some-script
+
+copy and run (.ansible): |
+    - name: Check if reboot is necessary
+      block:
+        - name: Copy reboot check script
+          ansible.builtin.copy: {
+            src: "../files/archlinux-is-reboot-needed",
+            dest: "/usr/bin/local/",
+            owner: root, group: root, mode: '0755',
+          }
+
+        - name: Run reboot check script
+          ansible.builtin.command: "/usr/bin/local/archlinux-is-reboot-needed"
+          register: needs_reboot
+          changed_when: needs_reboot.stdout == "yes"
+
+create a block (.ansible): |
+    - name: Do something
+      block:
+        - ansible.builtin.debug:
+            msg: "DEBUG and stuff"
+
+copy a local script and run it remotely (.ansible): |
+    - name: Check if reboot is necessary
+      ansible.builtin.script: ../files/archlinux-is-reboot-needed
+      register: needs_reboot
+
+ansible filetype line (.ansible): |
+    # code: language=ansible
+
+debug print / pause / wait for keypress (.ansible): |
+    - ansible.builtin.debug:
+        msg: "@DEBUG Hi there"
+
+pause / wait for keypress (.ansible): |
+    - ansible.builtin.pause:
+        prompt: "Press 'Return' to continue..."
+
+spawn debugger / breakpoint (.ansible): |
+    - name: Spawn Debugger
+      ansible.builtin.debug: {msg: "Spawn Debugger ..."}
+      debugger: always
 
 # lua {{{1
 hello world / main (.lua): |
