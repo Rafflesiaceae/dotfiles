@@ -410,7 +410,7 @@ bindkey '^[[15~' edit_which_current_buffer # F5
 # }}}
 # {{{ edit file from xsel primary <F4>
 edit_xsel_primary() {
-     termpopup --fullterm --no-wait -- "cd" "$PWD" ";" "$EDITOR" "$(xsel -o)"
+     termpopup --fullterm --no-wait -- "cd" "$PWD" ";" "$EDITOR" "$(xsel -o)" ";" "\$SHELL"
 }
 zle -N edit_xsel_primary
 bindkey '^[[14~' edit_xsel_primary # F4
