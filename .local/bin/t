@@ -221,6 +221,102 @@ control_path = %(directory)s/%%h-%%p-%%r
 pipelining = True
 EOF
         ;;
+        ansible-role) # {{{2
+            mkdir -p "./defaults"
+            icat "./defaults/main.yml" <<'EOF'
+---
+# Absolute path to the directory of the 'bash' bin
+bash_bin_directory:
+
+# code: language=ansible
+EOF
+
+            mkdir -p "./handlers"
+            icat "./handlers/main.yml" <<'EOF'
+---
+- name: Handler.Reload.wheres_my_bash.conf
+  ansible.builtin.debug:
+    msg: "Reloading consumers of 'wheres_my_bash.conf' ..."
+
+# code: language=ansible
+EOF
+
+            mkdir -p "./tasks"
+            icat "./tasks/main.yml" <<'EOF'
+---
+- name: Set platform/version specific variables
+  include_vars: "{{ item }}"
+  loop: "{{ paths | unique }}"
+  vars:
+    paths:
+      - "{{ role_path }}/vars/default.yml"
+      - "{{ role_path }}/vars/{{ ansible_facts['os_family'] }}.yml"
+      - "{{ role_path }}/vars/{{ ansible_facts['distribution'] }}.yml"
+      - "{{ role_path }}/vars/{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_major_version'] }}.yml"
+      - "{{ role_path }}/vars/{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_version'] }}.yml"
+  when: item is file
+
+- name: Assert mandatory variables
+  ansible.builtin.assert:
+    that:
+      - bash_bin_directory != None
+
+- name: Write majorly important '/etc/wheres_my_bash.conf' file
+  ansible.builtin.template:
+    src: ../templates/wheres_my_bash.conf.j2
+    dest: /etc/wheres_my_bash.conf
+  notify:
+    - Handler.Reload.wheres_my_bash.conf
+
+# code: language=ansible
+EOF
+
+            mkdir -p "./vars"
+
+            mkdir -p "./templates"
+            icat "./templates/wheres_my_bash.conf.j2" <<'EOF'
+{{ ansible_managed | comment }}
+[paths]
+bash_directory = {{ bash_bin_directory }}
+EOF
+
+            mkdir -p "./meta"
+            icat "./meta/main.yml" <<'EOF'
+---
+dependencies: []
+
+galaxy_info:
+  author: "@TODO"
+  description: "@TODO"
+  role_name: "@TODO"
+  company: "@TODO"
+  license: "license (MIT)"
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL
+      versions:
+        - all
+    - name: Fedora
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - "@TODO"
+    - analysis
+    - monitoring
+    - lightweight
+    - visualization
+    - instrumentation
+
+# code: language=ansible
+EOF
+        ;;
+
 
         bazel) # {{{2
             icat ".bazeliskrc" <<'EOF'
