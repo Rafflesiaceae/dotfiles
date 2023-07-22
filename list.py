@@ -23,6 +23,7 @@ sources = {
     "./.config/parcellite/parcelliterc": { "linux": "" },
     "./.config/ranger/rc.conf": { "linux": "" },
     "./.config/ranger/rifle.conf": { "linux": "" },
+    "./.config/ranger/scope.sh": { "linux": "" },
     "./.config/rofi/config.rasi": { "linux": "" },
     "./.config/rofi/themes/Kokonai.rasi": { "linux": "" },
     "./.config/systemd/user/i3status-additional.service": { "linux": "" },
