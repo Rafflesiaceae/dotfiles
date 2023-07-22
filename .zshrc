@@ -408,12 +408,12 @@ edit_which_current_buffer() {
 zle -N edit_which_current_buffer
 bindkey '^[[15~' edit_which_current_buffer # F5
 # }}}
-# {{{ edit file from xsel primary <F6>
+# {{{ edit file from xsel primary <F4>
 edit_xsel_primary() {
-    "$EDITOR" "$(xsel -o)"
+     termpopup --fullterm --no-wait -- "cd" "$PWD" ";" "$EDITOR" "$(xsel -o)"
 }
 zle -N edit_xsel_primary
-bindkey '^[[17~' edit_xsel_primary # F6
+bindkey '^[[14~' edit_xsel_primary # F4
 # }}}
 
 ## autocompletion
