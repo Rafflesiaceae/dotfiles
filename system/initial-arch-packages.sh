@@ -156,15 +156,15 @@ gui_applications=(
     chromium
     eog
     evince
-    gcolor2
-    gdmap
+    # gcolor2 @TODO moved to AUR
+    # gdmap @TODO moved to AUR
     geany
     gimp
     gparted
     inkscape
     keepass
     libreoffice-fresh
-    llpp
+    # llpp @TODO moved to AUR
     lxrandr
     mpv
     pavucontrol
