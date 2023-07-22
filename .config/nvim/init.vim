@@ -1064,7 +1064,7 @@ function! s:AttemptToCdToGitDir()
         exe 'cd' cgd
     endif
 endfunction
-autocmd BufReadPost,BufNewFile,StdinReadPost * call s:AttemptToCdToGitDir()
+autocmd BufReadPost,BufFilePost,StdinReadPost * call s:AttemptToCdToGitDir()
 
 function! s:ToggleCD()
     let cwd = getcwd()
