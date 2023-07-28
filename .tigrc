@@ -35,11 +35,12 @@ bind generic G move-last-line
 bind generic <C-H> back
 bind generic <C-L> view-next
 bind generic H view-help
-bind generic <C-R> refresh
+bind generic <C-E> !sh -c 'git-rebase-noninteractive-single --edit %(commit)'
+bind generic <C-R> !sh -c 'git-rebase-noninteractive-single --reword %(commit)'
 bind generic f refresh
 
-bind main R !git rebase -i %(commit)^
-bind diff R !git rebase -i %(commit)^
+bind main R !git rebase --autostash -i %(commit)^
+bind diff R !git rebase --autostash -i %(commit)^
 
 # @TODO
 # bind diff ! !notify-send qwe %(text)^
@@ -72,7 +73,7 @@ bind generic <C-P> ?git format-patch -1 -N %(commit)
 
 # copy commit ID to clipboard
 bind generic V !@sh -c "termpopup --no-escape --no-float --no-wait -- git show \\\"%(commit)\\\" \\\| vim -"
-bind generic <C-G> +@sh -c "termpopup --no-escape --no-float -- git-review ';' echo '' ';' echo '→ DONE ←' ';' sleep 1; echo git-review done"
+bind generic <C-G> +@sh -c "termpopup --no-escape --no-float -- git-review-forced ';' echo '' ';' echo '→ DONE ←' ';' sleep 1.2; echo git-review done"
 bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
 bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)\""
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
