@@ -948,6 +948,19 @@ converter (.nim): |
 
 # python {{{1
 
+for each line in string (.python): |
+    from StringIO import StringIO
+    lines = StringIO(contents)
+    for line in lines:
+        pass
+
+match/select case (.python): |
+    match name:
+        case "foo" | "bar":
+            pass
+        case _:
+            raise Exception(f"Unknown name: '{name}'")
+
 load yaml (.python): |
     import yaml
 
@@ -1251,6 +1264,28 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+read stdin (.js .ts .deno): |
+    let stdin = ""
+    const decoder = new TextDecoder();
+    for await (const chunk of Deno.stdin.readable) {
+        const text = decoder.decode(chunk);
+        stdin += text
+    }
+sh subprocess (.js .ts .deno): |
+    const command = new Deno.Command(
+        Deno.execPath(),
+        {
+            args: [
+                "eval",
+                "console.log('hello'); console.error('world')",
+            ],
+        },
+    );
+
+    const { code, stdout, stderr } = await command.output();
+    const stdoutText = new TextDecoder().decode(stdout);
+    const stderrText = new TextDecoder().decode(stderr);
+
 write to file (.js .ts .node): fs.writeFileSync(PATH, STRING)
 change dir (.js .ts .node): process.chdir(NEW_DIR);
 print to stderr (.js .ts .node): console.error(MSG);
