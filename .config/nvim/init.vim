@@ -601,7 +601,13 @@ function! DetectAnsibleFiletype()
     endif
 endfunction
 au BufRead,BufNewFile,BufWrite *.yml call DetectAnsibleFiletype()
-au BufRead,BufNewFile *.ansible.yml set filetype=ansible
+" au BufRead,BufNewFile *.ansible.yml set filetype=ansible
+" au FileType ansible setlocal commentstring=#\ %s
+
+au BufRead,BufNewFile project.config set filetype=dosini
+
+" systemd
+autocmd BufRead,BufNewFile *.service,*.timer set filetype=systemd
 
 " JSON
 autocmd FileType json setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
@@ -758,6 +764,9 @@ au BufRead,BufNewFile *.tfstate* set filetype=json
 
 " scons
 au BufRead,BufNewFile SConscript,SConstruct set filetype=python
+
+" Makefile
+autocmd BufRead,BufNewFile *.make set filetype=make
 
 " <leader>j autoformatting/testing
 augroup _leader_j
@@ -1211,6 +1220,10 @@ func! s:vuildRun()
     let filetype = &filetype
     if filetype == "nim"
         call s:vuildSaveAndRun("nim c -r %")
+    elseif filetype == "c"
+        call s:vuildSaveAndRun("gcc -o /tmp/tmp_out_gcc % && /tmp/tmp_out_gcc")
+    elseif filetype == "cpp"
+        call s:vuildSaveAndRun("g++ -o /tmp/tmp_out_g++ % && /tmp/tmp_out_g++")
     elseif filetype == "python"
         call s:vuildSaveAndRun("python %")
     elseif filetype == "lua"
@@ -1234,7 +1247,7 @@ func! s:vuildRun()
     elseif filetype == "javascript"
         call s:vuildSaveAndRun("node %")
     elseif filetype == "yaml"
-        call s:vuildSaveAndRun("yq . '%'")
+        call s:vuildSaveAndRun("yq -oj -P . '%'")
     elseif filetype == "json"
         call s:vuildSaveAndRun("jq . '%'")
     else
