@@ -68,7 +68,6 @@ printf "\nautomating rebase...\n" >/dev/tty
 commits=()
 for longarg in "${commits_raw[@]}"; do
     arg=${longarg,,}   # lowercase
-    arg=${arg:0:7} # grab first 7 chars
     commits+=("$arg")
     commit_message=$(git rev-list --format=%s --max-count=1 "$longarg" | sed '1d')
     printf "\t%s %s (%s)\n" "$gitcommand" "$arg" "$commit_message" >/dev/tty
