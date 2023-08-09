@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail
 
+[[ $EUID -eq 0 ]] && { echo "> don't run this as root"; exit 1; }
+
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
@@ -8,7 +10,7 @@ die() {
 prompt() {
     tput sc
     while true; do
-        read -p "${1-Continue?} (y/n) " -n 1 -r yn </dev/tty
+        read -p "${1-Continue?} (y/n) " -n 1 -r yn
         case $yn in
             [Yy]*) return;;
             [Nn]*) return 1;;
@@ -16,6 +18,10 @@ prompt() {
         esac
     done
     printf "\n"
+}
+
+{ # initial checks
+    command -v sudoedit &>/dev/null || die "can't find program: sudoedit"
 }
 
 tmpdir=$PWD/tmp
@@ -41,13 +47,12 @@ sudo_vimdiff() {
     # assert perms
     is_owned_by_root "$src" || die "$src doesnt belong to root"
 
-    (set -x; svimdiff "$src" "$target" </dev/tty)
+    (set -x; svimdiff "$src" "$target")
 }
 
 
-
-find . -type f | while read -r f ; do
-    # [[ "$f" == *"$(basename "$0")" ]] && continue # skip this script itself
+while read -r f; do
+{
     [[ "$(echo "$f" | awk -F"/" '{print NF-1}')" -lt 2 ]] && continue # skip root files
 
     echo ""
@@ -57,18 +62,25 @@ find . -type f | while read -r f ; do
 
     # skip if the target is the same
     if sudo cmp -s "$target" "$f"; then
-        { echo "$target is already up to date, skipping..."; continue; }
+        echo "$target is already up to date, skipping..."
+        continue
     fi
 
 
     # skip if the target doesnt exist
     if ! sudo test -f "$target"; then
-	if prompt "$target doesnt exist, copy template?"; then
-        sudo mkdir -p "$(dirname "$target")"
-		sudo cp "$f" "$target"
-		sudoedit "$target" </dev/tty
-	fi
-	continue
+        if prompt "$target doesnt exist, copy template?"; then
+             if [[ $target == /home/* ]]; then
+                mkdir -p "$(dirname "$target")"
+                cp "$f" "$target"
+                vim "$target"
+             else
+                sudo mkdir -p "$(dirname "$target")"
+                sudo cp "$f" "$target"
+                sudoedit "$target"
+             fi
+        fi
+        continue
     fi
 
     sleep 1
@@ -77,6 +89,7 @@ find . -type f | while read -r f ; do
     if is_owned_by_root "$target"; then
         sudo_vimdiff
     else
-        (set -x; vimdiff "$f" "$target" </dev/tty)
+        (set -x; vimdiff "$f" "$target")
     fi
-done
+} < /dev/tty
+done < <(find . -type f)
