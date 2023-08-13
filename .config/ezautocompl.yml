@@ -812,6 +812,23 @@ new custom exception (.groovy): |
 
 
 # ansible {{{1
+exit early (.ansible): |
+    - name: Exit early
+      meta: end_play
+
+run shell command (.ansible): |
+    - name: Run THING
+      ansible.builtin.command: ["{{ dest }}"]
+      register: result
+      changed_when: result.stdout == "changed"
+
+list all callback plugins (.cmd .ansible): |
+    ansible-doc -l -t callback
+
+import playbook (.ansible): |
+    - name: Import some playbook
+      ansible.builtin.import_playbook: ./pb-some-playbook.yml
+
 handler/notify example (.ansible): |
     # e.g. in a task
     - name: Trigger Handler.Example
@@ -824,20 +841,42 @@ handler/notify example (.ansible): |
       - name: Handler.Example
         ansible.builtin.script: some-script
 
-copy and run (.ansible): |
-    - name: Check if reboot is necessary
+template/copy and run (.ansible): |
+    - name: THING
+      vars: 
+          src: "../files/THING"
+          dest: "/tmp/ansible-host/{{ ansible_role_name }}/THING"
       block:
-        - name: Copy reboot check script
+        - name: Template THING
+          ansible.builtin.template:
+            src: "{{ src }}"
+            dest: "{{ dest }}"
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: Run THING
+          ansible.builtin.command: ["{{ dest }}"]
+          register: result
+          changed_when: result.stdout == "changed"
+
+copy and run (.ansible): |
+    - name: THING
+      vars: 
+          src: "../files/THING"
+          dest: "/tmp/ansible-host/{{ ansible_role_name }}/THING"
+      block:
+        - name: Copy THING
           ansible.builtin.copy: {
-            src: "../files/archlinux-is-reboot-needed",
-            dest: "/usr/bin/local/",
+            src: "{{ src }}", 
+            dest: "{{ dest }}",
             owner: root, group: root, mode: '0755',
           }
 
-        - name: Run reboot check script
-          ansible.builtin.command: "/usr/bin/local/archlinux-is-reboot-needed"
-          register: needs_reboot
-          changed_when: needs_reboot.stdout == "yes"
+        - name: Run THING
+          ansible.builtin.command: ["{{ dest }}"]
+          register: result
+          changed_when: result.stdout == "changed"
 
 create a block (.ansible): |
     - name: Do something
@@ -853,7 +892,7 @@ copy a local script and run it remotely (.ansible): |
 ansible filetype line (.ansible): |
     # code: language=ansible
 
-debug print / pause / wait for keypress (.ansible): |
+debug print / echo message (.ansible): |
     - ansible.builtin.debug:
         msg: "@DEBUG Hi there"
 
@@ -1929,6 +1968,8 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # various {{{1
+Rafflesiaceae / vicecea (.names .various): "Rafflesiaceae / vicecea"
+
 date-alphabetical-sort (.run):
     cmd: bash
     stdin: date +%Y.%m.%d\ %T\ +%Z | head -c -1
