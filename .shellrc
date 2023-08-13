@@ -70,14 +70,9 @@ nh() {
 
 man() {
     env \
-        LESS_TERMCAP_mb=$'\E[1;5;48;5;31m' \
-        LESS_TERMCAP_md=$'\E[01;38;5;16m' \
-        LESS_TERMCAP_me=$'\E[0m' \
-        LESS_TERMCAP_se=$'\E[0m' \
-        LESS_TERMCAP_so=$'\E[00;38;5;15m' \
-        LESS_TERMCAP_ue=$'\E[0m' \
-        LESS_TERMCAP_us=$'\E[04;38;5;00;33m' \
-        man $*
+        MANPAGER="less -R --use-color -Dd+y -Du+w -DS+ky -DP+kw -DE+kr" \
+        MANROFFOPT="-P -c" \
+        man "$@"
 }
 
 if [[ -f "$HOME/.shellrc.local" ]]; then
