@@ -812,6 +812,11 @@ new custom exception (.groovy): |
 
 
 # ansible {{{1
+mkdir (.ansible): |
+    - name: Mkdir PATH
+      ansible.builtin.file:
+        path: "PATH"
+        state: directory
 exit early (.ansible): |
     - name: Exit early
       meta: end_play
@@ -1632,6 +1637,8 @@ extract/match regex groups (.bash): |
     fi
 
 replace/remove substring (.zsh .bash): "\"${VARFOO//WORDTOREMOVE/}\""
+prevent this script being run as root (.sh .bash): |
+    [[ $EUID -eq 0 ]] && { echo "> don't run this as root"; exit 1; }
 check if script running as root (.sh .bash): "[[ $EUID -eq 0 ]]"
 hashmap / declarative / associative array (.bash): |
   declare -A MAP
