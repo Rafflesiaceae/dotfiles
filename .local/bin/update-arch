@@ -48,10 +48,8 @@ echo {{{1 update official packages
 sudo pacman -Syu --noconfirm
 
 echo {{{1 update yay
-aurloc="${HOME}/.aur"
-mkdir -p "$aurloc"
-mkdir -p "${aurloc}/yay"
-pushd "${aurloc}/yay"
+mkdir -p "${HOME}/.aur/yay"
+pushd "${HOME}/.aur/yay"
 wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
 tar xvfz "yay.tar.gz" -C ../
 makepkg -i --noconfirm --needed --skippgpcheck
@@ -79,6 +77,7 @@ makepkg-and-install() {
 
 makepkg-and-install "rxvt-unicode-patched"  "force" # needs recompilation when perl updates
 makepkg-and-install "xkeyboard-config-desc"
+makepkg-and-install "lazy-user-session-bus"
 
 popd
 
