@@ -226,7 +226,7 @@ EOF
             icat "./defaults/main.yml" <<'EOF'
 ---
 # Absolute path to the directory of the 'bash' bin
-bash_bin_directory:
+bash_bin_directory: null
 
 # code: language=ansible
 EOF
@@ -245,8 +245,8 @@ EOF
             icat "./tasks/main.yml" <<'EOF'
 ---
 - name: Set platform/version specific variables
-  include_vars: "{{ item }}"
-  loop: "{{ paths | unique }}"
+  ansible.builtin.include_vars: "{{ item }}"
+  loop: "{{ paths | list | unique }}"
   vars:
     paths:
       - "{{ role_path }}/vars/default.yml"
@@ -286,32 +286,12 @@ EOF
 dependencies: []
 
 galaxy_info:
+  role_name: "@TODO"
+  namespace: raf
   author: "@TODO"
   description: "@TODO"
-  role_name: "@TODO"
-  company: "@TODO"
   license: "license (MIT)"
-  min_ansible_version: "2.9"
-  platforms:
-    - name: EL
-      versions:
-        - all
-    - name: Fedora
-      versions:
-        - all
-    - name: Debian
-      versions:
-        - all
-    - name: Ubuntu
-      versions:
-        - all
-  galaxy_tags:
-    - "@TODO"
-    - analysis
-    - monitoring
-    - lightweight
-    - visualization
-    - instrumentation
+  min_ansible_version: "2.10"
 
 # code: language=ansible
 EOF
