@@ -4,6 +4,9 @@ ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%
 
 # cmd {{{1
 
+test socks5 proxy username/password (.cmd .curl): |
+    curl -v -x "socks5://${AUTH_USER}:${AUTH_PASSWORD}@PROXY_URL:PROXY_PORT" http://checkip.amazonaws.com
+
 reload udev rules (.cmd): sudo udevadm control --reload-rules
 listen for/monitor any udev actions/changes/events (.cmd): sudo udevadm monitor
 find all objects, filter and edit in place (.cmd .jq): |
@@ -830,9 +833,23 @@ run shell command (.ansible): |
 list all callback plugins (.cmd .ansible): |
     ansible-doc -l -t callback
 
+include a role (.ansible): |
+    - name: Include SOME_ROLE
+      ansible.builtin.include_role: { name: SOME_ROLE }
+
 import playbook (.ansible): |
     - name: Import some playbook
       ansible.builtin.import_playbook: ./pb-some-playbook.yml
+
+set a variable/fact (.ansible): |
+    - name: Set.Some.Fact
+      ansible.builtin.set_fact: { some_variable: true }
+
+notify if/when conditional is true (.ansible): |
+    - name: Notify if true
+      debug: {}
+      when: some_variable | default(false)
+      notify: Handler.Some.Handler
 
 handler/notify example (.ansible): |
     # e.g. in a task
@@ -896,6 +913,9 @@ copy a local script and run it remotely (.ansible): |
 
 ansible filetype line (.ansible): |
     # code: language=ansible
+
+debug task/step that always is changed true (.ansible):
+    - {name: This always changes, debug: {}, changed_when: true}
 
 debug print / echo message (.ansible): |
     - ansible.builtin.debug:
@@ -1636,7 +1656,9 @@ extract/match regex groups (.bash): |
         echo "${BASH_REMATCH[2]}" # second group
     fi
 
-replace/remove substring (.zsh .bash): "\"${VARFOO//WORDTOREMOVE/}\""
+replace substrings once (.zsh .bash): "\"${var/FROM/TO}\""
+replace all substrings once (.zsh .bash): "\"${var//FROM/TO}\""
+remove all substrings (.zsh .bash): "\"${var//WORD/}\""
 prevent this script being run as root (.sh .bash): |
     [[ $EUID -eq 0 ]] && { echo "> don't run this as root"; exit 1; }
 check if script running as root (.sh .bash): "[[ $EUID -eq 0 ]]"
@@ -1830,7 +1852,7 @@ count / number of arguments (.sh .bash): '"$#"'
 
 for each file in path (.sh .bash): |
     for path in ./*.json; do
-        echo $path
+        echo "$path"
     done
 
 abspath / realpath (.sh .bash): |
