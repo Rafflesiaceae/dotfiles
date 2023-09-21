@@ -145,6 +145,7 @@ x11=(
     ttf-joypixels
     ttf-liberation
     xclip
+    xf86-input-evdev # without this, pacman upgrades can easily crash the desktop session: https://bugs.archlinux.org/task/77789
     xf86-input-libinput
     xorg-mkfontscale
     xorg-server
