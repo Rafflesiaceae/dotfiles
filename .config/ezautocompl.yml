@@ -970,7 +970,7 @@ string starts with/prefix (.nim): |
     import strutils
     someString.startsWith("PREFIX")
 get args (.nim): |
-  let args = commandLineParams()
+  let args = os.commandLineParams()
 read a file (.nim): |
     let contents = io.readFile(PATH)
 read stdin (.nim): |
