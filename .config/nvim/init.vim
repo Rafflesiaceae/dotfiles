@@ -1428,6 +1428,8 @@ augroup END
 " }}}
 " {{{ yml.j2
 au BufRead,BufNewFile *.yml.j2 set filetype=ansible
+au BufRead,BufNewFile *.xml.j2 set filetype=xml.jinja2
+au BufRead,BufNewFile *.cfg.j2 set filetype=cfg.jinja2
 " }}}
 
 
