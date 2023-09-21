@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+remote=${1:-origin}
+git remote get-url "$remote" > /tmp/git-remote-url
+vim /tmp/git-remote-url
+git remote set-url "$remote" "$(cat /tmp/git-remote-url)"
