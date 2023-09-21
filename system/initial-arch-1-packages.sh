@@ -135,6 +135,7 @@ x11=(
     lightdm
     lightdm-gtk-greeter
     noto-fonts
+    noto-fonts-emoji
     numlockx
     parcellite
     rofi
