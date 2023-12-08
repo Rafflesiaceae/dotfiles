@@ -162,6 +162,7 @@ sources = {
     "./.local/bin/polyfill-tree": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",
+    "./.local/bin/random-port": "",
     "./.local/bin/rcb": "",
     "./.local/bin/re2sed": "",
     "./.local/bin/reconnman": { "linux": "" },
