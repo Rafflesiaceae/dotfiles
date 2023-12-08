@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+git reset --soft 'HEAD@{1}'
+git commit -C 'HEAD@{1}'
