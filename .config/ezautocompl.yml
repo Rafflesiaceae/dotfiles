@@ -3,9 +3,17 @@
 ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
 
 # cmd {{{1
-
 test socks5 proxy username/password (.cmd .curl): |
     curl -v -x "socks5://${AUTH_USER}:${AUTH_PASSWORD}@PROXY_URL:PROXY_PORT" http://checkip.amazonaws.com
+
+list all installed packages (.rpm .yum .dnf): rpm -qa
+list file contents of an installed package (.rpm .yum .dnf): rpm -ql bash
+list info of an installed package (.rpm .yum .dnf): rpm -qi bash
+install a package from stdin (.rpm): rpm -i /dev/stdin
+verify an installed package (.rpm): rpm -V bash
+
+fingerprint from pem certificate from clipboard (.cmd): |
+    { cb | sed 's/^ *//;s/ *$//'; } | openssl x509 -noout -fingerprint -sha256 -inform pem
 
 reload udev rules (.cmd): sudo udevadm control --reload-rules
 listen for/monitor any udev actions/changes/events (.cmd): sudo udevadm monitor
@@ -25,7 +33,7 @@ find all objects, filter and edit in place (.cmd .jq): |
 list default include paths of gcc/g++ (.cmd):
     echo | g++ -E -Wp,-v -
 
-what package owns file (.cmd .centos .rpm): rpm -q --whatprovides "$( which SOMEPACKAGE )"
+who/what package owns file (.cmd .centos .rpm): rpm -q --whatprovides "$( which SOMEPACKAGE )"
 
 show shared library dependencies of an ELF file (.cmd): |
     objdump -p FILE
@@ -316,6 +324,11 @@ cli basic/flags (.golang): |
     fmt.Println("tail:", flag.Args())
 
 get current date / now / timestamp / unix/posix-time (.golang): time.Now()
+
+make a random choice (.golang): |
+    rand.Seed(time.Now().Unix())
+    message := fmt.Sprint("Let's do a choice: ", choices[rand.Intn(len(choices))])
+
 create random bytes (.golang): |
     token := make([]byte, 4)
     rand.Read(token)
@@ -815,6 +828,10 @@ new custom exception (.groovy): |
 
 
 # ansible {{{1
+iterate over a dictionary/set fact/with_items (.ansible): |
+
+disable rule (.ansible .ansible-lint): |
+    # noqa: command-instead-of-module
 mkdir (.ansible): |
     - name: Mkdir PATH
       ansible.builtin.file:
@@ -865,7 +882,7 @@ handler/notify example (.ansible): |
 
 template/copy and run (.ansible): |
     - name: THING
-      vars: 
+      vars:
           src: "../files/THING"
           dest: "/tmp/ansible-host/{{ ansible_role_name }}/THING"
       block:
@@ -884,13 +901,13 @@ template/copy and run (.ansible): |
 
 copy and run (.ansible): |
     - name: THING
-      vars: 
+      vars:
           src: "../files/THING"
           dest: "/tmp/ansible-host/{{ ansible_role_name }}/THING"
       block:
         - name: Copy THING
           ansible.builtin.copy: {
-            src: "{{ src }}", 
+            src: "{{ src }}",
             dest: "{{ dest }}",
             owner: root, group: root, mode: '0755',
           }
@@ -1323,6 +1340,9 @@ dataclass (.python): |
         name: str
         unit_prices: List[float] = field(default_factory=list)
         quantity_on_hand: int = 0
+
+        def __post_init__(self):
+            print(f"My field is {self.some_field}")
 
         def total_costs(self) -> List[float]:
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
