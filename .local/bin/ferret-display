@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# automatically start remote-debugging chrome in the bg if necessary
+is_chrome_not_running() { ! nc -z 127.0.0.1 9222; }
+chromium_pid=
+if is_chrome_not_running; then
+    chromium --remote-debugging-port=9222 --headless >/dev/null 2>&1 &
+    while is_chrome_not_running; do
+        sleep 0.1
+    done
+    chromium_pid=$!
+
+    cleanup() {
+        kill -9 "$chromium_pid"
+    }
+    trap 'cleanup' EXIT INT
+fi
+
+# start ferret
+outp=$(ferret "$@") || err=$?
+if [[ $err ]]; then
+    echo "$outp"
+    exit "$err"
+fi
+{ printf "%s" "$outp" | jq -r '.' | base64 -d 2>&1 | display >/dev/null 2>&1; } || display_err=1
+
+if [[ "$display_err" ]]; then
+    echo "$outp"
+fi

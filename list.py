@@ -82,6 +82,7 @@ sources = {
     "./.local/bin/drb": "",
     "./.local/bin/edit-clipboard": "",
     "./.local/bin/edit-from-base64-arg": "",
+    "./.local/bin/ferret-display": "",
     "./.local/bin/ffclip": "",
     "./.local/bin/ffcut": "",
     "./.local/bin/ffsmol": "",
