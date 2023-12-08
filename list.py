@@ -69,6 +69,7 @@ sources = {
     "./.local/bin/blank-screen": "",
     "./.local/bin/cb": "",
     "./.local/bin/cbwatch": "",
+    "./.local/bin/certificate-show-fingerprint": "",
     "./.local/bin/cfp": { "linux": "" },
     "./.local/bin/check-system": "",
     "./.local/bin/clean-zsh-dirstack": "",
