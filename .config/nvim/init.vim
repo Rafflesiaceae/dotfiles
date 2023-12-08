@@ -390,6 +390,8 @@ au FileType gdscript set list
 let g:ansible_unindent_after_newline = 1
 " }}}
 
+" Rest
+" {{{ Mappings
 noremap <leader>d :Linediff<CR>
 
 inoremap <M-o> <ESC>o
@@ -566,13 +568,13 @@ let g:grammarous#jar_url = 'https://www.languagetool.org/download/LanguageTool-5
 nmap <leader>gr <Plug>(grammarous-open-info-window)
 nmap <leader>grn <Plug>(grammarous-move-to-next-error)
 nmap <leader>grp <Plug>(grammarous-move-to-previous-error)
+" }}} Mappings
 
-" autocmd BufRead /tmp/agt call search(readfile("/tmp/agt-query")[0])
+" {{{ Autocommands
 
 " automatically hightlight the agt-query when reading agt results
 autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys("/\<CR>")
 
-" {{{ Autocommands
 autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 
 " BASH
@@ -615,9 +617,6 @@ autocmd FileType json setlocal foldmethod=syntax
 
 " XML
 autocmd FileType xml setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
-
-" jinja
-autocmd FileType jinja setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
 
 " Jenkinsfile
 autocmd FileType groovy setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
@@ -768,6 +767,9 @@ au BufRead,BufNewFile SConscript,SConstruct set filetype=python
 " Makefile
 autocmd BufRead,BufNewFile *.make set filetype=make
 
+" pixi
+autocmd BufRead,BufNewFile pixi.lock set filetype=yaml
+
 " <leader>j autoformatting/testing
 augroup _leader_j
 autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
@@ -779,7 +781,7 @@ augroup QuickFix
     " override :YcmComplete GoTo for QF
     au FileType qf nmap <buffer> <CR> <CR>
 augroup END
-" }}}
+" }}} Autocommands
 
 " {{{ Custom Functions
 function! s:FixFileFormat()
@@ -952,6 +954,14 @@ function! s:AddEndingNewline(line)
 
     return a:line."\n"
 endfunction
+
+function! s:SynStack()
+  if !exists("*synstack")
+    return
+  endif
+  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+endfunc
+com! SynStack call s:SynStack()
 
 function! ClipboardPasteAsNewline()
     " let @a = s:AddEndingNewline(@+)
@@ -1234,7 +1244,8 @@ func! s:vuildRun()
         " check if file ends with `_test`
         if expand("%:r") =~ "_test" 
             let l:currentTag = tagbar#currenttag('[%s] ','')[1:-5]
-            call s:vuildSaveAndRun("go test -run " . l:currentTag)
+            execute 'cd' fnameescape(expand("%:p:h"))
+            call s:vuildSaveAndRun("go test -run ".fnameescape(expand("%:p")))
         else
             call s:vuildSaveAndRun("go run %")
         endif
@@ -1261,9 +1272,39 @@ com! Run
 
 "" atm. this is no jinja template, instead we just source a file mb defined locally, might change
 call SourceIfExists("~/.config/nvim/local_custom_functions")
-" }}}
+" }}} Custom Functions
 
-" {{{ PLUGGED
+" {{{ Colors/Highlight
+highlight yamlBlockMappingKey          cterm=none ctermfg=11 ctermbg=none
+highlight yamlFlowMappingKey           cterm=none ctermfg=11 ctermbg=none
+highlight yamlFlowIndicator            cterm=none ctermfg=14 ctermbg=none
+highlight yamlDocumentStart            cterm=none ctermfg=16 ctermbg=none
+highlight yamlDocumentEnd              cterm=none ctermfg=16 ctermbg=none
+highlight yamlKeyValueDelimiter        cterm=none ctermfg=14 ctermbg=none
+highlight yamlFlowMapping              cterm=none ctermfg=14 ctermbg=none
+highlight yamlBlockCollectionItemStart cterm=none ctermfg=16 ctermbg=none
+highlight yamlAlias                    cterm=none ctermfg=13 ctermbg=none
+highlight yamlAnchor                   cterm=none ctermfg=17 ctermbg=none
+highlight yamlNodeTag                  cterm=none ctermfg=12 ctermbg=none
+
+highlight jsonBraces             cterm=none ctermfg=14 ctermbg=none
+highlight jsonTrailingCommaError cterm=none ctermfg=1  ctermbg=none
+highlight jsonMissingCommaError  cterm=none ctermfg=1  ctermbg=none
+highlight jsonNoQuotesError      cterm=none ctermfg=1  ctermbg=none
+
+highlight jinjaVarDelim  cterm=none ctermfg=17 ctermbg=none
+highlight jinjaTagDelim  cterm=none ctermfg=17 ctermbg=none
+highlight jinjaVariable  cterm=none ctermfg=16 ctermbg=none
+highlight jinjaOperator  cterm=none ctermfg=11 ctermbg=none
+highlight jinjaFilter    cterm=none ctermfg=4  ctermbg=none
+highlight jinjaStatement cterm=none ctermfg=5  ctermbg=none
+highlight jinjaString    cterm=none ctermfg=2  ctermbg=none
+
+" highlight Search cterm=none ctermfg=19 ctermbg=yellow
+highlight Search cterm=none ctermfg=black ctermbg=yellow
+" }}} Colors/Highlight
+
+" {{{ Plugins
 if empty(glob('~/.vim/autoload/plug.vim'))
   silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
     \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
@@ -1282,7 +1323,8 @@ Plug 'nathanaelkane/vim-indent-guides'
 Plug 'editorconfig/editorconfig-vim'
 Plug 'skywind3000/asyncrun.vim'
 
-Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
+" Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
+Plug 'Valloric/YouCompleteMe'
 " Plug 'scrooloose/syntastic'
 Plug 'Rafflesiaceae/ale'
 Plug 'Rafflesiaceae/vim-yaml'
@@ -1391,6 +1433,7 @@ Plug 'saltstack/salt-vim'
 Plug 'zchee/vim-flatbuffers'
 Plug 'cespare/vim-toml'
 Plug 'LnL7/vim-nix'
+Plug 'Rafflesiaceae/vim-prometheus'
 Plug 'michaeljsmith/vim-indent-object'
 Plug 'jvirtanen/vim-hcl', { 'commit': '1e1116c17a5774851360ea8077f349e36fc733c1' }
 
@@ -1402,9 +1445,22 @@ Plug 'AndrewRadev/linediff.vim'
 call SourceIfExists("~/.config/nvim/local_custom_imports")
 
 call plug#end()
-" }}}
+" }}} Plugins
 
 " Autocommands (Postplugged)
+
+au BufRead,BufNewFile *.containerfile set filetype=dockerfile
+au BufRead,BufNewFile *.Containerfile set filetype=dockerfile
+
+" jinja
+au BufRead,BufNewFile *.cfg.j2 set filetype=cfg.jinja2
+au BufRead,BufNewFile *.html.j2 set filetype=html.jinja2
+au BufRead,BufNewFile *.json.j2 set filetype=jinja2
+au BufRead,BufNewFile *.service.j2 set filetype=systemd.jinja2
+au BufRead,BufNewFile *.xml.j2 set filetype=xml.jinja2
+au BufRead,BufNewFile *.yml.j2 set filetype=yaml.jinja2
+autocmd FileType jinja setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+
 " {{{ typescript / tsc
 au BufRead,BufNewFile tsconfig.json set filetype=json5 syntax=json5
 au FileType starlark set filetype=starlark.python
@@ -1426,12 +1482,18 @@ augroup helm_syntax
   autocmd BufRead,BufNewFile */templates/*.yaml,*/templates/*.tpl call HelmSyntax()
 augroup END
 " }}}
+
 " {{{ yml.j2
 au BufRead,BufNewFile *.yml.j2 set filetype=ansible
 au BufRead,BufNewFile *.xml.j2 set filetype=xml.jinja2
 au BufRead,BufNewFile *.cfg.j2 set filetype=cfg.jinja2
 " }}}
 
+" " disable indent
+" set noautoindent
+" set indentexpr=
+" set nocindent
+" set nosmartindent
 
 " @XXX @WORKAROUND
 " fixup for editorconfig-vim on neovim 
