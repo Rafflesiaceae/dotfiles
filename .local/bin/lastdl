@@ -7,6 +7,7 @@ usage() {
     exit 1
 }
 
+cli_cat=
 cli_edit=
 cli_move=
 cli_sha=
@@ -19,6 +20,9 @@ while :; do
             ;;
         -c|-sha|--sha|--hash)
             cli_sha=1
+            ;;
+        -cat)
+            cli_cat=1
             ;;
         -m|--move)
             cli_move=1
@@ -40,7 +44,9 @@ for file in "$HOME/Downloads"/*; do
 done
 
 # find latest file
-if [[ $cli_edit ]]; then
+if [[ $cli_cat ]]; then
+    cat "$latest"
+elif [[ $cli_edit ]]; then
     "$EDITOR" "$latest"
 elif [[ $cli_move ]]; then
     ( set -x; mv "$latest" "$PWD" )
