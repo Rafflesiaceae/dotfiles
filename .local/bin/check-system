@@ -49,11 +49,13 @@ error() {
 # {{{1 check for neovim shada tmp files, these can fill up and cause neovim to
 # not remember any history silently without telling you, real fun right?
 shada_dir=$HOME/.local/share/nvim/shada
-shada_tmp_file_count=$(find "$shada_dir" -name "main.shada.tmp*" | wc -l)
-if [[ $shada_tmp_file_count -gt 5 ]]; then
-    warn "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', best delete them before your nvim will stop remembering history"
-elif [[ $shada_tmp_file_count -gt 15 ]]; then
-    error "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', delete them before your nvim will stop remembering history"
+if [[ -d "$shada_dir" ]]; then
+    shada_tmp_file_count=$(find "$shada_dir" -name "main.shada.tmp*" | wc -l || true)
+    if [[ $shada_tmp_file_count -gt 5 ]]; then
+        warn "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', best delete them before your nvim will stop remembering history"
+    elif [[ $shada_tmp_file_count -gt 15 ]]; then
+        error "you have $shada_tmp_file_count main.shada.tmp* files in '$shada_dir', delete them before your nvim will stop remembering history"
+    fi
 fi
 
 # {{{1 check for pacdiff files
