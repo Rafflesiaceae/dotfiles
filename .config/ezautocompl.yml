@@ -1,5 +1,16 @@
 ---
 # cmd-ssh {{{1
+ssh automatic multiplexing / automatic / no warnings (.cmd .ssh): |
+    mkdir -p "~/.ssh/controlmasters"
+    ssh \
+        -o ControlMaster=auto \
+        -o ControlPath="~/.ssh/controlmasters/%C" \
+        -o ControlPersist=10s \
+        -o LogLevel=ERROR \
+        -o StrictHostKeyChecking=no \
+        -p "$host_port" \
+        "${host_user}${host_ip}" \
+        "$@"
 ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
 
 # cmd {{{1
@@ -165,6 +176,7 @@ dbus debug / explore (.cmd .dbus): d-feet
 dbus list services (.cmd .dbus): qdbus && qdbus --system
 dbus monitor services (.cmd .dbus): sudo dbus-monitor --system "type='signal',sender='net.connman'"
 
+extract single file from tar (.cmd): tar -zxf TAR_FILE EXTRACTED_FILE
 create archive / recursive tar compression (.cmd): tar -czvf backup.tar.gz folder
 list archive (.cmd): tar -tvf archive.tar
 
@@ -842,6 +854,14 @@ exit early (.ansible): |
       meta: end_play
 
 run shell command (.ansible): |
+    - name: Run some shell command
+      ansible.builtin.shell:
+        cmd: |
+          python3 -m venv venv.radicale &&
+          source /root/venv.radicale/bin/activate &&
+          python3 -m pip install --upgrade radicale
+
+run command with explicit args (.ansible): |
     - name: Run THING
       ansible.builtin.command: ["{{ dest }}"]
       register: result
@@ -899,6 +919,15 @@ template/copy and run (.ansible): |
           register: result
           changed_when: result.stdout == "changed"
 
+write variable/text/string to file (.ansible): |
+    - name: Write SOMETHING to FILE
+      ansible.builtin.copy:
+        content: "{{ some variable or content }}"
+        dest: "OUTPUT_FILE_ON_HOST"
+        owner: root
+        group: root
+        mode: '0755'
+
 copy and run (.ansible): |
     - name: THING
       vars:
@@ -906,11 +935,12 @@ copy and run (.ansible): |
           dest: "/tmp/ansible-host/{{ ansible_role_name }}/THING"
       block:
         - name: Copy THING
-          ansible.builtin.copy: {
-            src: "{{ src }}",
-            dest: "{{ dest }}",
-            owner: root, group: root, mode: '0755',
-          }
+          ansible.builtin.copy:
+            src: "{{ src }}"
+            dest: "{{ dest }}"
+            owner: root
+            roup: root
+            mode: '0755'
 
         - name: Run THING
           ansible.builtin.command: ["{{ dest }}"]
@@ -1489,6 +1519,20 @@ enum (.json-schema): |
     }
 
 # bash {{{1
+run a command in a one-shot tmux session and return (.cmd .tmux): |
+    # ensure this script is run in a named tmux session
+    if [[ "$1" != "--tmuxed" ]]; then
+        tmux_session_name="TODO_TMUX_SESSION_NAME"
+        if tmux has-session -t "$tmux_session_name" 2>/dev/null; then
+            tmux kill-session -t "$tmux_session_name"
+        fi
+
+        tmux new-session -d -s "$tmux_session_name" "$0" "--tmuxed" "$@"
+
+        exit 0
+    fi
+    shift
+
 find latest file matching pattern (.sh .bash): |
     unset -v latest
     for file in "$HOME/.update_arch_"*".cast"; do
