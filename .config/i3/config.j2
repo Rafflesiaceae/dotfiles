@@ -121,6 +121,7 @@ bindsym »mod«+r exec "rofi -show run -matching fuzzy -sort"
 bindsym »mod«+Ctrl+L exec "i3lock -i $HOME/.lock.bg.png -e -f"
 
 bindsym »mod«+q exec chromium
+bindsym »mod«+BackSpace exec evolution
 
 bindsym »mod«+M exec xtogglemouse
 bindsym »mod«+o exec paup
@@ -237,6 +238,8 @@ for_window [title="Firefox Preferences"] floating enable
 for_window [title="Thunderbird Preferences"] floating enable
 for_window [title="foobar2000.*"] floating disable
 for_window [title="zenity"] floating enable
+
+for_window [title="^Appointment — .*$"] floating enable
 
 for_window [class="^zoom$" title="^Zoom - Free Account$"] floating disable
 for_window [class="^zoom$" title="^Zoom Meeting$"] floating disable
