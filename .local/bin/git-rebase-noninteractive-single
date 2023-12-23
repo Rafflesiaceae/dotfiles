@@ -2,4 +2,4 @@
 set -eo pipefail
 # e.g.: git-rebase-noninteractive-single --reword cacacaca
 commit_short="$(git rev-parse --short "$2")"
-GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --log $1 $commit_short" git rebase -i "$2~2"
+GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --log $1 $commit_short" git rebase --autostash -i "$2~2"
