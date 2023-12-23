@@ -56,7 +56,7 @@ makepkg -i --noconfirm --needed --skippgpcheck
 popd
 
 echo {{{1 update some AUR packages
-yay -S --answerdiff "None" --answerclean "None" --noprovides \
+yay -S --answerdiff "None" --answerclean "None" --noprovides --noconfirm \
     aur/deadbeef
 
 echo {{{1 update amr
