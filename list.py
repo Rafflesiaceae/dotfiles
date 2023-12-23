@@ -111,6 +111,7 @@ sources = {
     "./.local/bin/git-is-tracked": "",
     "./.local/bin/git-list-changed-files-in-commit": "",
     "./.local/bin/git-rebase-noninteractive": "",
+    "./.local/bin/git-rebase-noninteractive-single": "",
     "./.local/bin/git-remote-copy-url": "",
     "./.local/bin/git-remote-edit-url": "",
     "./.local/bin/git-reset-file": "",
