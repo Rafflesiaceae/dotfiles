@@ -142,6 +142,7 @@ sources = {
     "./.local/bin/gitr": "",
     "./.local/bin/gitsup": "",
     "./.local/bin/gitup": "",
+    "./.local/bin/grr": "",
     "./.local/bin/i3-chrome-open-url-in-mpv": { "linux": "" },
     "./.local/bin/i3-ctrlc": { "linux": "" },
     "./.local/bin/i3-ctrlp": { "linux": "" },

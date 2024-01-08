@@ -1,0 +1,22 @@
+#!/bin/bash
+# checkout gerrit review via fzf v0.3 (2023-10-06) (802ea8095d2ddbca)
+set -eo pipefail
+git rev-parse --is-inside-work-tree >/dev/null # check if inside a git dir
+
+# checkout default branch @XXX
+read_default_branch() { git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'; } 
+default_branch="$(read_default_branch)" || true  # read_default_branch can fail if remote was added after cloning
+if [[ "$default_branch" ]]; then
+    git checkout --quiet "$default_branch"
+fi
+default_branch="$(read_default_branch)" || true  # read_default_branch can fail if remote was added after cloning
+
+# fetch a list of open reviews and use fzf to select them
+fzf_args=()
+if [[ -n "$1" ]]; then
+    fzf_args=(--query="$1" --select-1)
+fi
+
+fzf_reviews() { git review --list --color=always | sed '/.*Found.*items.*/d' | fzf --ansi "${fzf_args[@]}" | awk '{ print $1 }'; }
+review=$(fzf_reviews) || exit 1
+git review -d "$review"
