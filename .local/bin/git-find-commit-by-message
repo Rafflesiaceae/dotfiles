@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -eo pipefail
+git log --pretty=format:"%h"  --grep="$1"
