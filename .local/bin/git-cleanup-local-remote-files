@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+doit() {
+    find . -iregex ".*$1.*" -printf '%P\0' 2> >(grep -v "Permission denied" ) | xargs -r0 -I '{}' bash -c 'echo "{}"; bkm "{}"'
+}
+
+doit "_LOCAL_"
+doit "_REMOTE_"
+doit "_BACKUP_"
+doit "_BASE_"

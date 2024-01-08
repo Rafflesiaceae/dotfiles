@@ -98,6 +98,7 @@ sources = {
     "./.local/bin/fstack": { "linux": "" },
     "./.local/bin/gerrit-change-id": "",
     "./.local/bin/git-abort": "",
+    "./.local/bin/git-cleanup-local-remote-files": "",
     "./.local/bin/git-continue": "",
     "./.local/bin/git-copy-current-revision": "",
     "./.local/bin/git-create-tag": "",
