@@ -1,0 +1,3 @@
+#!/bin/sh
+random=$( (head -c $(( 128 * 1024 )) < /dev/urandom) | git hash-object --stdin)
+echo "Change-Id: I${random}"

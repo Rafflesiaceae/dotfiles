@@ -96,6 +96,7 @@ sources = {
     "./.local/bin/font-lookup-character": { "linux": "" },
     "./.local/bin/forever": "",
     "./.local/bin/fstack": { "linux": "" },
+    "./.local/bin/gerrit-change-id": "",
     "./.local/bin/git-abort": "",
     "./.local/bin/git-continue": "",
     "./.local/bin/git-copy-current-revision": "",
