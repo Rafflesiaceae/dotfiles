@@ -87,6 +87,7 @@ sources = {
     "./.local/bin/ferret-display": "",
     "./.local/bin/ffclip": "",
     "./.local/bin/ffcut": "",
+    "./.local/bin/ffmpeg-to-gif": "",
     "./.local/bin/ffsmol": "",
     "./.local/bin/ffsmoltwo": "",
     "./.local/bin/file-changed": "",

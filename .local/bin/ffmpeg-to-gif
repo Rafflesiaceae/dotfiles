@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+if [[ -z "$1" ]]; then
+    die "usage: <vid> [fps]"
+fi
+
+# ffprobe_lookup_fps() { ffprobe -v error -select_streams v -of default=noprint_wrappers=1:nokey=1 -show_entries stream=r_frame_rate "$1"; }
+# fps > 50 render badly in browser https://stackoverflow.com/a/37583886
+fps="${2:-50}" 
+ffmpeg -i "$1" -vf "fps=${fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" -loop 0 -y "ffmpeg-to-gif-$(date +%s).gif"
