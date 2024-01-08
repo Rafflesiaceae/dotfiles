@@ -71,6 +71,7 @@ sources = {
     "./.local/bin/cbwatch": "",
     "./.local/bin/certificate-show-fingerprint": "",
     "./.local/bin/cfp": { "linux": "" },
+    "./.local/bin/check-if-tcp-port-is-open": "",
     "./.local/bin/check-system": "",
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eo pipefail
+set -x
+IFS=':' read -ra inp <<< "$1"
+nc -z "${inp[0]}" "${inp[1]}"
