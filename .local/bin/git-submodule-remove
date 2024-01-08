@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -ueo pipefail
+set -x
+
+path=$1
+name=$2
+
+[[ -d "$path" ]]
+[[ -d ".git/modules/${name}" ]]
+
+# Remove the submodule entry from .git/config
+git submodule deinit --force "$path"
+
+# Remove the submodule directory from the superproject's .git/modules directory
+rm -rf ".git/modules/${name}"
+
+# Remove the entry in .gitmodules and remove the submodule directory located at path/to/submodule
+git rm -f "$path"
+
+[[ ! -d ".git/modules/${name}" ]]

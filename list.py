@@ -127,6 +127,7 @@ sources = {
     "./.local/bin/git-stage-all": "",
     "./.local/bin/git-stage-all-unstaged-changes": "",
     "./.local/bin/git-submodule-apply": "",
+    "./.local/bin/git-submodule-remove": "",
     "./.local/bin/git-undo-amend": "",
     "./.local/bin/git-undo-keep-changes": "",
     "./.local/bin/git-unstage": "",
