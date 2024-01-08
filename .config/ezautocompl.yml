@@ -849,7 +849,7 @@ mkdir (.ansible): |
       ansible.builtin.file:
         path: "PATH"
         state: directory
-exit early (.ansible): |
+exit/quit early (.ansible): |
     - name: Exit early
       meta: end_play
 
