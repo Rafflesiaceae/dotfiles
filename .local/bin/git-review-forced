@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+now=$(date +%Y.%m.%d.%s).$RANDOM
+git stash save --quiet "$now" || exit 2
+
+on_error() {
+    now_stash_ref=$(git stash list | sed -rn "s/(stash@\{[^\}]+\}).*${now}$/\1/p") || exit 7
+    if [[ "$now_stash_ref" ]]; then
+      git stash pop --quiet "$now_stash_ref"; popret=$?
+      case $popret in
+          0) ;;
+          1)
+              printf "\nCONFLICTS:\n"
+              git diff --name-only --diff-filter=U
+              exit 8
+              ;;
+          *) exit $((9+popret)) ;;
+      esac
+    fi
+}
+trap 'on_error' ERR
+
+
+git-review --yes

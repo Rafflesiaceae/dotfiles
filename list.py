@@ -118,6 +118,7 @@ sources = {
     "./.local/bin/git-reset-file": "",
     "./.local/bin/git-reset-submodule": "",
     "./.local/bin/git-reset-to-tracked": "",
+    "./.local/bin/git-review-forced": "",
     "./.local/bin/git-search-all-branches": "",
     "./.local/bin/git-show-current-branch": "",
     "./.local/bin/git-show-me-what-you-got": "",
