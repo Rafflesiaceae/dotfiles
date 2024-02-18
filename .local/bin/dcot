@@ -25,7 +25,7 @@ readarray services < <(yq '.services | to_entries | .[].key' -r < "$docker_compo
 # if there's multiple services, prompt interactively
 if [[ ${#services[@]} -gt 1 ]]; then
     # service=$(printf "%s" "${services[@]}" | rofi -dmenu -window-title docker-compose-service)
-    service=$(printf "%s" "${services[@]}" | fzf --prompt=service --height=1)
+    service=$(printf "%s" "${services[@]}" | fzf --prompt=service --height=5)
 else
     service=${services[0]}
 fi
