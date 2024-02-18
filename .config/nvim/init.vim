@@ -1257,7 +1257,7 @@ func! s:vuildRun()
         call s:vuildSaveAndRun("perl %")
     elseif filetype == "javascript"
         call s:vuildSaveAndRun("node %")
-    elseif filetype == "yaml"
+    elseif filetype =~ "yaml.*"
         call s:vuildSaveAndRun("yq -oj -P . '%'")
     elseif filetype == "json"
         call s:vuildSaveAndRun("jq . '%'")
