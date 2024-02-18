@@ -29,6 +29,8 @@ alias dco="docker-compose"
 alias dri="docker run -i --rm"
 alias drt="docker run -it --rm"
 alias gf="git fetch"
+alias ri="podman run -i --rm"
+alias rit="podman run -it --rm"
 alias ws="cd ~/workspace"
 
 # shell nav helper
