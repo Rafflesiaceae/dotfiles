@@ -19,6 +19,11 @@ esac
 
 # - - -
 
+# ssh-agent socket path
+export SSH_AUTH_SOCK="/run/user/1000/ssh-agent.socket"
+
+# - - -
+
 alias d="docker"
 alias dco="docker-compose"
 alias dri="docker run -i --rm"
