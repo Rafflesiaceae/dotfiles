@@ -165,7 +165,7 @@ curl upload json from stdin (.cmd): |
     curl -X POST --data-binary "@-" \
         -H "Content-Type: application/json" \
         URL
-curl download a file like wget (.cmd): curl -L -O URL
+curl download a file like wget (.cmd): curl --fail -L -O URL
 nmap list all IPs on LAN (.cmd): nmap -sP 192.168.0.0/24
 autoformat html (.cmd): tidy -i -w 100 SOMEHTMLFILE
 
@@ -176,9 +176,11 @@ dbus debug / explore (.cmd .dbus): d-feet
 dbus list services (.cmd .dbus): qdbus && qdbus --system
 dbus monitor services (.cmd .dbus): sudo dbus-monitor --system "type='signal',sender='net.connman'"
 
-extract single file from tar (.cmd): tar -zxf TAR_FILE EXTRACTED_FILE
-create archive / recursive tar compression (.cmd): tar -czvf backup.tar.gz folder
-list archive (.cmd): tar -tvf archive.tar
+extract single file from tar (.cmd .tar): tar -zxf TAR_FILE EXTRACTED_FILE
+extract archive into directory (.cmd .tar): tar -zxf TAR_FILE -C DEST_DIRECTORY
+extract archive into directory as new root/strip (.cmd .tar): tar -zxf TAR_FILE --strip-components=1 -C DEST_DIRECTORY 
+create archive / recursive tar compression (.cmd .tar): tar -czvf backup.tar.gz folder
+list archive (.cmd .tar): tar -tvf archive.tar
 
 youtube-dl download all subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --all-subs"
 youtube-dl download specific/eng subtitles (w/ auto-subs) (.cmd): "youtube-dl --skip-download --write-auto-sub --sub-lang en"
@@ -840,6 +842,9 @@ new custom exception (.groovy): |
 
 
 # ansible {{{1
+assert a variable (.ansible): |
+    - ansible.builtin.assert: { that: "SOME_VARIABLE" }
+
 iterate over a dictionary/set fact/with_items (.ansible): |
 
 disable rule (.ansible .ansible-lint): |
