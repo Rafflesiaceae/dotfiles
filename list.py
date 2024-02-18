@@ -189,7 +189,7 @@ sources = {
     "./.local/bin/rnb": { "linux": "" },
     "./.local/bin/rsync-hosts": { "linux": "" },
     "./.local/bin/run-java": "",
-    "./.local/bin/run-notify": "",
+    "./.local/bin/notify-run": "",
     "./.local/bin/scan-brother": "",
     "./.local/bin/secret-lookup": "",
     "./.local/bin/secret-store": "",
