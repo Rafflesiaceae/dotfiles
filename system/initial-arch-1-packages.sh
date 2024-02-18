@@ -75,12 +75,14 @@ base=(
     htop
     hyperfine
     imagemagick
+    inetutils
     jq
     linux-headers
     maim
     man-db
     man-pages
     mlocate
+    moreutils
     ncdu
     neovim
     nmap
