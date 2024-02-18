@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail
-while read -r user; do
-    printf "%-30s: " "$user"
-    git log --author="$user" --pretty=tformat: --numstat | \
-        gawk '{ add += $1; subs += $2; loc += $1 - $2 } END { printf "added lines: %s removed lines: %s total lines: %s\n", add, subs, loc }' -
-done < <(git log --format='%aN' | sort -u)
+{
+    while read -r user; do
+        echo "$user" | gawk '{ printf "%-30s", $0 }'
+        git log --author="$user" --pretty=tformat: --numstat | \
+            gawk '{ add += $1; subs += $2; diff += $1 - $2; total += $1 + $2 } END { printf "(total lines: %6s) added lines: %6s, removed lines: %6s, new lines: %6s\n", total, add, subs, diff }' -
+    done < <(git log --format='%aN' | sort -u)
+} 2>&1 | sort -t$':' -r -k3 -n
