@@ -22,6 +22,9 @@ esac
 # ssh-agent socket path
 export SSH_AUTH_SOCK="/run/user/1000/ssh-agent.socket"
 
+# chosenim
+export PATH="${PATH}:${HOME}/.nimble/bin"
+
 # - - -
 
 alias d="docker"
