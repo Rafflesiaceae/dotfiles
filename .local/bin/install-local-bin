@@ -1,34 +1,73 @@
 #!/usr/bin/env bash
+# install-local-bin v0.1 (2024-03-04) (cda1933e976d4756)
+#
+# Ensures local_bin_dir exists and then symlinks a passed file to it.
 set -eo pipefail
-
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
 }
 
-[[ $# -ne 1 ]] && die "pass me an argument"
+local_bin_dir="${HOME}/.local/bin"
 
-inp="$1"
-inp=$(realpath "$inp")
+[[ $# -ne 1 ]] && die "USAGE: pass a binary file to install to local bin"
 
-inpfn=$(basename -- "$inp")
+input_path="$1"
+input_path=$(realpath "$input_path")
 
-tf="$HOME/.local/bin/$inpfn"
+input_fname=$(basename -- "$input_path")
+target_path="${local_bin_dir}/${input_fname}"
 
-if [[ -L "$tf" ]]; then
-    tflink=$(readlink "$tf") || die "couldnt read link for $tf"
-    if [[ "$tflink" != "$inp" ]]; then
-        echo "symlink exists, wrong destination ($tflink), relinking"
-        rm "$tf"
-        ln -s "$inp" "$tf"
+# prechecks
+if [[ ! -e "$local_bin_dir" ]]; then
+cat <<EOF >&2
+install-local-bin: Your local bin directory doesn't exist and is not registered in your \$PATH.
+                   Please create the following directory: \`${local_bin_dir}\`
+
+                   e.g.: $ mkdir -p '${local_bin_dir}'
+EOF
+exit 1
+fi
+
+if [[ ! "$PATH" == *"$local_bin_dir"* ]]; then
+cat <<EOF >&2
+install-local-bin: Your local bin directory is not registered in your \$PATH.
+
+                   This likely happened because while you have created your
+                   local bin directory:
+                     '${local_bin_dir}'
+
+                   you have not restarted/relog to create a new user session
+                   that will pick it up yet.
+
+                   Please restart.
+EOF
+exit 1
+fi
+
+if [[ ! -e "$input_path" ]]; then
+    die "install-local-bin: input file does not exist (yet?) '${input_path}'"
+fi
+
+if [[ ! -x "$input_path" ]]; then
+    die "install-local-bin: input file is not executable (yet?) '${input_path}'"
+fi
+
+# link
+if [[ -L "$target_path" ]]; then
+    linked_path=$(readlink "$target_path") || die "install-local-bin: couldnt read link for '${target_path}'"
+    if [[ "$linked_path" != "$input_path" ]]; then
+        echo "install-local-bin: symlink exists, wrong destination ('${linked_path}'), relinking"
+        rm "$target_path"
+        ln -s "$input_path" "$target_path"
     else
-        echo "already correctly linked"
+        echo "install-local-bin: already correctly linked"
     fi
-elif [[ -f "$tf" ]]; then
-    echo "$tf already exists, please move it"
+elif [[ -f "$target_path" ]]; then
+    echo "install-local-bin: '${target_path}' already exists pointing to a different file, please (re-)move it"
     exit 1
 else
-    echo "linking to $tf"
-    ln -s "$inp" "$tf"
+    echo "install-local-bin: linking '${input_fname}' to '${target_path}'"
+    ln -s "$input_path" "$target_path"
 fi
 exit 0
