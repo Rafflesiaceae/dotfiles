@@ -14,6 +14,9 @@ ssh automatic multiplexing / automatic / no warnings (.cmd .ssh): |
 ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
 
 # cmd {{{1
+assert/verify hash/sha256 of file (.cmd .sh): |
+    [ "$(sha256sum FILE | awk '{print $1}')" != "$EXPECTED_HASH" ]
+
 test socks5 proxy username/password (.cmd .curl): |
     curl -v -x "socks5://${AUTH_USER}:${AUTH_PASSWORD}@PROXY_URL:PROXY_PORT" http://checkip.amazonaws.com
 
@@ -49,7 +52,7 @@ who/what package owns file (.cmd .centos .rpm): rpm -q --whatprovides "$( which 
 show shared library dependencies of an ELF file (.cmd): |
     objdump -p FILE
     ldd FILE
-run a command for each match in find (.cmd): |
+run a command for each match finding files (.cmd .find): |
     find . -type f -name "*.txt" -exec echo "{}" \;
 
 git get/show current commit/revision (.cmd .git): git rev-parse HEAD
@@ -143,7 +146,7 @@ git change author/commit-person of all commits/whole history (.cmd .git): |
     ' --tag-name-filter cat -- --branches --tags
 
 git apply a patch (.cmd .git):
-    git am PATCHFILE
+    git am --reject PATCHFILE
 git create a patch (.cmd .git):
     git format-patch -1 HEAD
 git clone repository through subtree (.cmd .git):
@@ -165,7 +168,7 @@ curl upload json from stdin (.cmd): |
     curl -X POST --data-binary "@-" \
         -H "Content-Type: application/json" \
         URL
-curl download a file like wget (.cmd): curl --fail -L -O URL
+curl download a file like wget (.cmd): curl --fail --retry 3 -L -O URL
 nmap list all IPs on LAN (.cmd): nmap -sP 192.168.0.0/24
 autoformat html (.cmd): tidy -i -w 100 SOMEHTMLFILE
 
@@ -966,7 +969,7 @@ copy a local script and run it remotely (.ansible): |
 ansible filetype line (.ansible): |
     # code: language=ansible
 
-debug task/step that always is changed true (.ansible):
+debug task/step that always is changed true (.ansible): |
     - {name: This always changes, debug: {}, changed_when: true}
 
 debug print / echo message (.ansible): |
@@ -1065,8 +1068,8 @@ converter (.nim): |
 # python {{{1
 
 for each line in string (.python): |
-    from StringIO import StringIO
-    lines = StringIO(contents)
+    import io
+    lines = io.StringIO(contents)
     for line in lines:
         pass
 
