@@ -108,7 +108,8 @@ let g:ycm_filetype_blacklist = {
       \ 'notes' : 1,
       \ 'unite' : 1,
       \ 'infolog' : 1,
-      \ 'mail' : 1
+      \ 'mail' : 1,
+      \ 'plain' : 1
       \}
 
 let g:ycm_gopls_args = ['-remote=auto']
@@ -1448,6 +1449,8 @@ call plug#end()
 " }}} Plugins
 
 " Autocommands (Postplugged)
+
+au BufRead,BufNewFile *.jsonl set filetype=plain
 
 au BufRead,BufNewFile *.containerfile set filetype=dockerfile
 au BufRead,BufNewFile *.Containerfile set filetype=dockerfile
