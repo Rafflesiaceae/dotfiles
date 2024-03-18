@@ -104,6 +104,7 @@ sources = {
     "./.local/bin/git-create-tag": "",
     "./.local/bin/git-current-branch": "",
     "./.local/bin/git-current-command": "",
+    "./.local/bin/git-current-commit": "",
     "./.local/bin/git-deinit-all-submodules": "",
     "./.local/bin/git-delete-remote-branch": "",
     "./.local/bin/git-delete-tag": "",
