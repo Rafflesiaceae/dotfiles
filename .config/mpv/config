@@ -1,4 +1,4 @@
-include=./config_user
+include=~/.config/mpv/config_user
 
 # @INFO
 # https://mpv.io/manual/master/#properties
