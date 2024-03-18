@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [ -t 1 ]; then 
+    cb-img | magick mogrify -format jpg -quality 80 - | cb-img
+else 
+    cb-img | magick mogrify -format jpg -quality 80 -
+fi

@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+attempt_xclip_img() {
+    xclip -selection clipboard -t "$1" -o 2>/dev/null | head -c 0 || {
+        ret=$?
+        case "$ret" in
+            1)  # try another
+                return 0 ;;
+            141)  # worked
+                if [[ $1 != "image/png" ]]; then
+                    xclip -selection clipboard -t "$1" -o | mogrify -format png -
+                else
+                    xclip -selection clipboard -t "$1" -o
+                fi
+                exit 0 ;;
+            *) 
+                return "$ret" ;;
+        esac
+    }
+}
+
+
+if [ -t 0 ]; then
+    attempt_xclip_img "image/jpg"
+    attempt_xclip_img "image/png"
+else
+    xclip -selection clipboard -t image/png -i < /dev/stdin
+fi

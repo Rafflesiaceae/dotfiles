@@ -68,6 +68,8 @@ sources = {
     "./.local/bin/bkm": "",
     "./.local/bin/blank-screen": "",
     "./.local/bin/cb": "",
+    "./.local/bin/cb-img": "",
+    "./.local/bin/cb-img-jpg": "",
     "./.local/bin/cbwatch": "",
     "./.local/bin/certificate-show-fingerprint": "",
     "./.local/bin/cfp": { "linux": "" },
