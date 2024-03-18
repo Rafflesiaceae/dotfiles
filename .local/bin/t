@@ -709,13 +709,13 @@ networks:
     driver: bridge
 EOF
         ;;
-        make|Makefile) # {{{2
+        make|makefile|Makefile) # {{{2
             icat "Makefile" <<'EOF'
-SHELL := bash
-.SHELLFLAGS := -eo pipefail -c
-.ONESHELL:
-.SILENT:
 .PHONY: *
+SHELL := bash
+.ONESHELL:
+.SHELLFLAGS := -eo pipefail -c
+.SILENT:
 
 VERSION :=
 SOME_ENV_VAR := ${SOME_ENV_VAR}
