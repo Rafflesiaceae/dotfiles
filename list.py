@@ -173,6 +173,7 @@ sources = {
     "./.local/bin/parcellite-history": "",
     "./.local/bin/patch-create": "",
     "./.local/bin/polyfill-tree": "",
+    "./.local/bin/pulseaudio-restart": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",
     "./.local/bin/random-port": "",

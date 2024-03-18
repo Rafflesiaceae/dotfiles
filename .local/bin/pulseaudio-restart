@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -eo pipefail
+err() {
+    systemctl --user status pulseaudio.service || true
+    echo "   → run pulseaudio-restart again until it throws no errors"
+    exit 1
+}
+pulseaudio -k || true
+pulseaudio --start || err
+sleep 1
+systemctl --user restart pulseaudio || err
