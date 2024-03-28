@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -eo pipefail
+sh_realpath=$(/bin/sh -c 'realpath $0')
+
+if [[ "$sh_realpath" == "/usr/bin/dash" ]]; then
+    echo "✓ ${sh_realpath}"
+    exit 0
+else
+    echo "✗ ${sh_realpath}"
+    exit 1
+fi
