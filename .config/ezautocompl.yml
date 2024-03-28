@@ -191,7 +191,7 @@ youtube-dl download specific/eng subtitles (w/ auto-subs) (.cmd): "youtube-dl --
 change passphrase on key (.cmd .ssh): ssh-keygen -p -f "$FILE"
 check priv key (.cmd .ssh): FILE=""; ssh-keygen -lf "$FILE"; ssh-keygen -yf "$FILE"
 # https://wiki.archlinux.org/index.php/SSH_keys#Ed25519
-create key (.cmd .ssh): ssh-keygen -o -t ed25519 -C "user@hostname" -f OUTPUTFILE
+create key (.cmd .ssh): ssh-keygen -o -t ed25519 -C "" -f OUTPUTFILE
 
 # https://superuser.com/a/692184
 create random text (.cmd): base64 --wrap=0 /dev/urandom | head -c 64
