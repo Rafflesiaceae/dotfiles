@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
@@ -54,7 +54,7 @@ while :; do
 done
 
 clip_out() { xclip -sel clip -o; }
-clip_in() { 
+clip_in() {
     if [[ $cli_append ]]; then
         inp=$(cat -)
         printf "%s%s" "$(clip_out)" "$inp" | xclip -sel clip -i
@@ -73,7 +73,7 @@ if [[ $cli_edit ]]; then
         rm -f "$tmpfile"
     }
     trap 'cleanup_tmpfile' EXIT INT
-    clip_out > "$tmpfile" 
+    clip_out > "$tmpfile"
     "$EDITOR" "$tmpfile"
     sed -z '$ s/\n$//' < "$tmpfile" | clip_in
 elif [[ $cli_out ]]; then
