@@ -1435,6 +1435,7 @@ Plug 'zchee/vim-flatbuffers'
 Plug 'cespare/vim-toml'
 Plug 'LnL7/vim-nix'
 Plug 'Rafflesiaceae/vim-prometheus'
+Plug 'Rafflesiaceae/vim-gta2'
 Plug 'michaeljsmith/vim-indent-object'
 Plug 'jvirtanen/vim-hcl', { 'commit': '1e1116c17a5774851360ea8077f349e36fc733c1' }
 
