@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
 }
 
 usage() {
-    echo "usage: rcb [-g|--get] [-i|--in] [-o|--out] [-p|--put]"
+    echo "usage: rcb [-a|--append] [-e|--edit] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
     exit 1
 }
 
@@ -14,25 +14,33 @@ usage_and_die() {
     usage
 }
 
-cli_get=
+cli_append=
+cli_edit=
 cli_in=
 cli_out=
-cli_put=
+cli_str=
+cli_tee=
 while :; do
     case $1 in
         -h|-\?|--help)
-            usage; exit ;;
-        -g|-get|--get)
-            cli_get=1
+            usage ;;
+        -a|--append)
+            cli_append=1
             ;;
-        -i|-in|--in)
+        -e|--edit)
+            cli_edit=1
+            ;;
+        -i|--in)
             cli_in=1
             ;;
-        -o|-out|--out)
+        -o|--out)
             cli_out=1
             ;;
-        -p|-put|--put)
-            cli_put=1
+        -s|--str)
+            cli_str=1
+            ;;
+        -t|--tee)
+            cli_tee=1
             ;;
         --)
             shift
@@ -45,27 +53,47 @@ while :; do
     shift
 done
 
-ssh_get() { ssh_out | xclip -sel clip -i; }
-ssh_in() { cat - | ssh numstash "cat > \$HOME/.cp"; }
-ssh_out() { ssh numstash "cat \$HOME/.cp"; }
-ssh_put() { xclip -sel clip -o | ssh numstash "cat > \$HOME/.cp"; }
+remote_host=
+# shellcheck disable=SC1091
+source "${HOME}/.config/rcb.sh"
 
-if  [[ $cli_get ]]; then
-    ssh_get
-elif  [[ $cli_in ]]; then
-    ssh_in
-elif [[ $cli_out ]]; then
-    ssh_out
-elif [[ $cli_put ]]; then
-    if [ -t 0 ]; then
-        ssh_put
+_remote_in() { ssh "${remote_host}" "cat > \$HOME/.cp"; }
+
+clip_out() { ssh "${remote_host}" "cat \$HOME/.cp"; }
+clip_in() {
+    if [[ $cli_append ]]; then
+        inp=$(cat -)
+        printf "%s%s" "$(clip_out)" "$inp" | _remote_in
+    elif [[ $cli_tee ]]; then
+         stdin=$(cat)
+         echo "$stdin"
+         printf "%s" "$stdin" | _remote_in
     else
-        ssh_in
+        cat - | _remote_in
     fi
+}
+
+if [[ $cli_edit ]]; then
+    tmpfile=$(mktemp)
+    cleanup_tmpfile() {
+        rm -f "$tmpfile"
+    }
+    trap 'cleanup_tmpfile' EXIT INT
+    clip_out > "$tmpfile"
+    "$EDITOR" "$tmpfile"
+    sed -z '$ s/\n$//' < "$tmpfile" | clip_in
+elif [[ $cli_out ]]; then
+    clip_out
+elif  [[ $cli_in ]]; then
+    clip_in
+elif  [[ $cli_str ]]; then
+    printf "%s" "$1" | clip_in
+elif  [[ -f $1 ]]; then
+    cb < "$1"
 else
-    if [ -t 0 ]; then
-        ssh_out
+    if [[ -t 0 ]]; then
+        clip_out
     else
-        ssh_in
+        clip_in
     fi
 fi
