@@ -86,6 +86,7 @@ sources = {
     "./.local/bin/debug-caller": { "linux": "" },
     "./.local/bin/drb": "",
     "./.local/bin/edit-clipboard": "",
+    "./.local/bin/edit-current-urxvt-buffer": "",
     "./.local/bin/edit-from-base64-arg": "",
     "./.local/bin/ferret-display": "",
     "./.local/bin/ffclip": "",

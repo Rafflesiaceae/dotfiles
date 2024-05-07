@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    msg=$(printf '%b\n' "$1")
+    notify-send -u critical edit-current-urxvt-buffer "$msg" || true
+    exit "${2:-1}"
+}
+ckey() {
+    sleep 0.05
+    xdotool keydown ctrl
+    sleep 0.05
+    xdotool key "$1"
+    sleep 0.05
+    xdotool keyup ctrl
+    sleep 0.05
+}
+
+
+active_classname=$(xdotool getactivewindow getwindowclassname)
+if [[ "$active_classname" != "URxvt" ]]; then
+    die "active window != 'URxvt', instead: '$active_classname'"
+fi
+
+tmpfile=$(mktemp)
+cleanup_tmp_files() {
+    rm -f "$tmpfile"
+    if [[ -n "$most_recent_file" ]] && [[ -e "$most_recent_file" ]]; then
+        rm -f "$most_recent_file"
+    fi
+}
+trap 'cleanup_tmp_files' EXIT INT
+
+ckey Print || true
+
+# shellcheck disable=SC2012
+most_recent_filename=$(ls -Art "$HOME" | tail -n 1) || true
+if [[ "$most_recent_filename" != "urxvt."* ]]; then
+    die "most recent file in \$HOME doesn't look like 'urxvt.*'"
+fi
+most_recent_file="${HOME}/${most_recent_filename}"
+
+# edit in tmp place
+cat "$most_recent_file" > "$tmpfile"
+rm -f "$most_recent_file"
+most_recent_file=""
+
+termpopup --no-escape --no-float -- vim "$tmpfile"
