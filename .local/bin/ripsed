@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from io import StringIO
 from typing import *
-from typing.io import *
 import shutil
 import subprocess
 import sys
@@ -53,7 +52,7 @@ def main():
         if args[0] == 'rg':
             args.pop(0)
 
-        # we overwrite potential rg arguments in order to get deterministic output 
+        # we overwrite potential rg arguments in order to get deterministic output
         clean_args = [
             "--color", "never",
             "--context", "0",
