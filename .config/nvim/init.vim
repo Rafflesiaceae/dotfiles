@@ -1438,6 +1438,7 @@ Plug 'Rafflesiaceae/vim-prometheus'
 Plug 'Rafflesiaceae/vim-gta2'
 Plug 'michaeljsmith/vim-indent-object'
 Plug 'jvirtanen/vim-hcl', { 'commit': '1e1116c17a5774851360ea8077f349e36fc733c1' }
+Plug 'earthly/earthly.vim', { 'commit': 'cb0440a357a09fb9234ece56a6b09e04d25c1b1d' }
 
 Plug 'wsdjeg/vim-fetch'
 
