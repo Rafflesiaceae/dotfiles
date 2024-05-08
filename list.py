@@ -18,6 +18,7 @@ sources = {
     "./.config/mpv/config": { "linux": "", "windows": "~/scoop/apps/mpv/current/portable_config/config" },
     "./.config/mpv/input.conf": { "linux": "" },
     "./.config/mpv/scripts/global-vol.lua": "",
+    "./.config/mpv/scripts/time-management.lua": "",
     "./.config/nvim/.editorconfig": "",
     "./.config/nvim/autoload/airline/themes/base16_kokonai.vim": { "linux": "" },
     "./.config/nvim/colors/base16-kokonai.vim": { "linux": "" },
