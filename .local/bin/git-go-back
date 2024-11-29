@@ -26,8 +26,10 @@ for br in "${checkout_history[@]}" ; do
     fi
 done
 
-if [[ -n "$1" ]]; then
-    printf "%s\n" "${nondead_checkout_history[$1]}"
+if [[ "$1" == "co" ]] && [[ -n "$2" ]]; then
+    git checkout --quiet "${nondead_checkout_history[$2]}"
+elif [[ -n "$1" ]]; then
+    printf "%s\n" "${nondead_checkout_history["$1"]}"
 else
     # prompt and checkout
     uncaused_will_or_conscious_choice=$(printf "%s\n" "${nondead_checkout_history[@]}" | fzf) || exit 0

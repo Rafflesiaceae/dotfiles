@@ -29,7 +29,7 @@ inpf=$(realpath "$inpf")
 secure_hashfn() { local hash; hash=$(sha256sum -); printf "%s" "${hash::-3}"; }
 
 id="$( printf "%s:%s:%s" "$inpf" "$from" "$to" | secure_hashfn | cut -c -16 )"
-cutf=$HOME/tmp/cut_${id}.mp4
+cutf=$HOME/tmp/cut_${id}.mkv
 
 
 if [[ ! -e "$cutf" ]]; then

@@ -1,2 +1,2 @@
 #!/bin/sh
-i3-type-mark --key ctrl+c --key ctrl+u --key ctrl+p --key Return ctrlp
+i3-type-mark --key Escape --key ctrl+c --key ctrl+u --key ctrl+p --key Return ctrlp

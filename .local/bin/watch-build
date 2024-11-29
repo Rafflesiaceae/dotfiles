@@ -29,6 +29,5 @@ trap clean_tmpfile EXIT
 while true; do
     find . -type d > "$TMPFILE"
     find . -name "*.*" >> "$TMPFILE"
-    cat "$TMPFILE" \
-        | entr -dsc "$buildcmd"
+    entr -dsc "$buildcmd" < "$TMPFILE"
 done

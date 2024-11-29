@@ -4,7 +4,7 @@ tmpfile=$(mktemp)
 cleanup_tmpfile() {
     rm "$tmpfile"
 }
-trap 'cleanup_tmpfile' EXIT
+trap 'cleanup_tmpfile' EXIT INT
 
 is_primary=
 if [[ "$1" == "--primary" ]]; then

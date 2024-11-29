@@ -223,6 +223,18 @@ convert audio to highest quality ogg (.cmd .ffmpeg): ffmpeg -i INP -c:a libvorbi
 normalize audio (.cmd .ffmpeg): ffmpeg -i INP -filter:a "loudnorm=I=-16:TP=-3:LRA=4" -c:v copy OUTP
 
 # c {{{1
+set/print/determine gamemode(.c .etl): |
+    #ifdef CGAMEDLL
+        const char *gameMode = "client";
+    #else
+        const char *gameMode = "server";
+    #endif
+
+signal raise a breakpoint/SIGTRAP(.c): |
+    #include <signal.h>
+    raise(SIGTRAP);
+cause a segfault/SIGSEGV (.c): |
+    *(int*)0 = 0;
 string to integer (.c99): |
   #include <inttypes.h>
 
@@ -273,6 +285,20 @@ catch all exceptions (.cpp .c++): |
 
 print / cout (.cpp .c++): std::cout << "FOO" << std::endl;
 system notify-send (.cpp .c++): system("notify-send qwe asd");
+
+# cmake {{{1
+for each item in list (.cmake): |
+    foreach(item IN LISTS MYLIST)
+        message(STATUS "item=${item}")
+    endforeach()
+
+for each item in items (.cmake): |
+    foreach(item IN ITEMS MYLIST)
+        message(STATUS "item=${item}")
+    endforeach()
+
+debug print/echo (.cmake): |
+    message(STATUS "MY_VARIABLE=${MY_VARIABLE}")
 
 # golang {{{1
 check/test if application/program/command exists/is installed (.golang): |
@@ -2074,6 +2100,20 @@ date-alphabetical-sort (.run):
     cmd: bash
     stdin: date +%Y.%m.%d\ %T\ +%Z | head -c -1
 
+sha256sum (.run):
+    cmd: bash
+    stdin: xclip -sel clip -o | sha256sum - | awk '{print $1}'
+
+hex encode clipboard into bash variable (.run .bash):
+    cmd: bash
+    stdin: |
+        inp=$(xclip -sel clip -o | xxd -p -c -u)
+        result=
+        for (( i=0; i<${#inp}; i+=2 )); do
+          result="${result}$(printf "\\\x%s" "${inp:$i:2}")"
+        done
+        printf "foo=\$(printf \"%s\")\n" "$result"
+
 vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.cpp .vim .various): // [RUN] bear -- clang++ $(pkg-config --cflags --libs libpcrecpp jsoncpp) "%" -o "%.out"
@@ -2088,6 +2128,8 @@ vim modeline for setting comment string (.vim .various): |
   # vim: set commentstring=#\ %s:
 vim modeline always emit tabs not spaces (.vim .various): |
   # vim: set softtabstop=0 noexpandtab:
+vim write to file on every buffer change (.vim): |
+    autocmd TextChanged,TextChangedI <buffer> silent write
 show term cursor again via tput (.gdb): 'shell tput cnorm'
 
 utf8/unicode symbols (.various): |

@@ -5,6 +5,9 @@ gitdir="$(git-show-toplevel-path)/.git"
 if [ -e "${gitdir}/MERGE_HEAD" ]; then
     echo "merge"
     exit 0
+elif [ -e "${gitdir}/rebase-apply/patch" ]; then
+    echo "am"
+    exit 0
 elif [ -e "${gitdir}/REBASE_HEAD" ]; then
     echo "rebase"
     exit 0

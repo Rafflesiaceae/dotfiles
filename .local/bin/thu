@@ -1,2 +1,6 @@
 #!/bin/sh
-nohup thunar . >/dev/null 2>&1
+if [ -n "$1" ]; then
+    nohup thunar "$1" >/dev/null 2>&1
+else
+    nohup thunar . >/dev/null 2>&1
+fi

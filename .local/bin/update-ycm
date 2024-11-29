@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -eo pipefail
 
 # ↓ copied from: update-arch
@@ -7,12 +7,14 @@ echo {{{1 update vim plugins
 nvim +'PlugUpdate --sync' +qa
 
 echo {{{1 update YCM
-pushd "$HOME/.vim/plugged/YouCompleteMe"
+
+pushd "${HOME}/.vim/plugged/YouCompleteMe"
 ./install.py \
     --clangd-completer \
     --go-completer \
+    --java-completer \
     --rust-completer \
+    --rust-toolchain-version 1.77.0 \
     --ts-completer
-npm i --global vscode-json-languageserver # json
+# npm i --global vscode-json-languageserver # json
 GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
-popd
