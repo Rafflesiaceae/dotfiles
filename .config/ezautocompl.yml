@@ -223,6 +223,7 @@ convert audio to highest quality ogg (.cmd .ffmpeg): ffmpeg -i INP -c:a libvorbi
 normalize audio (.cmd .ffmpeg): ffmpeg -i INP -filter:a "loudnorm=I=-16:TP=-3:LRA=4" -c:v copy OUTP
 
 # c {{{1
+struct literal / tuple (.c): (vec4_t){1.0, 0.0, 0.0, 1.0}
 set/print/determine gamemode(.c .etl): |
     #ifdef CGAMEDLL
         const char *gameMode = "client";
@@ -230,7 +231,7 @@ set/print/determine gamemode(.c .etl): |
         const char *gameMode = "server";
     #endif
 
-signal raise a breakpoint/SIGTRAP(.c): |
+signal raise a breakpoint/SIGTRAP/"exception"(.c): |
     #include <signal.h>
     raise(SIGTRAP);
 cause a segfault/SIGSEGV (.c): |
@@ -656,7 +657,20 @@ get keys of a map (.golang): |
 
 hash a string/byte array (.golang): sha256.Sum256([]byte("hello world\n"))
 
-read a file (.golang): contents, err := ioutil.ReadFile()
+read a file (.golang): contents, err := os.ReadFile()
+
+recursively / iterate over files in directory (.golang): |
+    err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
+        fmt.Println(path)
+        return nil
+    })
+
+    if err != nil {
+        log.Fatal(err)
+    }
 
 # http://rosettacode.org/wiki/Walk_a_directory/Recursively#Go
 abspath / realpath (.golang): |
@@ -1411,6 +1425,11 @@ dataclass (.python): |
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
 # javascript / typescript {{{1
+gather all links of a website (.js .devtools): |
+    var output = [];
+    document.querySelectorAll('a').forEach((item) => output.push(item.href));
+    output;
+
 read stdin (.js .ts .deno): |
     let stdin = ""
     const decoder = new TextDecoder();
@@ -2094,6 +2113,9 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # various {{{1
+Print a debug message (.cmake):
+    message(STATUS "This is a debug message")
+
 Rafflesiaceae / vicecea (.names .various): "Rafflesiaceae / vicecea"
 
 date-alphabetical-sort (.run):
