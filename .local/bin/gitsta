@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+git stash
+git stash apply

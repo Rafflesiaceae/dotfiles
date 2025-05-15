@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# Stop all running Docker containers
+if command -v docker &> /dev/null; then
+    echo "Stopping all Docker containers..."
+    docker ps -q | xargs -r docker stop
+else
+    echo "Docker is not installed or not found in PATH."
+fi
+
+# Stop all running Podman containers
+if command -v podman &> /dev/null; then
+    echo "Stopping all Podman containers..."
+    podman ps -q | xargs -r podman stop
+else
+    echo "Podman is not installed or not found in PATH."
+fi
+
+echo "All containers stopped."

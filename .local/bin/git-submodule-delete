@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+set -x
+git submodule deinit -f .
+rm -rf $(git config --file .gitmodules --get-regexp path | awk '{ print $2 }')

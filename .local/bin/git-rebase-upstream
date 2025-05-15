@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+current_branch_full=$(git symbolic-ref HEAD)
+current_branch=${current_branch_full#"refs/heads/"}
+
+upstream_branch="upstream/${1:-${current_branch}}"
+
+set -x
+gitup || true
+git remote update
+# git co "upstream/${current_branch}"
+git co "$upstream_branch"
+upstream_commit=$(git rev-parse HEAD)
+git co "${current_branch}"
+git rebase "$upstream_commit"

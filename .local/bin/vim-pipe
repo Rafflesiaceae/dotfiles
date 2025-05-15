@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmpfile=$(mktemp)
+cleanup_tmpfile() {
+    rm -f "$tmpfile"
+}
+trap 'cleanup_tmpfile' EXIT INT
+
+cat > "$tmpfile"
+termpopup -ft -- vim "$tmpfile"
+if [[ -z "$(cat "$tmpfile")" ]]; then
+    echo "vim-pipe: Empty file, aborting..." >&2
+    exit 1
+fi
+
+cat "$tmpfile"

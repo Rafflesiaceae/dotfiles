@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [[ $# -gt 1 ]]; then
+    url="$1"
+    shift
+
+    branch="$1"
+    shift || true
+else 
+    url=$(cb)
+fi
+
+
+if [[ -n "$branch" ]]; then
+    git remote update
+    git co upstream/master
+    git co -B "$branch"
+fi
+
+patch_url="${url}.patch"
+curl --silent --fail --retry 3 -L "$patch_url" | git am -

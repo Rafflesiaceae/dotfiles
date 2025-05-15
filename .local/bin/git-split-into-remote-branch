@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+# "cli"
+arg1=$1
+shift || die "usage: <new-branch>\n  or\nusage: <commit-to-cherry-pick> <new-branch>"
+
+arg2=$1
+
+if [[ -n "$arg2" ]]; then
+    commit=$arg1
+    branch=$arg2
+else
+    commit=$arg1
+    branch=$(git log -1 --format=%s "$commit")
+    branch="${branch#*: }" # strip potential 'prefix: '
+    branch=$(echo "$branch" | sed 's/[[:space:][:punct:]]/-/g' | tr '[:upper:]' '[:lower:]')
+fi
+
+has_changes=
+if git-has-changes any; then
+    has_changes=1
+fi
+
+if [[ "$has_changes" ]]; then
+    git stash
+fi
+if [[ -n "$commit" ]]; then
+    set -x
+    git checkout "upstream/master"
+    git checkout -B "$branch"
+    git cherry-pick "$commit"
+    git push --set-upstream origin "$branch"
+    git-go-back co 1
+    if [[ "$has_changes" ]]; then
+        git stash pop
+    fi
+else  # TODO - this doesn't make sense anymore
+    set -x
+    git checkout -B "$branch"
+    git rebase --autostash -i 'HEAD~30'
+    git push --set-upstream origin "$branch"
+fi

@@ -1,0 +1,6 @@
+#!/bin/sh
+prettier --parser css "$1" | sponge "$1"
+
+##!/usr/bin/env bash
+#set -eo pipefail
+#prettier "$1" | sponge "$1"

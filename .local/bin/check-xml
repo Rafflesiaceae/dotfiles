@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+cachedir="${HOME}/.cache/check-xml"
+if [[ ! -d "$cachedir" ]]; then
+    mkdir -p "$cachedir"
+fi
+
+path=$1
+if [[ ! -e "$path" ]]; then
+    die "usage: <xml-path>"
+fi
+
+
+## extract schema url from xml document
+# grep -oP 'xsi:schemaLocation="\S+ \K\S+"' "$path"
+schema_url=$(grep -oP 'xsi:schemaLocation="\S+ \K\S+(?=")' "$path")
+
+## assert that we only found a single schema to verify
+schema_count=$(echo "$schema_url" | wc -l)
+if [[ "$schema_count" -ne 1 ]]; then
+    die "ERROR: expected to find 1 schema, found ${schema_count} instead:\n\n${schema_url}"
+fi
+
+## fetch schema url
+checksum=$(echo "$path" | md5sum)
+checksum="${checksum%% *}"  # strip everything from the first space onward
+
+schema_cached="${cachedir}/${checksum}"
+
+curl_args=(
+    --fail
+    --retry 3
+    --silent
+    --show-error
+    -L
+    -o "${schema_cached}.tmp"
+)
+
+# if [[ -e "$schema_cached" ]]; then
+#     curl_args+=(-z "$schema_cached")
+# fi
+
+### only fetch if not already fetched
+if [[ ! -e "$schema_cached" ]]; then
+    curl "${curl_args[@]}" "$schema_url" || die "ERROR: Failed to fetch '$schema_url'"
+    mv "${schema_cached}.tmp" "$schema_cached"
+    echo "$schema_url" > "${schema_cached}.url"
+fi
+
+## finally verify our file
+xmllint --noout --schema "$schema_cached" --pedantic "$path"

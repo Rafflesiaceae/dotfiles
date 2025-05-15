@@ -1,0 +1,2 @@
+#!/bin/sh
+git -c 'diff.tool=meld' difftool -y "$1~" "$1"

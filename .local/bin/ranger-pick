@@ -1,0 +1,28 @@
+#!/bin/sh
+tmpfile=$(mktemp)
+cleanup_tmpfile() {
+    rm -f "$tmpfile"
+}
+trap 'cleanup_tmpfile' EXIT INT
+
+lastfile="${TMPDIR:-/tmp}"/ranger-pick-last
+
+# lastdirfile="${TMPDIR:-/tmp}"/ranger-pick-last-dir
+# lastdir=.
+# if [ -e "$lastdirfile" ]; then
+#     lastdir=$(cat "$lastdirfile")
+# fi
+
+# termpopup -- ranger "$lastdir" --choosefile="$tmpfile" || { exit 1; }
+termpopup -- ranger --selectfile="$(cat "$lastfile")" --choosefile="$tmpfile" || { exit 1; }
+
+result=$(cat "$tmpfile")
+if [ -z "$result" ]; then
+    exit 1
+fi
+
+# remember path
+# printf "%s\n" "${result%/*}" > "$lastdirfile"
+printf "%s\n" "$result" > "$lastfile"
+
+printf "%s\n" "$result"

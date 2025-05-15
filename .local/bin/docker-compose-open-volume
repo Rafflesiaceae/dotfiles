@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Ensure docker-compose.yml exists
+if [[ ! -f "docker-compose.yml" ]]; then
+    echo "Error: No docker-compose.yml found in the current directory!"
+    exit 1
+fi
+
+# Check if yq is installed for parsing YAML
+if ! command -v yq &>/dev/null; then
+    echo "Error: 'yq' is required to parse YAML. Install it from https://github.com/mikefarah/yq"
+    exit 1
+fi
+
+# Get the Docker Compose project name (default to directory name)
+PROJECT_NAME=$(basename "$PWD")
+if docker compose ps >/dev/null 2>&1; then
+    PROJECT_NAME=$(docker compose ps --format json | jq -r '.[0].Project' 2>/dev/null || echo "$PROJECT_NAME")
+fi
+
+# Extract volume names from docker-compose.yml
+VOLUMES=$(yq eval '.volumes | keys | .[]' docker-compose.yml 2>/dev/null)
+VOLUME_LIST=($VOLUMES)
+
+# Ensure volumes exist
+if [[ ${#VOLUME_LIST[@]} -eq 0 ]]; then
+    echo "No volumes found in docker-compose.yml"
+    exit 1
+fi
+
+# Get real volume names (with prefix) from Docker
+DOCKER_VOLUMES=$(docker volume ls --format '{{.Name}}' | grep "^${PROJECT_NAME}_" || true)
+
+# Map user-friendly volume names to real Docker volume names
+declare -A VOLUME_MAP
+for VOL in "${VOLUME_LIST[@]}"; do
+    FULL_VOL_NAME="${PROJECT_NAME}_${VOL}"
+    if echo "$DOCKER_VOLUMES" | grep -q "^$FULL_VOL_NAME$"; then
+        VOLUME_MAP["$VOL"]="$FULL_VOL_NAME"
+    fi
+done
+
+# Ensure we found matching volumes
+if [[ ${#VOLUME_MAP[@]} -eq 0 ]]; then
+    echo "Error: No matching Docker volumes found for this project."
+    exit 1
+fi
+
+# Prompt user to select a volume
+echo "Select a volume:"
+select VOLUME in "${!VOLUME_MAP[@]}"; do
+    if [[ -n "$VOLUME" ]]; then
+        FULL_VOLUME_NAME="${VOLUME_MAP[$VOLUME]}"
+        break
+    else
+        echo "Invalid selection. Try again."
+    fi
+done
+
+# Get Docker volume mount point
+VOLUME_PATH=$(docker volume inspect "$FULL_VOLUME_NAME" --format '{{ .Mountpoint }}')
+
+# Check if the volume exists
+if [[ -z "$VOLUME_PATH" ]]; then
+    echo "Error: Failed to retrieve volume path for '$FULL_VOLUME_NAME'."
+    exit 1
+fi
+
+# Print the volume path to stdout
+echo "$VOLUME_PATH"
+
+sudo thunar "$VOLUME_PATH"

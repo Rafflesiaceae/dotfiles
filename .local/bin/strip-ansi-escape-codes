@@ -1,0 +1,6 @@
+#!/bin/sh
+if [ -n "$1" ]; then
+    sed -e 's/\x1b\[[0-9;]*m//g' < "$1" | sponge "$1"
+else
+    sed -e 's/\x1b\[[0-9;]*m//g'
+fi

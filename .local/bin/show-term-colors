@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+#!/bin/bash
+
+# Print 256 colors in the terminal
+for color in {0..255}; do
+    # Print the color number with its background
+    printf "\e[48;5;%sm %3d \e[0m" "$color" "$color"
+    # Break line every 6 colors for better readability
+    if (( (color + 1) % 6 == 0 )); then
+        echo
+    fi
+done
+
+echo

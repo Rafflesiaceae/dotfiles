@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+music=$1
+shift || die "pass music"
+img=$1
+shift || die "pass img"
+
+
+# ags=(
+# )
+ffmpeg -loop 1 -i "$img" -i "$music" -c:v libx264 -preset ultrafast -crf 23 -pix_fmt yuv420p -c:a aac -b:a 320k -shortest -vf "scale=1920:1080" output.mp4
+
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v mpeg2video -b:v 5M -maxrate 5M -bufsize 10M -c:a mp2 -b:a 256k -shortest -vf "scale=1920:1080" output2.mpg
+
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v mpeg2video -q:v 4 -c:a mp2 -b:a 256k -shortest output.mpg
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v mjpeg -q:v 2 -c:a pcm_s16le -shortest -vf "scale=1920:1080" output.avi
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v libx264 -tune stillimage -preset slow -crf 18 -c:a aac -b:a 320k -shortest -vf "scale=3840:2160" "output-$(date +%s).mp4"
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v libx264 -tune stillimage -preset fast -crf 18 -c:a aac -b:a 320k -shortest -vf "scale=3840:2160" "output-$(date +%s).mp4"
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v libvpx-vp9 -preset slow -crf 18 -c:a libopus -b:a 256k -shortest -vf "scale=3840:2160" "output-$(date +%s).webm"
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v libaom-av1 -preset slow -crf 18 -c:a libopus -b:a 256k -shortest -vf "scale=3840:2160" "output-$(date +%s).webm"
+# ffmpeg -loop 1 -i "$img" -i "$music" -c:v libvpx -b:v 4M -pix_fmt yuv420p  -c:a libopus -b:a 256k -shortest -vf "scale=3840:2160" "output-$(date +%s).webm"
+
+# ffmpeg -loop 1 -i image.jpg -i music.mp3 -c:v libx264 -preset ultrafast -crf 18 -pix_fmt yuv420p -c:a aac -b:a 320k -shortest -vf "scale=3840:2160" output.mp4

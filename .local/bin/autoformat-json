@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eo pipefail
+# TODO : (auto) set indent length
+# jq . "$1" | sponge "$1"
+prettier "$1" | sponge "$1"

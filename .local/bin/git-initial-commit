@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+msg="Initial commit"
+
+# check if we need to add the commit
+if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+    : # no commits found, let's continue adding one
+elif git log --pretty=format:"%s" | grep -q "$msg"; then
+    echo "> Already has 'Initial commit'" # don't need to add another one
+    exit 0
+else
+    : # has commits but no 'Initial commit'
+fi
+
+set -x
+git commit --allow-empty -m "$msg"

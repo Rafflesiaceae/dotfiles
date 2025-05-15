@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -eo pipefail
+die() {
+    printf '%b\n' "$1" >&2
+    exit "${2:-1}"
+}
+
+rev=$1
+
+if [[ -z "$rev" ]]; then
+    rev=$(git rev-parse HEAD)
+fi
+
+committer_date=$(git log --format='%ci' "$rev" | head -n 1 || true)
+author_date=$(git log --format='%ai' "$rev" | head -n 1 || true)
+
+cat <<EOF > /tmp/git-edit-date
+   author_date='${author_date}'
+committer_date='${committer_date}'
+# vim: set ft=bash:
+EOF
+
+vim /tmp/git-edit-date
+
+eval "$(cat /tmp/git-edit-date)"
+# echo "$author_date"
+# echo "$committer_date"
+
+git-rebase-noninteractive-single --edit "$rev"
+GIT_COMMITTER_DATE="$committer_date" git commit --amend --allow-empty --no-edit --date "$author_date"
+git-continue

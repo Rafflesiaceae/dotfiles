@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+while true; do
+    "$SHELL" "-c" "$1"
+    sleep 0.05
+done

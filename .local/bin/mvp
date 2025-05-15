@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+mkdir -p "$(dirname "$2")"
+mv "$1" "$2"
