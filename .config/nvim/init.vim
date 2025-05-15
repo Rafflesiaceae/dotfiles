@@ -12,6 +12,7 @@ endif
 
 set clipboard^=unnamed
 
+set timeoutlen=250
 set ttimeoutlen=0
 
 set nocompatible
@@ -62,6 +63,9 @@ set guicursor=n-v-c:block-Cursor/lCursor-blinkon0,i-ci:ver25-Cursor/lCursor,r-cr
 set iskeyword=@,48-57,_,192-255
 
 set scrollback=100000
+set scrollopt+=hor
+
+nnoremap <leader>sb :windo set scrollbind<cr>
 
 highlight DiffChange cterm=none ctermfg=16 ctermbg=18 gui=none guifg=bg guibg=Red
 autocmd FilterWritePre * if &diff | setlocal wrap< | endif
@@ -111,6 +115,7 @@ let g:ycm_filetype_blacklist = {
       \ 'mail' : 1,
       \ 'plain' : 1
       \}
+let g:ycm_clangd_args = ['--clang-tidy']
 
 let g:ycm_gopls_args = ['-remote=auto']
 let g:ycm_gopls_binary_path = "~/.go/bin/gopls"
@@ -151,6 +156,8 @@ let g:ycm_language_server =
   " \     'cmdline': [ 'java', '-jar', '/usr/share/java/groovy-language-server/groovy-language-server-all.jar' ],
   " \     'filetypes': [ 'groovy', 'gvy', 'gy', 'gsh' ],
   " \   }
+
+nnoremap <leader>X :YcmRestartServer<CR>
 
 " nnoremap <leader>g :YcmCompleter GoTo<CR>
 " nnoremap <leader>pd :YcmCompleter GoToDefinition<CR>
@@ -423,6 +430,8 @@ nnoremap <silent> <2-LeftMouse> :let @/='\V\<'.escape(expand('<cword>'), '\').'\
 
 " goto on t-click
 nnoremap <silent> <3-LeftMouse> :YcmCompleter GoTo<cr>
+nnoremap <silent> <leader>h :YcmCompleter GetDoc<cr>
+nnoremap <silent> <leader>c :YcmCompleter GoToDeclaration<cr>
 
 " ↓ https://vi.stackexchange.com/a/18489
 nnoremap <silent> <expr> <C-n> g:NERDTree.IsOpen() ? "\:NERDTreeClose<CR>" : bufexists(expand('%')) ? "\:NERDTreeFind<CR>" : "\:NERDTree<CR>"
@@ -440,8 +449,8 @@ nnoremap <leader>m :buffers<CR>:buffer<Space>
 nnoremap <leader>M :sp<CR><C-W><C-J>:e ~/marks<CR>gg
 nnoremap <leader>B :sp<CR><C-W><C-J>:e ~/breakpoints<CR>G
 
-nnoremap <silent> <C-M-p> :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
-nnoremap <silent> <M-p>   :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
+" nnoremap <silent> <C-M-p> :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
+" nnoremap <silent> <M-p>   :call fzf#vim#files(system('workspace-root \| tr -d "\n"'), 0)<CR>
 
 nnoremap <C-s> :w!<CR>
 inoremap <C-s> <C-O>:w!<CR>
@@ -507,14 +516,16 @@ noremap <leader>! :OpenTig<CR>
 noremap <leader>" :OpenTig expand("%:p")<CR>
 noremap <leader>C :OpenTerminal<CR>
 noremap <leader>T :OpenTerminal<CR>
-noremap <leader>P :!open-file-in-current-revision %<CR>
+noremap <leader>P G:call search('^\([ -1234567890]\)\{3}raf', 'W')<CR>
 noremap <leader>gc :Git commit<CR>
 noremap <leader>gd :Gdiff<CR>
 noremap <leader>gb :Git blame<CR>
 noremap <leader>gs :GitGutterStageHunk<CR>
-noremap <leader>gp :GitGutterPreviewHunk<CR>
+noremap <leader>gn :GitGutterNextHunk<CR>
+noremap <leader>gp :GitGutterPrevHunk<CR>
 noremap <leader>G  :GitGutterPreviewHunk<CR>
 noremap <leader>gu :GitGutterUndoHunk<CR>
+xnoremap <leader>s y/\V\<<C-r>"\><CR>
 
 " Google it - TODO for visual selection
 nnoremap <leader>gg :call system("chromium \"http://www.google.com/search?q=".expand("<cword>")."\"")<CR>
@@ -671,11 +682,17 @@ autocmd FileType php set tw=80 " for multi-line comments
 " autocmd FileType nim nnoremap <leader>r :w!<CR> :!nim c -r %<CR>
 
 " CPP
+let c_no_curly_error=1
 autocmd FileType c   setlocal expandtab shiftwidth=3 tabstop=3 softtabstop=3
 autocmd FileType cpp setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
-autocmd FileType c,cpp nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR> 
+" autocmd FileType c,cpp nnoremap <silent> <buffer> <C-c> :YcmCompleter GoTo<CR> 
+" autocmd FileType c,cpp nnoremap <silent> <buffer> <C-a> :ExpandAuto<CR> 
+autocmd FileType c,cpp nnoremap <silent> <buffer> <CR> :YcmCompleter GoTo<CR> 
 autocmd FileType c,cpp nnoremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
+autocmd FileType c,cpp nnoremap <silent> <buffer> <C-m> :YcmCompleter GoToImplementation<cr>
 autocmd BufRead,BufNewFile *.CPP set filetype=cpp
+autocmd BufRead,BufNewFile *.map set filetype=raw
+autocmd BufRead,BufNewFile *.map :GitGutterDisable
 
 autocmd FileType c,cpp nnoremap <silent> <buffer> <F1> :call CurtineIncSw()<CR>
 " autocmd FileType cpp nnoremap <leader>r :w!<CR> :!runcpp %<CR>
@@ -696,6 +713,7 @@ autocmd FileType objc setlocal commentstring=//\ %s
 " GO
 " autocmd FileType go nnoremap <leader>r :w!<CR> :!go run %<CR>
 autocmd FileType go nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
+autocmd FileType go nnoremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
 autocmd FileType go nnoremap <silent> <buffer> <leader>gi :GoImports<CR>
 autocmd FileType go nnoremap <silent> <buffer> <leader>gt :GoTest<CR>
 " autocmd FileType go nnoremap <silent> <buffer> <leader>r :GoImports <CR> \| :belowright 20split \| terminal go run %<CR>
@@ -771,10 +789,28 @@ autocmd BufRead,BufNewFile *.make set filetype=make
 " pixi
 autocmd BufRead,BufNewFile pixi.lock set filetype=yaml
 
+" gdshader
+autocmd FileType gdshader setlocal commentstring=//\ %s
+
+autocmd BufRead,BufNewFile *.lds set filetype=ld
+
 " <leader>j autoformatting/testing
 augroup _leader_j
-autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+autocmd FileType c   noremap <leader>j :silent !autoformat-c %<CR>
+autocmd FileType cpp noremap <leader>j :silent !autoformat-cpp %<CR>
+autocmd FileType css noremap <leader>j :silent !autoformat-css %<CR>
+autocmd FileType html   noremap <leader>j :silent !autoformat-html %<CR>
+autocmd FileType javascript noremap <leader>j :silent !autoformat-js %<CR>
+autocmd FileType json noremap <leader>j :silent !autoformat-json %<CR>
 autocmd FileType nix noremap <leader>j :silent !nixpkgs-fmt %<CR>
+autocmd FileType python noremap <leader>j :silent !autoformat-python %<CR>
+autocmd FileType typescript,typescriptreact noremap <leader>j :silent !autoformat-js %<CR>
+autocmd FileType xml noremap <leader>j :silent !autoformat-python %<CR>
+autocmd FileType yaml noremap <leader>k :!actionlint %<CR>
+autocmd FileType lua noremap <leader>j :!autoformat-lua %<CR>
+autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+" autocmd FileType javascript noremap <leader>j :silent !prettier -w %<CR>
+" autocmd FileType nix noremap <leader>j :silent !nixfmt %<CR>
 augroup END
 
 
@@ -1325,7 +1361,7 @@ Plug 'editorconfig/editorconfig-vim'
 Plug 'skywind3000/asyncrun.vim'
 
 " Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
-Plug 'Valloric/YouCompleteMe'
+Plug 'ycm-core/YouCompleteMe'
 " Plug 'scrooloose/syntastic'
 Plug 'Rafflesiaceae/ale'
 Plug 'Rafflesiaceae/vim-yaml'
@@ -1403,7 +1439,7 @@ Plug 'lifepillar/pgsql.vim'                ,{ 'for': 'sql' }
 Plug 'zah/nim.vim'                 ,{ 'for': 'nim' }
 Plug 'ericcurtin/CurtineIncSw.vim' ,{ 'for': 'cpp' }
 Plug 'leafo/moonscript-vim'        ,{ 'for': 'moon' }
-Plug 'ziglang/zig.vim'             ,{ 'for': 'zig' }
+" Plug 'ziglang/zig.vim'             ,{ 'for': 'zig' }
 
 Plug 'slashmili/alchemist.vim'   ,{ 'for': 'ex' }
 Plug 'elixir-editors/vim-elixir' ,{ 'for': 'ex' }
@@ -1506,3 +1542,78 @@ au BufRead,BufNewFile *.cfg.j2 set filetype=cfg.jinja2
 augroup _editorconfig
 autocmd BufEnter * :EditorConfigReload
 augroup END
+
+" hi SpecialKey ctermfg=9 guifg=161
+" highlight SpecialKey cterm=none ctermfg=16 ctermbg=18 gui=none guifg=bg guibg=Red
+" highlight NonText ctermfg=102
+" highlight NonText ctermfg=59
+highlight NonText ctermfg=19
+" autocmd BufRead,BufNewFile *.anic setlocal commentstring=//\ %s 
+
+" neovim >=0.10 fixes
+" hi Visual ctermfg=NONE
+" " hi MatchParen ctermfg=NONE
+" hi MatchParen cterm=bold,underline ctermfg=0 ctermbg=8
+syn region cPragma start="^\s*#pragma\s\+region\>" end="^\s*#pragma\s\+endregion\>" transparent fold
+
+
+" {{{ Split lines in visual selection accord go delims/whitespace to newlines
+" Define function to split lines by whitespace and delimiters
+function! SplitVisualSelection()
+    " Save current selection
+    let save_reg = @"
+    let save_view = winsaveview()
+
+    " Get visual selection as a list of lines
+    execute "normal! gv\"zy"
+    let lines = split(@z, "\n")
+
+    " Define delimiters to split on
+    let delimiters = '[[:space:]()"''{}[\]]\+'
+
+    " Process each line
+    let result = []
+    for line in lines
+        " Split line into words using delimiters
+        let words = split(line, delimiters)
+        " Append words as separate lines
+        call extend(result, words)
+    endfor
+
+    " Replace selection with newlines between words
+    execute "normal! gv\"_d"  
+    " Delete selection silently
+    call append(getpos("'<")[1] - 1, result)
+
+    " Restore cursor position
+    call winrestview(save_view)
+
+    " Restore original register
+    let @" = save_reg
+endfunction
+
+" Bind function to <leader>S in visual mode
+vnoremap <leader>sp :<C-u>call SplitVisualSelection()<CR>
+
+" }}} Fix NeoVim Colorscheme BS
+" https://www.ditig.com/256-colors-cheat-sheet
+" highlight ctrlsfFile guifg=#a0a0a0 guibg=#000000 ctermfg=0 ctermbg=1
+" highlight MatchParen cterm=bold ctermfg=0 ctermbg=7 gui=bold guifg=#2d2d2d guibg=#747369                                                                              
+" highlight MatchParen cterm=bold ctermfg=none ctermbg=7 gui=bold guifg=#2d2d2d guibg=#747369
+" highlight MatchParen cterm=bold ctermfg=none ctermbg=101
+" highlight MatchParen cterm=bold ctermfg=none ctermbg=241
+" highlight MatchParen cterm=bold ctermfg=0 ctermbg=1
+" highlight Visual ctermfg=none ctermbg=238
+" highlight Visual ctermfg=none ctermbg=19
+" highlight Visual ctermfg=none ctermbg=101
+" highlight ctrlsfFile ctermfg=5
+" highlight Visual ctermfg=none ctermbg=238
+" highlight MatchParen cterm=none ctermfg=none ctermbg=243
+highlight Visual ctermfg=none ctermbg=239
+highlight MatchParen cterm=none ctermfg=none ctermbg=245
+" highlight MatchParen cterm=none ctermfg=none ctermbg=218
+" highlight MatchParen cterm=none ctermfg=none ctermbg=220
+" highlight MatchParen cterm=none ctermfg=none ctermbg=215
+" highlight MatchParen cterm=none ctermfg=none ctermbg=184
+" highlight MatchParen cterm=none ctermfg=none ctermbg=178
+" {{{ Fix NeoVim Colorscheme BS
