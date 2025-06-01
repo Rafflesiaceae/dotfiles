@@ -38,11 +38,11 @@ done
 
 # {{{1 utils
 warn() {
-    printf "[%sWARNG%s] %s\n" "$cyellow" "$creset" "$1"
+    printf "[%sWARNG%s] %b\n" "$cyellow" "$creset" "$1"
     warn_count+=1
 }
 error() {
-    printf "[%sERROR%s] %s\n" "$cred" "$creset" "$1"
+    printf "[%sERROR%s] %b\n" "$cred" "$creset" "$1"
     err_count+=1
 }
 
@@ -67,7 +67,7 @@ fi
 # {{{1 check for failed systemd units
 systemd_system_failed_unit_count=$(systemctl list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_system_failed_unit_count -gt 0 ]]; then
-    error "you have $systemd_system_failed_unit_count failed systemd system-wide units, run: "'+ systemctl list-units --state=failed'"\nor clear the failed unit via: + systemctl reset-failed vmware-networks.service"
+    error "you have $systemd_system_failed_unit_count failed systemd system-wide units, run:\n          "'+ systemctl list-units --state=failed'"\n        or clear the failed unit via:\n          + systemctl reset-failed SOME_FAILED.service"
 fi
 systemd_user_failed_unit_count=$(systemctl --user list-units --state=failed --output=json | jq '. | length')
 if [[ $systemd_user_failed_unit_count -gt 0 ]]; then
