@@ -1,3 +1,9 @@
 #!/usr/bin/env bash
 set -eo pipefail
+
+# edit passed commit if passed
+if [[ $1 ]]; then
+    git-rebase-noninteractive-single --edit "$1"
+fi
+
 git reset -p 'HEAD^'
