@@ -2113,6 +2113,10 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # various {{{1
+Add a pypi/pip dependency (.pixi): |
+    [pypi-dependencies]
+    "libclang" = "~=18.1.1"
+
 Print a debug message (.cmake):
     message(STATUS "This is a debug message")
 
