@@ -9,12 +9,16 @@ nvim +'PlugUpdate --sync' +qa
 echo {{{1 update YCM
 
 pushd "${HOME}/.vim/plugged/YouCompleteMe"
+
+# rust_toolchain_version=1.77.0
+rust_toolchain_version=1.86.0
+
 ./install.py \
     --clangd-completer \
     --go-completer \
     --java-completer \
     --rust-completer \
-    --rust-toolchain-version 1.77.0 \
+    --rust-toolchain-version "$rust_toolchain_version" \
     --ts-completer
 # npm i --global vscode-json-languageserver # json
 GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
