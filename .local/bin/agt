@@ -95,8 +95,10 @@ fi
 
 if [[ "$(stat --printf="%s" /tmp/agt)" == 0 ]]; then
     die "> Pattern not found: ${search_phrase}"
-    exit 1
 fi
+
+# sort results
+sort /tmp/agt | sponge /tmp/agt
 
 if [[ ! $no_editor ]]; then
     vi /tmp/agt
