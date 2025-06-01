@@ -1481,6 +1481,9 @@ Plug 'wsdjeg/vim-fetch'
 Plug 'will133/vim-dirdiff'
 Plug 'AndrewRadev/linediff.vim'
 
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'LhKipp/nvim-nu'
+
 call SourceIfExists("~/.config/nvim/local_custom_imports")
 
 call plug#end()
@@ -1617,3 +1620,6 @@ highlight MatchParen cterm=none ctermfg=none ctermbg=245
 " highlight MatchParen cterm=none ctermfg=none ctermbg=184
 " highlight MatchParen cterm=none ctermfg=none ctermbg=178
 " {{{ Fix NeoVim Colorscheme BS
+
+" {{{ Setup NU Treesitter stuff
+lua require('treesitter-nu')
