@@ -1,4 +1,27 @@
 #!/usr/bin/env bash
 set -eo pipefail
 # XMLLINT_INDENT="    " xmllint --html --format "$@" | xmllint --format -
-tidy --indent yes --wrap-attributes 1 -w 140 --quiet 1 --tidy-mark 0 --break-before-br "$1" | sponge "$1"
+# tidy --indent yes --wrap-attributes 1 -w 140 --quiet 1 --tidy-mark 0 --break-before-br "$1" | sponge "$1"
+
+args=(
+        --custom-tags yes
+        --indent yes
+        --wrap-attributes 1
+        -w 140
+        --quiet 1
+        --tidy-mark 0
+        --break-before-br
+)
+
+INPUT="$1"
+TMP=$(mktemp)
+
+if tidy "${args[@]}" "$INPUT" >"$TMP"; then
+        mv "$TMP" "$INPUT"
+else
+        echo "❌ tidy failed on $INPUT"
+        # echo "----- Input content: -----"
+        # cat "$INPUT"
+        rm "$TMP"
+        exit 1
+fi

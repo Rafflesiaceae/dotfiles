@@ -1,2 +1,7 @@
-#!/bin/sh
-prettier --parser flow --tab-width 4 --write "$@"
+#!/bin/bash
+args=(
+    --parser flow
+    --tab-width 4
+    --trailing-comma es5
+)
+prettier "${args[@]}" --write "$@"
