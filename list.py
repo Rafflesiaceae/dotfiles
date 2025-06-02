@@ -13,6 +13,7 @@ sources = {
     "./.config/ezautocompl.yml": "",
     "./.config/fontconfig/fonts.conf": { "linux": "" },
     "./.config/fontconfig/no-subpixels-fonts.conf": { "linux": "" },
+    "./.config/gdb-simple.gdb": { "linux" : "" },
     "./.config/i3/config.j2": { "linux": "" },
     "./.config/llpp.conf": { "linux": "" },
     "./.config/mpv/config": { "linux": "", "windows": "~/scoop/apps/mpv/current/portable_config/config" },
