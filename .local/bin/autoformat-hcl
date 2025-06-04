@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eo pipefail
+# path=$(dirname "$(realpath "$1")")
+path="$1"
+
+fnamewext=$(basename -- "$path")
+fbase="${path%/*}"
+fext="${fnamewext##*.}"
+fname="${fnamewext%.*}"
+
+# notify-send qwe "$fext"
+case "$fext" in
+    tf)
+        terraformt fmt "$path"
+        ;;
+    hcl)
+        terragrunt hclfmt --file "$path"
+        ;;
+    *)
+        notify-send --urgency=critical autoformat-hcl "unknown file extension: ${fext}"
+        exit 1
+        ;;
+esac

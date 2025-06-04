@@ -804,11 +804,13 @@ autocmd FileType javascript noremap <leader>j :silent !autoformat-js %<CR>
 autocmd FileType json noremap <leader>j :silent !autoformat-json %<CR>
 autocmd FileType nix noremap <leader>j :silent !nixpkgs-fmt %<CR>
 autocmd FileType python noremap <leader>j :silent !autoformat-python %<CR>
-autocmd FileType typescript,typescriptreact noremap <leader>j :silent !autoformat-js %<CR>
-autocmd FileType xml noremap <leader>j :silent !autoformat-python %<CR>
+autocmd FileType typescript,typescriptreact noremap <leader>j :silent !autoformat-ts %<CR>
+autocmd FileType xml noremap <leader>j :silent !autoformat-xml %<CR>
 autocmd FileType yaml noremap <leader>k :!actionlint %<CR>
 autocmd FileType lua noremap <leader>j :!autoformat-lua %<CR>
 autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+autocmd FileType hcl noremap <leader>j :silent !autoformat-hcl %<CR>
+autocmd FileType bash noremap <leader>j :silent !autoformat-sh %<CR>
 " autocmd FileType javascript noremap <leader>j :silent !prettier -w %<CR>
 " autocmd FileType nix noremap <leader>j :silent !nixfmt %<CR>
 augroup END

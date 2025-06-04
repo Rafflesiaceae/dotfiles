@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -eo pipefail
+args=(
+    --parser flow
+    --tab-width 2
+    --trailing-comma es5
+)
+prettier "${args[@]}" --write "$@"
+# notify-send INFO TODO
+# npx eslint --fix "$1"
+#
