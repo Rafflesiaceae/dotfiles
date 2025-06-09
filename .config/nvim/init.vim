@@ -1144,6 +1144,30 @@ endfunction
 com! ToggleCD call s:ToggleCD()
 nnoremap <leader>sd :ToggleCD<CR>
 
+nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
+
+lua << EOF
+function ExchangeBufferWithClipboard()
+  local buf_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local buf_text = table.concat(buf_content, "\n")
+  local clipboard = vim.fn.getreg('+')
+
+  local msg = ""
+  if buf_text == clipboard then
+    -- vim.api.nvim_echo({{"Buffer is identical to clipboard.", "None"}}, false, {})
+    msg = "Buffer was identical to clipboard."
+  else
+    -- Replace buffer with clipboard
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(clipboard, "\n"))
+    msg = "Buffer was replaced with clipboard content."
+  end
+
+  vim.cmd('write')
+  vim.api.nvim_echo({{msg, "None"}}, false, {})
+
+end
+EOF
+
 "" ??-?? forgot what this does
 function! EditJsonKVInLine(key)
     let cur_cur_pos = getpos(".")
