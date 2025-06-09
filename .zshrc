@@ -50,6 +50,9 @@ autoload -U colors && colors
 #  the command at all. - This disables it.
 unsetopt nomatch
 
+# Disable Job Completion Bell
+unsetopt BEEP
+
 ## colors
 # {{{ base16 colorscheme - kokonai
 # Base16 Kokonai - Shell color setup script
