@@ -252,6 +252,7 @@ sources = {
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/togglekb": "",
     "./.local/bin/track-execs": "",
+    "./.local/bin/tskl": "",
     "./.local/bin/update-arch": { "linux": "" },
     "./.local/bin/update-arch-android": { "linux": "" },
     "./.local/bin/update-grub": "",

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+if [[ "$#" -lt 1 ]]; then
+    go-task --list-all
+else
+    go-task "$@"
+fi
