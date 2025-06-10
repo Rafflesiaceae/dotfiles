@@ -172,6 +172,7 @@ sources = {
     "./.local/bin/git-undo-specific-hunks-but-keep-changes": "",
     "./.local/bin/git-unstage": "",
     "./.local/bin/gitm": "",
+    "./.local/bin/gitp": "",
     "./.local/bin/gitpf": "",
     "./.local/bin/gitpseudfuse": "",
     "./.local/bin/gitr": "",
