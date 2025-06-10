@@ -35,6 +35,7 @@ alias gf="git fetch"
 alias ri="podman run -i --rm"
 alias rit="podman run -it --rm"
 alias ws="cd ~/workspace"
+alias tsk="go-task"
 
 # shell nav helper
 alias ....='cd ../../..'
