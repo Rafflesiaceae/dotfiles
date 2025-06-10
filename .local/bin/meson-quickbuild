@@ -60,20 +60,22 @@ done
 
 if [[ $release ]]; then
     build="build_release"
-else 
+else
     build="build"
 fi
+
+
 
 build() {
     cd "$ProjectDir"
     [[ ! -f "$ProjectDir/meson.build" ]] && die "run this in a directory with a meson.build"
-    [[ ! -d "$ProjectDir/$build" ]] && { 
+    [[ ! -d "$ProjectDir/$build" ]] && {
+        mkdir -p "$ProjectDir/$build"
         pushd "$ProjectDir/$build"
-        mkdir -p "$ProjectDir/$build"; 
 
         [[ $debug ]] && debug_arg="--buildtype debug"
         [[ $release ]] && release_arg="--buildtype release"
-        meson .. $debug_arg $release_arg $* || { echo "meson command failed"; rebuild; }
+        meson .. "$debug_arg" "$release_arg" "$@" || { echo "meson command failed"; rebuild; }
         popd
     }
 
@@ -81,7 +83,7 @@ build() {
     if [[ $no_rebuild ]]; then
         ninja
     else
-        ninja || rebuild $*
+        ninja || rebuild "$@"
     fi
 
     # link compile_commands.json
@@ -92,8 +94,8 @@ build() {
 rebuild() {
     echo "about to clean the WHOLE build and then rebuild..."
     prompt_continue
-    rm -rf "$ProjectDir/$build"
-    build $*
+    rm -rf "${ProjectDir:?}/${build}"
+    build "$@"
 }
-[[ $clean ]] && { echo "was told to explicitly clean"; rm -rf "$ProjectDir/$build"; } 
-build $*
+[[ $clean ]] && { echo "was told to explicitly clean"; rm -rf "${ProjectDir:?}/$build"; }
+build "$@"
