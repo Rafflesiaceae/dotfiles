@@ -67,6 +67,7 @@ sources = {
     "./.local/bin/autoformat-bash": "",
     "./.local/bin/autoformat-c": "",
     "./.local/bin/autoformat-css": "",
+    "./.local/bin/autoformat-go": "",
     "./.local/bin/autoformat-hcl": "",
     "./.local/bin/autoformat-html": "",
     "./.local/bin/autoformat-js": "",
