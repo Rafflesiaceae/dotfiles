@@ -230,6 +230,7 @@ sources = {
     "./.local/bin/riprep": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": { "linux": "" },
+    "./.local/bin/rpm-list-file-contents": "",
     "./.local/bin/rsync-hosts": { "linux": "" },
     "./.local/bin/run-java": "",
     "./.local/bin/scan-brother": "",
