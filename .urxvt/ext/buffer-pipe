@@ -18,7 +18,8 @@ use Encode;
 use Fcntl qw(:DEFAULT :mode);
 
 my $pid = $$;
-my $fifo = "/tmp/urxvt-buffer-pipe-${pid}";
+my $fifo_dir = "/tmp/urxvt";
+my $fifo = "${fifo_dir}/urxvt-buffer-pipe-${pid}";
 
 my $should_exit :shared = 0;
 
@@ -35,6 +36,10 @@ sub on_destroy {
 
 sub on_start {
     my ($term) = @_;
+
+    unless (-d $fifo_dir) {
+        mkdir $fifo_dir or warn "Cannot create dir: $fifo_dir $!";
+    }
 
     # create FIFO
     unless (-p $fifo) {

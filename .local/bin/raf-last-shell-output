@@ -27,7 +27,7 @@ case "$mode" in
 esac
 
 active_pid=$(xdotool getactivewindow getwindowpid)
-buffer_pipe="/tmp/urxvt-buffer-pipe-${active_pid}"
+buffer_pipe="/tmp/urxvt/urxvt-buffer-pipe-${active_pid}"
 [ -e "$buffer_pipe" ] || die "missing urxvt-buffer-pipe file for this pid: ${buffer_pipe}"
 
 case "$mode" in
