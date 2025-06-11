@@ -1,0 +1,94 @@
+#!/usr/bin/env luajit
+-- Prints the last shell command & output of a terminal buffer.
+-- Prompt is matched towards my own hard-coded customized format, see below.
+--
+-- REQUIRES: luajit
+
+local function main(content)
+    local username = os.getenv("USER")
+    username = username:sub(1, 3) -- trim to the first 3 characters, as that's what the minimum terminal size can support
+
+    -- Match prompt: two spaces/digits/>, U+2000, then first 3 characters of username
+    local prompt_pat = "()[ %d>][ %d>]\226\128\128" .. username
+
+    local positions = {}
+    for pos in content:gmatch(prompt_pat) do
+        table.insert(positions, tonumber(pos))
+    end
+
+    local function get_prompt_output(content, prompt_start, next_prompt_start)
+        -- Find newline after the prompt line
+        local after_prompt_nl = content:find("\n", prompt_start)
+        if not after_prompt_nl then
+            return false, ""
+        end
+        -- Find where to end: before next prompt or at EOF
+        local output_end = next_prompt_start and (next_prompt_start - 1) or #content
+
+        -- Extract and trim trailing whitespace of command output
+        local test_output = content:sub(after_prompt_nl + 1, output_end):gsub("%s+$", "")
+        -- Prompt along with command output
+        local output = content:sub(prompt_start, output_end):gsub("%s+$", "")
+
+        -- If all lines of command output are empty or whitespace, treat as no output
+        if test_output:match("^%s*$") then
+            return false, output
+        end
+
+        return true, output
+    end
+
+    local attempts = 0
+    local result = ""
+    for i = #positions, 1, -1 do
+        local prompt_start = positions[i]
+        local next_prompt_start = positions[i + 1]
+        local found, output = get_prompt_output(content, prompt_start, next_prompt_start)
+        -- print(i, attempts, found) -- DEBUG
+        if found or attempts > 0 then
+            result = output
+            break
+        end
+        attempts = attempts + 1
+    end
+
+    print(result)
+end
+
+local arg = arg or { ... }
+local function cli()
+    local help_text = [[
+Usage: raf-last-shell-output-extract <filename>
+       raf-last-shell-output-extract -
+       raf-last-shell-output-extract -h | --help
+]]
+
+    local filename = arg[1]
+
+    if not filename then
+        io.stderr:write(help_text)
+        os.exit(1)
+    end
+
+    if filename == "-h" or filename == "--help" then
+        io.write(help_text)
+        os.exit(0)
+    end
+
+    local content
+    if filename == "-" then
+        content = io.read("*a")
+    else
+        local file, err = io.open(filename, "rb")
+        if not file then
+            io.stderr:write("Error opening file: " .. err .. "\n")
+            os.exit(1)
+        end
+        content = file:read("*a")
+        file:close()
+    end
+
+    main(content)
+end
+
+cli()

@@ -296,7 +296,7 @@ function show_last_exit_code() {
 }
 
 setopt PROMPT_SUBST
-PROMPT='$(show_last_exit_code) %n %{$fg[yellow]%}%~ %{$reset_color%}%% '
+PROMPT='$(show_last_exit_code) %n %{$fg[yellow]%}%~ %{$reset_color%}%% '
 # }}}
 
 __execute_precmds() {

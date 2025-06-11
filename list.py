@@ -217,6 +217,8 @@ sources = {
     "./.local/bin/pulseaudio-restart": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",
+    "./.local/bin/raf-last-shell-output": "",
+    "./.local/bin/raf-last-shell-output-extract": "",
     "./.local/bin/random-port": "",
     "./.local/bin/ranger-pick": "",
     "./.local/bin/rcb": "",
@@ -281,6 +283,8 @@ sources = {
 
     "./.local/bin_override/gimp": { "linux": "" },
     "./.local/bin_override/vimdiff": { "linux": "" },
+
+    "./.urxvt//ext/buffer-pipe": { "linux": "" },
 
     "./.qtcvimrc": "",
     "./.vim/colors/base16-kokonai.vim": { "linux": "" },

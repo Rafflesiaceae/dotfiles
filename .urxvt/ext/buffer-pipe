@@ -1,0 +1,76 @@
+#!perl
+# buffer-pipe v0.1 (2025-06-11) (634d59bb18d59827)
+#
+# rxvt-unicode perl script to expose the buffer contents of an urxvt instance
+# via a fifo pipe at '/tmp/urxvt-buffer-pipe-{PID}'
+#
+# you can put this at '~/.urxvt/ext/buffer-pipe' and add to your
+# 'URxvt.perl-ext-common: ...' in '~/.Xresources'
+use strict;
+use warnings;
+
+use POSIX qw(mkfifo);
+use IO::Handle;
+use threads;
+use threads::shared;
+
+use Encode;
+use Fcntl qw(:DEFAULT :mode);
+
+my $pid = $$;
+my $fifo = "/tmp/urxvt-buffer-pipe-${pid}";
+
+my $should_exit :shared = 0;
+
+# Remove FIFO on exit/signals
+sub cleanup {
+    unlink $fifo if -p $fifo;
+}
+
+sub on_destroy {
+    my ($self) = @_;
+    $should_exit = 1;
+    cleanup();
+}
+
+sub on_start {
+    my ($term) = @_;
+
+    # create FIFO
+    unless (-p $fifo) {
+        unlink $fifo if -e $fifo;
+        mkfifo($fifo, 0600) or die "Can't create FIFO $fifo: $!";
+        print "FIFO $fifo created\n";
+    }
+
+    sub fifo_writer_thread {
+        print "FIFO writer thread: waiting for readers (cat $fifo)...\n";
+        while (!$should_exit) {
+            # open FIFO for writing (blocks until there's a reader)
+            if (open my $fh, '>', $fifo) {
+                $fh->autoflush(1);
+
+                # set UTF-8 encoding on filehandle
+                binmode($fh, ":encoding(UTF-8)");
+
+                my $start = $term->top_row;
+                my $end   = $term->nrow - 1;
+
+                for (my $i = $start; $i <= $end; ++$i) {
+                    my $line = $term->ROW_t($i);
+                    print $fh ($line // '') . "\n";
+                }
+
+                close $fh;
+            }
+
+            # small pause to avoid tight loop if error occurs
+            select(undef, undef, undef, 0.1);
+        }
+    }
+
+    # start the FIFO writer thread and continue
+    my $thr = threads->create(\&fifo_writer_thread);
+
+    1
+}
