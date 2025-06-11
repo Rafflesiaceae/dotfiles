@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+if [[ -n "$1" ]]; then
+    read -p "Press Enter to continue $1..."
+else
+    read -p "Press Enter to continue..."
+fi

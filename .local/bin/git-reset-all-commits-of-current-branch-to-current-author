@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -eo pipefail
+git rebase -r "$(git-first-commit)" --exec 'git commit --amend --no-edit --reset-author'
+
+# rebase initial commit (manual for now)
+# git rebase -i --root
+# git commit --amend --no-edit --reset-author --allow-empty
+# git-continue

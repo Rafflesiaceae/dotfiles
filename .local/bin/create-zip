@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmpfile=$(mktemp)
+tmpfile2=$(mktemp)
+cleanup_tmpfile() {
+    rm -f "$tmpfile"
+    rm -f "$tmpfile2"
+}
+trap 'cleanup_tmpfile' EXIT INT
+
+"$EDITOR" "$tmpfile"
+
+realpwd=$(realpath "$PWD")
+while IFS= read -r line || [[ -n "$line" ]]; do
+    line=$(realpath "$line")
+    if [[ "$line" = "$realpwd"* ]]; then
+        line=$(realpath -s --relative-to="$realpwd" "$line")
+    fi
+    echo "\"$line\"" >> "$tmpfile2"
+done < "$tmpfile"
+
+7z a -tzip -spf -i@"$tmpfile2" "output-$(date +%s).zip"

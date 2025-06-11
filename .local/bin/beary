@@ -1,0 +1,9 @@
+#!/usr/bin/dash
+set -e
+if [ -e ./compile_commands.json ]; then
+    mv ./compile_commands.json ./compile_commands.json.bk
+fi
+bear "$@"
+if [ "$(cat ./compile_commands.json)" = "[]" ]; then
+    mv ./compile_commands.json.bk ./compile_commands.json
+fi

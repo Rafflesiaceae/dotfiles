@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+set -x
+shadad=/home/raf/.local/state/nvim/shada
+[[ -d "$shadad" ]] && bk "$shadad"
+pkill -f clangd || true
+notify-send -u low "Cycling vim 3x..." "Just press ENTER 3x..."
+nvim -V20vimlog --noplugin +q
+nvim -V20vimlog --noplugin +q
+nvim -V20vimlog --noplugin +q

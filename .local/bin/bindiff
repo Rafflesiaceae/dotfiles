@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail
+tmpfileA=$(mktemp)
+tmpfileB=$(mktemp)
+cleanup_tmpfile() {
+    rm -f "$tmpfileA"
+    rm -f "$tmpfileB"
+}
+trap 'cleanup_tmpfile' EXIT INT
+xxd "$1" > "$tmpfileA"
+if [[ $# -gt 1 ]]; then
+    xxd "$2" > "$tmpfileB"
+    vimdiff "$tmpfileA" "$tmpfileB"
+else
+    vim "$tmpfileA"
+fi

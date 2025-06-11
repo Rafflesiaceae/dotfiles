@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+patch_file="git-diff-$(date +%s).patch"
+echo "→ ${patch_file}"
+if [ "$1" = "--staged" ]; then
+    git diff --staged > "$patch_file"
+else
+    git diff > "$patch_file"
+fi
