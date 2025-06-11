@@ -230,7 +230,11 @@ ASYNC_PROC=0
 function precmd() {
     function async() {
         # save to temp file
-        printf "%s" "$(rprompt_cmd)" > "/tmp/zsh_prompt_$$"
+        if [[ ! -d "/tmp/zsh/" ]]; then
+            mkdir -p "/tmp/zsh/"
+        fi
+
+        printf "%s" "$(rprompt_cmd)" > "/tmp/zsh/zsh_prompt_$$"
 
         # signal parent
         kill -s USR1 $$
@@ -260,7 +264,7 @@ function TRAPUSR1() {
         fi
 
         # rprompt_cmd
-        parts+=("$(cat /tmp/zsh_prompt_$$ 2>/dev/null)")
+        parts+=("$(cat /tmp/zsh/zsh_prompt_$$ 2>/dev/null)")
 
         RPROMPT="$parts"
 
