@@ -95,6 +95,7 @@ sources = {
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",
     "./.local/bin/cmake-quickbuild": "",
+    "./.local/bin/container-run": "",
     "./.local/bin/container-stop-all": "",
     "./.local/bin/copy-primary-sel-to-clipboard": "",
     "./.local/bin/cpwd": "",

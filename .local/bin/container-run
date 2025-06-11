@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [[ $# -lt 1 ]]; then
+    echo "usage: <img> <cmd/sh-file> <container-runtime-args>*" >&2
+    exit 1
+fi
+
+img=$1
+shift
+
+inp=$1
+shift || true
+
+args=(
+    -v "$PWD:/opt/pwd"
+    --rm
+)
+args+=("$@")
+
+if [[ -e "$img" ]]; then
+    echo "> gotta build the image first"
+    (set -x; buildah build --layers --tag tmp "$img")
+    img=tmp
+fi
+
+if [[ "$(realpath "$inp")" != "$(realpath "$PWD")"* ]]; then
+    (set -x; podman run --userns=keep-id --rm "${args[@]}" -i  --workdir "/opt/pwd" --entrypoint bash "$img" -l < "$inp")
+else
+    (set -x; podman run --userns=keep-id --rm "${args[@]}" -it --workdir "/opt/pwd" --entrypoint bash "$img" -cl "$inp")
+fi
