@@ -21,7 +21,7 @@ URxvt.urgentOnBell: true
 
 ! @INFO - 'matcher' doesnt support j/k movement and can cause slowdowns(?)
 ! @INFO - 'searchable-scrollback' doesnt support j/k movement
-URxvt.perl-ext-common: bell-command,eval,readline,selection,url-select,keyboard-select,open-buffer-in-editor
+URxvt.perl-ext-common: bell-command,eval,readline,selection,url-select,keyboard-select,buffer-pipe
 
 !{{{2 decent scroll behavior
 ! do not scroll with output
