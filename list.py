@@ -192,6 +192,7 @@ sources = {
     "./.local/bin/i3-type-mark": { "linux": "" },
     "./.local/bin/install-local-bin": { "linux": "" },
     "./.local/bin/internet-wait-for": "",
+    "./.local/bin/jar-required-java-version": "",
     "./.local/bin/jenkins-listen-job": "",
     "./.local/bin/jinja2": "",
     "./.local/bin/json2msgpack": "",
