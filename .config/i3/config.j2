@@ -144,6 +144,8 @@ bindsym »mod«+minus exec copy-primary-sel-to-clipboard
 bindsym »mod«+Print exec "maim --select --hidecursor | tee ~/shot_$(date +%s)_sel.png | xclip -selection clipboard -t image/png -i"
 
 # sometimes chromium requires killing
+
+# sometimes chromium requires killing (not in quite some time anymore - yay)
 bindsym »mod«+shift+mod1+k      exec "pkill chromium"
 bindsym »mod«+shift+ctrl+k      exec "pkill chromium"
 bindsym »mod«+mod1+k            exec "pkill chromium"
@@ -151,6 +153,8 @@ bindsym »mod«+shift+F12         exec "pkill chromium"
 bindsym »mod«+ctrl+F12          exec "pkill chromium"
 bindsym »mod«+shift+ctrl+F12    exec "pkill chromium"
 bindsym »mod«+ctr+shift+F12     exec "pkill chromium"
+
+bindsym »mod«+Ctrl+m bar mode toggle
 
 #    }}} mod=»mod«
 {% endfor %}
