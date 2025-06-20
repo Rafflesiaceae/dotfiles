@@ -48,7 +48,7 @@ highlight DiffChange cterm=none ctermfg=16 ctermbg=18 gui=none guifg=bg guibg=Re
 autocmd FilterWritePre * if &diff | setlocal wrap< | endif
 
 
-colorscheme base16-kokonai
+" colorscheme base16-kokonai
 let base16colorspace=256  " Access colors present in 256 colorspace
 set background=dark
 
@@ -97,7 +97,7 @@ nnoremap Y "+y
 noremap <expr> j v:count ? 'j' : 'gj'
 noremap <expr> k v:count ? 'k' : 'gk'
 
-nnoremap <leader>e :e 
+nnoremap <leader>e :e
 
 " <leader>v selects the just pasted text
 nnoremap <leader>v V`]
@@ -161,14 +161,14 @@ nnoremap <leader>gg :call system("chromium \"http://www.google.com/search?q=".ex
 nnoremap <silent> # :let @/='\V\<'.escape(expand('<cword>'), '\').'\>'<cr>:set hls<cr>
 
 " reselect pasted text http://vim.wikia.com/wiki/Selecting_your_pasted_text
-nnoremap gp `[v`] 
+nnoremap gp `[v`]
 
 " YCM
 " nnoremap <CR> :YcmCompleter GoTo<CR>
-" nnoremap <BS> :YcmCompleter 
+" nnoremap <BS> :YcmCompleter
 nnoremap <silent> <CR> :YcmCompleter GoTo<CR>
-nnoremap <silent> <BS> :YcmCompleter 
-    
+nnoremap <silent> <BS> :YcmCompleter
+
 " " move-lines XXX: I never used this
 " nnoremap <A-j> :m .+1<CR>==
 " nnoremap <A-k> :m .-2<CR>==
@@ -219,8 +219,8 @@ autocmd BufWritePost *.js call s:AddExecutablebitPost()
 " TYPESCRIPT
 autocmd FileType typescript noremap <silent> <buffer> <cr> :YcmCompleter GoToDefinition<cr>
 autocmd FileType typescript noremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
-autocmd FileType typescript noremap <buffer> <leader>nr :YcmCompleter RefactorRename 
-autocmd FileType typescript noremap <buffer> <leader>d :YcmCompleter FixIt 
+autocmd FileType typescript noremap <buffer> <leader>nr :YcmCompleter RefactorRename
+autocmd FileType typescript noremap <buffer> <leader>d :YcmCompleter FixIt
 
 autocmd BufWritePre  *.ts call s:AddExecutablebitPre()
 autocmd BufWritePost *.ts call s:AddExecutablebitPost()
@@ -253,8 +253,8 @@ autocmd FileType php set tw=80 " for multi-line comments
 " CPP
 autocmd FileType c   setlocal expandtab shiftwidth=3 tabstop=3 softtabstop=3
 autocmd FileType cpp setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
-autocmd FileType c   nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR> 
-autocmd FileType cpp nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR> 
+autocmd FileType c   nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
+autocmd FileType cpp nnoremap <silent> <buffer> <cr> :YcmCompleter GoTo<CR>
 autocmd FileType c   noremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
 autocmd FileType cpp noremap <silent> <buffer> <BS> :YcmCompleter GoToReferences<cr>
 
@@ -318,12 +318,12 @@ autocmd FileType pascal setlocal commentstring=//\ %s
 "" chmods executable bit if write creates new file
 function! s:AddExecutablebitPre()
     if !filereadable(expand('%')) && getline(1) =~ "^#!.*/bin/"
-        let b:post_chmod_x = 1 
+        let b:post_chmod_x = 1
     endif
 endfunction
 function! s:AddExecutablebitPost()
-    if get(b:, 'post_chmod_x', 0) 
-        silent execute '!chmod +x %' 
+    if get(b:, 'post_chmod_x', 0)
+        silent execute '!chmod +x %'
     endif
 endfunction
 

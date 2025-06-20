@@ -52,6 +52,7 @@ bind main C >git commit
 bind main A >git commit --amend
 
 bind generic <F8> >git-debug-commitpush
+bind generic <F4> >git-debug-commitpush
 
 bind main c !?git checkout %(commit)
 bind main p ?sh -c "echo 'branch: %(branch)'; git push"
@@ -79,6 +80,7 @@ bind generic <C-G> +@sh -c "termpopup --no-escape --no-float -- git-review-force
 bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"copied %(commit)\""
 bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)\""
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
+bind generic <C-T> !@sh -c "termpopup --no-escape --no-float -- git-edit-date \"%(commit)\""
 
 bind generic <C-s> !@?git stash
 

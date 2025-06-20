@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+git commit --amend --no-edit
+git push --force

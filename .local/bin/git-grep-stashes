@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 <search-string>"
+    exit 1
+fi
+
+KEYWORD="$1"
+
+# Search stash titles
+echo "=== Searching stash titles ==="
+git stash list | grep --color=always -i "$KEYWORD"
+
+echo ""
+echo "=== Searching stash bodies ==="
+git stash list | while read -r line; do
+    stash=$(echo "$line" | cut -d: -f1)
+    title=$(echo "$line" | cut -d: -f2-)
+    matches=$(git stash show -p "$stash" | grep --color=never -i "$KEYWORD")
+    if [ -n "$matches" ]; then
+        echo -e "\n[$stash] $title"
+        echo "$matches"
+    fi
+done
+

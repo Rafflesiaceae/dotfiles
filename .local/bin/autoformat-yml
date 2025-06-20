@@ -1,0 +1,2 @@
+#!/bin/dash
+prettier --no-config --write "$1"

@@ -221,6 +221,7 @@ control_path = %(directory)s/%%h-%%p-%%r
 pipelining = True
 EOF
         ;;
+# }}}
         ansible-role) # {{{2
             mkdir -p "./defaults"
             icat "./defaults/main.yml" <<'EOF'
@@ -296,8 +297,7 @@ galaxy_info:
 # code: language=ansible
 EOF
         ;;
-
-
+# }}}
         bazel) # {{{2
             icat ".bazeliskrc" <<'EOF'
 USE_BAZEL_VERSION=6.2.0
@@ -437,7 +437,7 @@ some_rule = rule(
 )
 EOF
         ;;
-
+# }}}
         conda-env|conda-lock) # {{{2
             icat "environment.yml" <<'EOF'
 name: MYPKG
@@ -452,7 +452,7 @@ dependencies:
     - requests==2.27.1
 EOF
         ;;
-
+# }}}
         .editorconfig|editorconfig) # {{{2
             icat ".editorconfig" <<'EOF'
 [*]
@@ -504,7 +504,7 @@ indent_style = tab
 trim_trailing_whitespace = false
 EOF
         ;;
-
+# }}}
         meson) # {{{2
             icat "meson.build" <<'EOF'
 project(
@@ -545,7 +545,7 @@ executable('cex',
 )
 EOF
         ;;
-
+# }}}
         mpv-debug) # {{{2
             icat "$HOME/.config/mpv/scripts/debug.lua" <<'EOF'
 require 'mp'
@@ -574,6 +574,7 @@ end
 mp.register_event("file-loaded", debughere)
 EOF
         ;;
+# }}}
         mvn|maven) # {{{2
             icat "pom.xml" <<'EOF'
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -605,7 +606,7 @@ EOF
 </project>
 EOF
         ;;
-
+# }}}
         jsconfig) # {{{2
             icat "jsconfig.json" <<'EOF'
 {
@@ -618,7 +619,7 @@ EOF
 }
 EOF
         ;;
-
+# }}}
         dockerfile) # {{{2
             icat "Dockerfile" <<'EOF'
 FROM debian:jessie
@@ -649,7 +650,7 @@ CMD ["/usr/bin/bash", "-c", "echo \"ASD\""]
 # vim: syntax=dockerfile
 EOF
         ;;
-
+# }}}
         docker-compose|dockercompose|compose) # {{{2
             icat "docker-compose.yml" <<'EOF'
 version: '3.7'
@@ -712,6 +713,7 @@ networks:
     driver: bridge
 EOF
         ;;
+# }}}
         clang-format) # {{{2
             icat ".clang-format" <<'EOF'
 # clang-format 13
@@ -885,6 +887,7 @@ WhitespaceSensitiveMacros:
   - MPT_PP_STRINGIFY
 EOF
         ;;
+# }}}
         make|makefile|Makefile) # {{{2
             icat "Makefile" <<'EOF'
 .PHONY: *
@@ -907,6 +910,43 @@ PHONY:
 .PHONY: PHONY
 EOF
             ;;
+# }}}
+        pixi) # {{{2
+            xicat "pixi.toml" <<'EOF'
+[project]
+name = "projectname"
+authors = ["Projectname Team"]
+version = "0.0.0"
+channels = [
+    "conda-forge",
+]
+
+platforms = ["linux-64", "osx-64", "win-64"]
+
+[tasks]
+"test" = { cmd = ["python", "./test.py"] }
+
+[dependencies]
+"python" = "*"
+"git" = "*"
+
+[feature.build.tasks]
+build = { cmd = ["cmake", "-S", ".", "-B", "build"]}
+[feature.build.dependencies]
+"python-clang" = "20.1.5.*"
+
+[feature.build.target.linux-arm64.dependencies]
+"gcc" = "*"
+[feature.build.target.osx-64.dependencies]
+"clang" = "*"
+[feature.build.target.win-64.dependencies]
+"clang" = "*"
+
+[environments]
+build = ["build"]
+EOF
+            ;;
+    # }}}
         task|Taskfile) # {{{2
             icat "Taskfile.yml" <<'EOF'
 version: '3'
@@ -931,6 +971,52 @@ tasks:
 EOF
             ;;
     # }}}
+        github-actions) # {{{2
+            icat ".github/workflows/ci.yml" <<'EOF'
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+    types: [opened, synchronize, reopened]
+
+# cancel previous unfinished/running jobs in each separate branch
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+          - windows-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Pre-build
+        shell: bash
+        run: ./pre-build.sh
+
+      - uses: prefix-dev/setup-pixi@v0.8.3
+        with:
+          pixi-version: v0.41.4
+          cache: true
+
+      - name: Run build
+        run: pixi run build
+EOF
+            ;;
+    # }}}
     *)
     usage_and_die "ERROR: unknown template $1"
         ;;
@@ -946,6 +1032,7 @@ set -eo pipefail
 
 EOF
             ;;
+    # }}}
         ts-deno|deno) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env -S deno run -A
@@ -961,6 +1048,7 @@ if (import.meta.main) {
 // vim: set ft=typescript:
 EOF
             ;;
+    # }}}
         js|javascript|node) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env node
@@ -974,6 +1062,7 @@ if (typeof require !== 'undefined' && require.main === module) {
 }
 EOF
             ;;
+    # }}}
         mjs) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env node
@@ -987,6 +1076,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 EOF
             ;;
+    # }}}
         py|python|.py) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env python3
@@ -999,6 +1089,7 @@ if __name__ == "__main__":
     main()
 EOF
             ;;
+    # }}}
         nosh) # {{{2
             xicat "$1" <<'EOF'
 #!/usr/bin/env nosh

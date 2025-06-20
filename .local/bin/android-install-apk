@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+# Check if APK path is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 path/to/app.apk"
+    exit 1
+fi
+
+APK_PATH="$1"
+
+# Check if file exists
+if [ ! -f "$APK_PATH" ]; then
+    echo "Error: APK file '$APK_PATH' not found!"
+    exit 2
+fi
+
+# Ensure adb is available
+if ! command -v adb &>/dev/null; then
+    echo "Error: adb not found! Install Android platform-tools."
+    exit 3
+fi
+
+# Start ADB server
+adb start-server
+
+# Wait for device to be detected
+echo "Waiting for USB-connected device..."
+adb wait-for-device
+
+# Optional: list connected devices
+DEVICE_COUNT=$(adb devices | grep -w "device" | wc -l)
+if [ "$DEVICE_COUNT" -eq 0 ]; then
+    echo "Error: No connected devices detected!"
+    exit 4
+fi
+
+# Install the APK
+echo "Installing APK: $APK_PATH"
+adb install -r "$APK_PATH"
+
+# Check install result
+if [ $? -eq 0 ]; then
+    echo "✅ APK installed successfully."
+else
+    echo "❌ APK installation failed."
+    exit 5
+fi
