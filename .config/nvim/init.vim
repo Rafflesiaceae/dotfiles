@@ -17,8 +17,24 @@ set clipboard^=unnamed
 set timeoutlen=250
 
 if g:is_wsl
-	set ttimeoutlen=5
+    set ttimeoutlen=5
     set fileformat=unix
+
+    " always strip windows line endings
+    function! Dos2Unix()
+        " Save view (cursor, scroll)
+        let l:view = winsaveview()
+
+        " Set fileformat so file is written with LF
+        setlocal fileformat=unix
+
+        " Remove all \r characters safely
+        silent! keeppatterns %s/\r//ge
+
+        " Restore cursor position and view
+        call winrestview(l:view)
+    endfunction
+    autocmd BufWritePre * call Dos2Unix()
 else
 	set ttimeoutlen=0
 endif
