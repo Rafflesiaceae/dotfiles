@@ -6,6 +6,8 @@ let &packpath = &runtimepath
 "   <C-h> → jump to left window split
 "   <C-l> → jump to right window split
 
+let g:is_wsl = !empty($WSL_INTEROP) ? 1 : 0
+
 if filereadable("/etc/vimrc")
     source /etc/vimrc
 endif
@@ -13,7 +15,16 @@ endif
 set clipboard^=unnamed
 
 set timeoutlen=250
-set ttimeoutlen=0
+
+if g:is_wsl
+	set ttimeoutlen=5
+    set fileformat=unix
+else
+	set ttimeoutlen=0
+endif
+
+let mapleader = ","
+let g:mapleader = ","
 
 set nocompatible
 filetype off
@@ -872,11 +883,13 @@ endfunction
 com! -nargs=* OpenTig call s:OpenTig(<args>)
 
 function! s:OpenTerminal()
-    " @TODO show/use .git - dir instead of parent dir of file
     let pdir = expand('%:p:h')
-    let toplevel = system('git-show-toplevel-name '.pdir)
-    echom "OpenTerminal ".toplevel
-    silent exec "!urxvt -cd ".pdir." -e $SHELL -i &"
+    echom "OpenTerminal"
+    if g:is_wsl
+        silent exec "!wt.exe -w 0 nt wsl.exe --cd ".pdir
+    else
+        silent exec "!urxvt -cd ".pdir." -e $SHELL -i &"
+    endif
 endfunction
 com! OpenTerminal call s:OpenTerminal()
 
