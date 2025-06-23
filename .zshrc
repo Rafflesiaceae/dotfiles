@@ -206,12 +206,15 @@ setopt pushdminus
 # {{{ dirstack
 DIRSTACKSIZE=200
 DIRSTACKFILE="$HOME/.cache/zsh/dirs"
-if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]]; then
+__cd_last_dirstack_dir() {
     dirstack=( ${(f)"$(< $DIRSTACKFILE)"} )
-    if [[ "$SH_STARTOPTS" == *autodir:* ]]; then
-        export SH_STARTOPTS="${SH_STARTOPTS//autodir:/}" # pop off autodir from SH_STARTOPTS
-        [[ -d $dirstack[1] ]] && cd "$dirstack[1]"
-    fi
+    [[ -d $dirstack[1] ]] && cd "$dirstack[1]"
+}
+if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]] && [[ "$SH_STARTOPTS" == *autodir:* ]]; then  # set $SH_STARTOPTS
+    export SH_STARTOPTS="${SH_STARTOPTS//autodir:/}" # pop off autodir from SH_STARTOPTS
+    __cd_last_dirstack_dir
+elif [[ "$PWD" == "${HOME}/.lastdir" ]]; then  # explicit
+    __cd_last_dirstack_dir
 fi
 
 chpwd() { print -l $PWD ${(u)dirstack} >$DIRSTACKFILE; }
