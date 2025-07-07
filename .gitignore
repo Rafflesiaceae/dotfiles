@@ -1,4 +1,5 @@
-config.py
 __pycache__
-build
-.syschange_*
+
+/config.py
+/build
+/.syschange_*
