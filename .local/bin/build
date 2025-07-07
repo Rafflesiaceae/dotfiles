@@ -1,0 +1,12 @@
+#!/bin/dash
+build_path=$(find-upwards "build.sh")
+if [ -n "$build_path" ]; then
+    printf "+ %s %s\n" "$build_path" "$*"
+    "$build_path" "$@"
+elif find-upwards "Taskfile.yml" >/dev/null; then
+    printf "+ go-task build %s\n" "$*"
+    go-task build "$@"
+else
+    printf "No way to build found.\n" >&2
+    exit 1
+fi

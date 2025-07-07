@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [[ "$1" == "undo" ]]; then
+    set -x
+    xinput set-prop "Logitech G403 HERO Gaming Mouse" "libinput Accel Speed" 0.0
+else
+    set -x
+    xinput set-prop "Logitech G403 HERO Gaming Mouse" "libinput Accel Speed" -0.05
+fi

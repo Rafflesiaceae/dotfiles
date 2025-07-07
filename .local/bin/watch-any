@@ -1,0 +1,31 @@
+#!/bin/dash
+# Watches any file changes in the current directory and executegs passed
+# commands in case there are changes
+die() {
+	printf '%s\n' "$1" >&2
+	exit 1
+}
+
+usage() {
+	die "usage: watch-any [cmds]+"
+}
+
+
+if [ ! $# -gt 0 ]; then
+	usage
+fi
+
+buildcmd=$*
+
+tmpfile=$(mktemp)
+clean_tmpfile() {
+	rm -rf "$tmpfile"
+}
+trap clean_tmpfile EXIT
+
+
+while true; do
+	find . -type d >"$tmpfile"
+	find . -name "*.*" >>"$tmpfile"
+	entr -ds "$buildcmd" <"$tmpfile"
+done
