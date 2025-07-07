@@ -1,15 +1,45 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <actions>
-<action>
-	<icon>utilities-terminal</icon>
-	<name>Open Terminal Here</name>
-	<submenu></submenu>
-	<unique-id>1691540412141850-1</unique-id>
-	<command>urxvt -cd %f</command>
-	<description>Example for a custom action</description>
-	<range></range>
-	<patterns>*</patterns>
-	<startup-notify/>
-	<directories/>
-</action>
+  <action>
+    <icon>utilities-terminal</icon>
+    <name>Open Terminal Here</name>
+    <submenu></submenu>
+    <unique-id>1691540412141850-1</unique-id>
+    <command>urxvt -cd %f</command>
+    <description>Example for a custom action</description>
+    <range></range>
+    <patterns>*</patterns>
+    <startup-notify />
+    <directories />
+  </action>
+  <action>
+    <icon>applications-development</icon>
+    <name>ffsmoltwo</name>
+    <submenu></submenu>
+    <unique-id>1751012361275222-1</unique-id>
+    <command>ffsmoltwo %n</command>
+    <description></description>
+    <range>*</range>
+    <patterns>*</patterns>
+    <audio-files />
+    <image-files />
+    <other-files />
+    <video-files />
+  </action>
+  <action>
+    <icon>accessories-dictionary</icon>
+    <name>pdfify</name>
+    <submenu></submenu>
+    <unique-id>1751456323819253-1</unique-id>
+    <command>pdfify %N</command>
+    <description></description>
+    <range>*</range>
+    <patterns>*</patterns>
+    <directories />
+    <audio-files />
+    <image-files />
+    <other-files />
+    <text-files />
+    <video-files />
+  </action>
 </actions>
