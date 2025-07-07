@@ -265,6 +265,7 @@ sources = {
     "./.local/bin/show-term-colors": "",
     "./.local/bin/showcqt": "",
     "./.local/bin/smart-context": { "linux": "" },
+    "./.local/bin/ssh-add-all": "",
     "./.local/bin/sshhost": "",
     "./.local/bin/strip-ansi-escape-codes": "",
     "./.local/bin/strip-final-newline": "",

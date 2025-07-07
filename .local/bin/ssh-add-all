@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+to_add=()
+
+while read -r file; do
+	# Check if the file starts with a private key header
+	if head -n 1 "$file" | grep -qE '.*BEGIN.*PRIVATE.*KEY.*'; then
+		# Now check if it's password protected
+		if ssh-keygen -y -P "" -f "$file" >/dev/null 2>&1; then
+			: # Not password protected
+		else
+			# Password protected
+			to_add+=("$file")
+		fi
+	fi
+done < <(find ~/.ssh -maxdepth 1 -type f -perm 0600)
+
+(
+	set -x
+	ssh-add "${to_add[@]}"
+)
