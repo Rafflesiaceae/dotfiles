@@ -111,6 +111,7 @@ bindsym »mod«+shift+p exec "xdotool click 2"
 
 # start a terminal
 bindsym »mod«+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" »default_terminal_emulator«"
+bindsym »mod«+KP_Enter exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" »default_terminal_emulator«"
 bindsym »mod«+Shift+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" urxvt -name 'floating' --geometry »i3.floating_term_geometry|default("169x20+0+437")«"
 
 # launcher/dmenu
@@ -227,6 +228,7 @@ bar {
 » include_if_exists("$/custom_i3") «
 
 # {{{ for_window
+
 for_window [title=".*-floating-.*"] floating enable
 for_window [title=".*-floatpath$"] floating enable; move position 50 200; resize set 500 600
 for_window [title="^floating$"] floating enable
