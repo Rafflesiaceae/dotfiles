@@ -137,14 +137,13 @@ bindsym »mod«+F11 exec edit-current-urxvt-buffer
 # bindsym »mod«+comma exec termpopup --no-shell fastkey
 bindsym »mod«+Tab exec i3-ctrlp
 bindsym »mod«+comma exec i3-ctrlc
-bindsym »mod«+ctrl+comma exec termpopup i3-edit-mark prompt "$(xdotool getactivewindow)"
+bindsym »mod«+ctrl+comma exec i3-edit-mark
 bindsym »mod«+period exec i3-ctrlp
 bindsym »mod«+minus exec copy-primary-sel-to-clipboard
 
 # print screen
 bindsym »mod«+Print exec "maim --select --hidecursor | tee ~/shot_$(date +%s)_sel.png | xclip -selection clipboard -t image/png -i"
 
-# sometimes chromium requires killing
 
 # sometimes chromium requires killing (not in quite some time anymore - yay)
 bindsym »mod«+shift+mod1+k      exec "pkill chromium"
