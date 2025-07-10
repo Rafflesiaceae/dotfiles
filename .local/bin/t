@@ -951,6 +951,15 @@ EOF
             icat "Taskfile.yml" <<'EOF'
 version: '3'
 
+anchor_build: &anchor_build
+  deps: []
+  sources:
+    - ./Taskfile.yml
+    - ./**/*
+  env:
+    SOME_VAR: 0
+vars:
+  build_tool_bin: './build_tool/build_tool{{- if eq OS "windows" }}.exe{{ end -}}'
 includes:
   subproject:
     taskfile: ./subproject/
@@ -958,6 +967,7 @@ includes:
 
 tasks:
   build:
+    <<: *anchor_build
     deps: []
     sources:
       - ./src/**/*
@@ -967,7 +977,7 @@ tasks:
       - ./target/**/*
     cmds:
       - task: subdir:build
-      - mvn clean package
+      - mvn clean package {{.CLI_ARGS}}
 EOF
             ;;
     # }}}
@@ -1087,6 +1097,48 @@ def main():
 
 if __name__ == "__main__":
     main()
+EOF
+            ;;
+        lua) # {{{2
+            xicat "$1" <<'EOF'
+#!/usr/bin/env luajit
+local arg = arg or { ... }
+local function main()
+    local help_text = [[
+Usage: MOOP <filename>
+       MOOP -
+       MOOP -h | --help
+]]
+
+    local filename = arg[1]
+
+    if not filename then
+        io.stderr:write(help_text)
+        os.exit(1)
+    end
+
+    if filename == "-h" or filename == "--help" then
+        io.write(help_text)
+        os.exit(0)
+    end
+
+    local content
+    if filename == "-" then
+        content = io.read("*a")
+    else
+        local file, err = io.open(filename, "rb")
+        if not file then
+            io.stderr:write("Error opening file: " .. err .. "\n")
+            os.exit(1)
+        end
+        content = file:read("*a")
+        file:close()
+    end
+
+    main(content)
+end
+
+main()
 EOF
             ;;
     # }}}
