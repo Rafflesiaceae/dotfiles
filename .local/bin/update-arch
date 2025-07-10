@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC1083
-
 set -eo pipefail
 
 echo {{{1 run this script in tmux
@@ -22,7 +21,7 @@ if [[ "$1" != "--run" ]]; then
     done
 
     # cat it
-    asciinema cat "$latest_cast_file"
+    asciinema play -s 1000000 "$latest_cast_file"
 
     exit 0
 fi
@@ -50,13 +49,14 @@ sudo pacman -Syu --noconfirm
 echo {{{1 update yay
 mkdir -p "${HOME}/.aur/yay"
 pushd "${HOME}/.aur/yay"
-wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
+# wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
+curl --fail --retry 3 -L -O "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
 tar xvfz "yay.tar.gz" -C ../
 makepkg -i --noconfirm --needed --skippgpcheck
 popd
 
 echo {{{1 update some AUR packages
-yay -S --answerdiff "None" --answerclean "None" --noprovides --noconfirm \
+yay -S --answerdiff "None" --answerclean "None" --noconfirm \
     aur/deadbeef
 
 echo {{{1 update amr
@@ -94,7 +94,7 @@ pushd "${HOME}/.vim/plugged/YouCompleteMe"
     --go-completer \
     --rust-completer \
     --ts-completer
-npm i --global vscode-json-languageserver # json
+# npm i --global vscode-json-languageserver # json
 GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
 popd
 
