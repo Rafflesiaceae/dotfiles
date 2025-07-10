@@ -51,8 +51,8 @@ bind generic C !git commit
 bind main C >git commit
 bind main A >git commit --amend
 
-bind main a >git add -u
-bind main u >git reset
+bind generic a >git add -u
+bind generic u >git reset
 
 bind generic <F8> >git-debug-commitpush
 bind generic <F4> >git-debug-commitpush
