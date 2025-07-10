@@ -1,31 +1,49 @@
 #!/bin/dash
-# Watches any file changes in the current directory and executegs passed
+# Watches any file changes in the current directory and executes passed
 # commands in case there are changes
+
 die() {
-	printf '%s\n' "$1" >&2
-	exit 1
+    printf '%s\n' "$1" >&2
+    exit 1
 }
 
 usage() {
-	die "usage: watch-any [cmds]+"
+    die "usage: watch-any [cmds]+"
 }
 
-
 if [ ! $# -gt 0 ]; then
-	usage
+    usage
 fi
 
 buildcmd=$*
 
+entr_pid=""
+
 tmpfile=$(mktemp)
 clean_tmpfile() {
-	rm -rf "$tmpfile"
+    # echo "Bye Bye..."
+    [ -n "$entr_pid" ] && kill "$entr_pid" 2>/dev/null
+    rm -rf "$tmpfile"
+    exit 0
 }
-trap clean_tmpfile EXIT
+trap 'clean_tmpfile; exit' INT EXIT
 
+echo "[watch-any] $*"
 
 while true; do
-	find . -type d >"$tmpfile"
-	find . -name "*.*" >>"$tmpfile"
-	entr -ds "$buildcmd" <"$tmpfile"
+    find . \
+        \( -name .git -o \
+        -name .pixi -o \
+        -name build -o \
+        -name .idea -o \
+        -name .cache -o \
+        -name .task \
+        \) -prune -o \
+        \( \( -type d -o -name "*.*" \) -a ! -path . \) \
+        -print \
+        >"$tmpfile"
+
+    entr -ds "$buildcmd" <"$tmpfile" &
+    entr_pid=$!
+    wait $entr_pid
 done
