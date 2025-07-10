@@ -45,11 +45,12 @@ sub on_start {
     unless (-p $fifo) {
         unlink $fifo if -e $fifo;
         mkfifo($fifo, 0600) or die "Can't create FIFO $fifo: $!";
-        print "FIFO $fifo created\n";
+        # print "FIFO $fifo created\n";
     }
 
     sub fifo_writer_thread {
-        print "FIFO writer thread: waiting for readers (cat $fifo)...\n";
+        my ($term) = @_;
+        # print "FIFO writer thread: waiting for readers (cat $fifo)...\n";
         while (!$should_exit) {
             # open FIFO for writing (blocks until there's a reader)
             if (open my $fh, '>', $fifo) {
@@ -75,7 +76,7 @@ sub on_start {
     }
 
     # start the FIFO writer thread and continue
-    my $thr = threads->create(\&fifo_writer_thread);
+    my $thr = threads->create(\&fifo_writer_thread, $term);
 
     1
 }
