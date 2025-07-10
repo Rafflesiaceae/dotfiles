@@ -10,22 +10,19 @@ die() {
     exit 1
 }
 
-spawn_window() {
-    termpopup "$0" "prompt" "$@"
+debug() {
+    # notify-send "$@"
+    :
 }
 
-prompt() {
+prompt_edit() {
     export press_any_key=1
 
-    parent_windowid=$1
-    2>/dev/null shift || die "pass \$parent_windowid"
+    conid=$1
+    2>/dev/null shift || die "pass \$conid"
 
     # read possible mark
-    current_mark=$(i3-msg -t get_tree | jq -r ".. | select(.window?) | select(.window==$parent_windowid) | .marks[0]")
-
-    if [ "$current_mark" = "null" ]; then
-        current_mark=""
-    fi
+    current_mark=$(i3-msg -t get_tree | jq -r ".. | objects | select(.id==${conid}) | .marks[]?")
 
     # get input
     # @TODO POSIX compatible
@@ -33,59 +30,49 @@ prompt() {
 
     # write new mark
     if [ "$new_mark" ]; then
-        i3-msg "[id=\"$parent_windowid\"] mark --replace \"$new_mark\""
+        i3-msg "[con_id=\"$conid\"] mark --replace \"$new_mark\""
     else
-        i3-msg "[id=\"$parent_windowid\"] unmark"
+        i3-msg "[con_id=\"$conid\"] unmark"
     fi
-}
-
-
-show_help() {
-    cat <<EOF
-usage:
-  default
-    -a/--active use active window
-
-  prompt \$window_id <args>
-
-  -h/--help   show this message here
-EOF
-    exit 255
 }
 
 while :; do
     case $1 in
-    -h|-\?|--help)
-            show_help
-            exit
-            ;;
-        -e|--embedded)
-            window_id=$WINDOWID
-            ;;
-        --)
-            shift
-            break
-            ;;
-        -?*)
-            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
-            ;;
-        *)
-            break
+    -h | -\? | --help)
+        cat <<EOF
+usage: $(basename "$0") [window_id]?
+EOF
+        exit 0
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -?*)
+        printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+        ;;
+    *)
+        break
+        ;;
     esac
 
     shift
 done
 
-if [[ "$1" = "prompt" ]]; then
-    shift
-    prompt "$@"
+debug "XXX" "$@"
+if [[ "$#" -gt 0 ]]; then
+    debug "BSD" "QWE"
+    prompt_edit "$@"
 else
-    if [[ "$1" ]]; then
-        window_id=$1
-        shift
+    debug "ASD" "$0"
+    window_id=$(xdotool getactivewindow)
+    if [[ -n "$window_id" ]]; then
+        # get connid from window_id
+        conid=$(i3-msg -t get_tree | jq ".. | objects | select(.window? == $window_id) | .id")
     else
-        window_id=$(xdotool getactivewindow)
+        # get connid from focused non-leaf container (not an X11 Window)
+        conid=$(i3-msg -t get_tree | jq '.. | objects | select(.focused==true) | .id')
     fi
 
-    spawn_window "$window_id"
+    termpopup -- "$0" "$conid"
 fi
