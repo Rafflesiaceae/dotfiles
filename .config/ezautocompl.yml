@@ -1867,7 +1867,27 @@ check if env variable is set (.sh .bash): '[[ -z "${MY_ENV}" ]]'
 check/test if application/program/command exists/is installed (.sh .bash): |
     command -v COMMAND &>/dev/null || die "can't find program: COMMAND"
 
-prompt/ask confirm/continue/key press (.sh .bash ;zsh): |
+prompt confirm key press (.sh .bash ;zsh): |
+    prompt() {
+        prompt="${1:-Continue?} (y/n) "
+        tput sc
+        while true; do
+            read -p "$prompt" -n 1 -r yn
+            case $yn in
+            [YyNn])
+                echo "$yn"
+                echo "" >/dev/tty
+                return 0
+                ;;
+            *)
+                tput el1
+                tput rc
+                ;;
+            esac
+        done
+    }
+
+prompt continue key press (.sh .bash ;zsh): |
     prompt_continue() {
         [[ $absolute_yes ]] && return
         tput sc
@@ -2015,11 +2035,20 @@ func is_nohup (.sh .bash): |
         grep -Eq 'SigIgn:\s.{15}[13579bdf]' "/proc/$$/status" && return 0 || return 1
     }
 
-die (.sh .bash): |
+die plain (.sh .bash): |
     die() {
         printf '%b\n' "$1" >&2
         exit "${2:-1}"
     }
+
+die (.sh .bash): |
+    die() {
+        # shellcheck disable=SC2059
+        printf "$@" >&2
+        printf "\n" >&2
+        exit "${exit_code:-1}"
+    }
+
 
 die usage usage_and_die (.sh .bash): |
     die() {
@@ -2039,6 +2068,11 @@ foreach argument (.sh .bash): |
     for arg in "$@"; do
         echo "$arg"
     done
+
+run heredoc (.sh .bash): |
+    tmux-run 8<<EOF
+    ...
+    EOF
 
 echo heredoc (.sh .bash): |
     cat <<EOF
@@ -2113,6 +2147,7 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # various {{{1
+All pixi platforms (.pixi): '"win-64", "linux-64", "osx-64", "osx-arm64"'
 Add a pypi/pip dependency (.pixi): |
     [pypi-dependencies]
     "libclang" = "~=18.1.1"
