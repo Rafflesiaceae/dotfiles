@@ -43,7 +43,7 @@ while true; do
         -print \
         >"$tmpfile"
 
-    entr -ds "$buildcmd" <"$tmpfile" &
+    entr -r -ds "$buildcmd" <"$tmpfile" &
     entr_pid=$!
     wait $entr_pid
 done
