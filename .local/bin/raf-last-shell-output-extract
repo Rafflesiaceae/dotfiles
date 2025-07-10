@@ -4,6 +4,44 @@
 --
 -- REQUIRES: luajit
 
+local function trim_trailing_whitespaces(s)
+    local result = {}
+    local i = 1
+    local len = #s
+    while i <= len do
+        -- Find line ending
+        local line_end = i
+        local ending = ""
+        while line_end <= len and s:sub(line_end, line_end) ~= "\n" and s:sub(line_end, line_end) ~= "\r" do
+            line_end = line_end + 1
+        end
+        -- Extract the line (without ending)
+        local line = s:sub(i, line_end - 1)
+        -- Trim trailing whitespace (spaces/tabs)
+        local last = #line
+        while last > 0 do
+            local c = line:sub(last, last)
+            if c ~= " " and c ~= "\t" then
+                break
+            end
+            last = last - 1
+        end
+        table.insert(result, line:sub(1, last))
+        -- Detect and preserve line ending
+        if line_end <= len then
+            ending = s:sub(line_end, line_end)
+            -- Handle possible \r\n
+            if ending == "\r" and line_end + 1 <= len and s:sub(line_end + 1, line_end + 1) == "\n" then
+                ending = "\r\n"
+                line_end = line_end + 1
+            end
+            table.insert(result, ending)
+        end
+        i = line_end + 1
+    end
+    return table.concat(result)
+end
+
 local function main(content)
     local username = os.getenv("USER")
     username = username:sub(1, 3) -- trim to the first 3 characters, as that's what the minimum terminal size can support
@@ -29,6 +67,8 @@ local function main(content)
         local test_output = content:sub(after_prompt_nl + 1, output_end):gsub("%s+$", "")
         -- Prompt along with command output
         local output = content:sub(prompt_start, output_end):gsub("%s+$", "")
+
+        output = trim_trailing_whitespaces(output)
 
         -- If all lines of command output are empty or whitespace, treat as no output
         if test_output:match("^%s*$") then
