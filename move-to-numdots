@@ -7,11 +7,14 @@ die() {
 
 move() {
     from="$(realpath "$1")"
+    if [[ "$from" == *"$PWD"* ]]; then
+        die "${from} is already linked!"
+    fi
     if [[ "$from" != "$HOME"/** ]]; then
         die "I don't move files outside of \$HOME"
     fi
     file=${from#"${HOME}"/}
-    echo "$file"
+    # echo "$file"
     to="${HOME}/.numdots/${file}"
 
     [[ ! -f "$from" ]] && die "from: $from should exist"
@@ -19,17 +22,18 @@ move() {
 
     echo "$from => $to"
     mv "$from" "$to"
-    echo "    \"./$file\": \"\"," >> ./list.py
+    echo "    \"./$file\": \"\"," >>./list.py
     git add "$file"
 }
 
 for arg in "$@"; do
     if [[ -f "$arg" ]]; then
-        move "$arg"
+        (move "$arg") || true
+        :
     else
-        argwhich=$(which "$arg")
+        argwhich=$(which "$arg") || continue
         if [[ -f "$argwhich" ]]; then
-            move "$argwhich"
+            (move "$argwhich") || true
         fi
     fi
 done
