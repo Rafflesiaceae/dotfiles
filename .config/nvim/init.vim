@@ -821,27 +821,32 @@ autocmd FileType gdshader setlocal commentstring=//\ %s
 
 autocmd BufRead,BufNewFile *.lds set filetype=ld
 
-" <leader>j autoformatting/testing
+" <leader>j autoformatting/testing {{{
 augroup _leader_j
-autocmd FileType bash,sh noremap <leader>j :silent !autoformat-sh %<CR>
-autocmd FileType c   noremap <leader>j :silent !autoformat-c %<CR>
-autocmd FileType cpp noremap <leader>j :silent !autoformat-cpp %<CR>
-autocmd FileType css noremap <leader>j :silent !autoformat-css %<CR>
-autocmd FileType go noremap <leader>j :silent !autoformat-go %<CR>
-autocmd FileType hcl noremap <leader>j :silent !autoformat-hcl %<CR>
-autocmd FileType html   noremap <leader>j :silent !autoformat-html %<CR>
-autocmd FileType javascript noremap <leader>j :silent !autoformat-js %<CR>
-autocmd FileType json noremap <leader>j :silent !autoformat-json %<CR>
-autocmd FileType lua noremap <leader>j :!autoformat-lua %<CR>
-autocmd FileType nix noremap <leader>j :silent !nixpkgs-fmt %<CR>
-autocmd FileType python noremap <leader>j :silent !autoformat-python %<CR>
-autocmd FileType typescript,typescriptreact noremap <leader>j :silent !autoformat-ts %<CR>
-autocmd FileType xml noremap <leader>j :silent !autoformat-xml %<CR>
+autocmd!
+for entry in [
+      \ ['bash,sh'                    ,  'autoformat-sh'],
+      \ ['c'                          ,  'autoformat-c'],
+      \ ['cpp'                        ,  'autoformat-cpp'],
+      \ ['css'                        ,  'autoformat-css'],
+      \ ['go'                         ,  'autoformat-go'],
+      \ ['hcl'                        ,  'autoformat-hcl'],
+      \ ['html'                       ,  'autoformat-html'],
+      \ ['javascript'                 ,  'autoformat-js'],
+      \ ['json'                       ,  'autoformat-json'],
+      \ ['lua'                        ,  'autoformat-lua'],
+      \ ['nix'                        ,  'nixpkgs-fmt'],
+      \ ['python'                     ,  'autoformat-python'],
+      \ ['typescript,typescriptreact' ,  'autoformat-ts'],
+      \ ['xml'                        ,  'autoformat-xml'],
+      \ ['yaml,yaml.ansible'          ,  'autoformat-yml'],
+      \ ]
+  execute 'autocmd FileType ' . entry[0] .
+        \ ' nnoremap <buffer> <leader>j :silent! execute ''!' . entry[1] . ' '' . shellescape(expand(''%''))<CR>'
+endfor
 autocmd FileType yaml noremap <leader>k :!actionlint %<CR>
-autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !autoformat-yml %<CR>
-" autocmd FileType javascript noremap <leader>j :silent !prettier -w %<CR>
-" autocmd FileType nix noremap <leader>j :silent !nixfmt %<CR>
 augroup END
+" }}}
 
 
 augroup QuickFix
