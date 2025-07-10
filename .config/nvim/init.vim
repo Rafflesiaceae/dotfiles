@@ -456,7 +456,7 @@ nnoremap <leader>v V`]
 nnoremap <silent> <2-LeftMouse> :let @/='\V\<'.escape(expand('<cword>'), '\').'\>'<cr>:set hls<cr>
 
 " goto on t-click
-nnoremap <silent> <3-LeftMouse> :YcmCompleter GoTo<cr>
+" nnoremap <silent> <3-LeftMouse> :YcmCompleter GoTo<cr>
 nnoremap <silent> <leader>h :YcmCompleter GetDoc<cr>
 nnoremap <silent> <leader>c :YcmCompleter GoToDeclaration<cr>
 
@@ -492,7 +492,7 @@ nmap <C-f> :CtrlSF<CR>
 vmap <C-f> <Plug>CtrlSFVwordExec<CR>
 nmap <leader>f :CtrlSFToggle<CR>
 vmap <leader>f <Plug>CtrlSFVwordExec
-map <leader>F :CtrlSFUpdate<CR>
+map <leader>F :YcmCompleter FixIt <CR>
 
 map <C-t> :Tabularize /
 nnoremap <silent> <C-y> :YcmCompleter GetType<CR>
@@ -823,7 +823,7 @@ autocmd BufRead,BufNewFile *.lds set filetype=ld
 
 " <leader>j autoformatting/testing
 augroup _leader_j
-autocmd FileType bash noremap <leader>j :silent !autoformat-sh %<CR>
+autocmd FileType bash,sh noremap <leader>j :silent !autoformat-sh %<CR>
 autocmd FileType c   noremap <leader>j :silent !autoformat-c %<CR>
 autocmd FileType cpp noremap <leader>j :silent !autoformat-cpp %<CR>
 autocmd FileType css noremap <leader>j :silent !autoformat-css %<CR>
@@ -838,7 +838,7 @@ autocmd FileType python noremap <leader>j :silent !autoformat-python %<CR>
 autocmd FileType typescript,typescriptreact noremap <leader>j :silent !autoformat-ts %<CR>
 autocmd FileType xml noremap <leader>j :silent !autoformat-xml %<CR>
 autocmd FileType yaml noremap <leader>k :!actionlint %<CR>
-autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !yamlfmt %<CR>
+autocmd FileType yaml,yaml.ansible noremap <leader>j :silent !autoformat-yml %<CR>
 " autocmd FileType javascript noremap <leader>j :silent !prettier -w %<CR>
 " autocmd FileType nix noremap <leader>j :silent !nixfmt %<CR>
 augroup END
@@ -851,6 +851,57 @@ augroup END
 " }}} Autocommands
 
 " {{{ Custom Functions
+function! s:RestorePreviousVisualSelection()
+    " Exit visual mode if in it
+    if mode() =~# 'v'
+        normal! <Esc>
+    endif
+    " Go to previous visual selection if exists
+    if getpos("'<")[1] > 0 && getpos("'>")[1] > 0
+        execute "normal! gv"
+    endif
+endfunction
+function! CopyLineToClipboard()
+    let l:line = getline('.')
+
+    " Try to match and extract using Vim regex
+    let l:matches = matchlist(l:line, '\v^([^:]+):\s*(.+)$')
+    let l:input = v:null
+    let l:msg = ""
+    if len(l:matches) >= 3
+        " Group 2 is at index 2
+        let l:input = l:matches[2]
+        let l:msg = "Line (key:val) copied to clipboard: '" . l:matches[2] . "'"
+    else
+        let l:input = l:line
+        let l:msg = "Line copied to clipboard: '" . l:line . "'"
+    endif
+
+
+    if l:input isnot v:null && l:input !=# '' && l:input =~# '\S'
+        " l:input is valid (not null, not empty, not just whitespace)
+        let @+ = l:input
+        echo l:msg
+    else
+        echo ''
+    endif
+endfunction
+nnoremap <silent> <3-LeftMouse> :call CopyLineToClipboard()<cr>:set nohls<cr>
+
+function! s:ExpandAuto(...)
+    silent exec ':redir @* | YcmCompleter GetType | redir END'
+    " @TODO show/use .git - dir instead of parent dir of file
+    " let pdir = expand('%:p:h')
+    " let toplevel = system('git-show-toplevel-name '.pdir)
+    " echom "OpenTig ".toplevel
+    " if exists("a:1")
+    "     silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c 'tig \"" . a:1 . "\"' &"
+    " else
+    "     silent exec '!urxvt -title "(tig: '.toplevel.')" -cd '.pdir." -e $SHELL -i -c tig &"
+    " endif
+endfunction
+com! -nargs=* ExpandAuto call s:ExpandAuto(<args>)
+
 function! s:FixFileFormat()
     let ff = &fileformat
     if ff == "dos"
@@ -1653,8 +1704,9 @@ endfunction
 
 " Bind function to <leader>S in visual mode
 vnoremap <leader>sp :<C-u>call SplitVisualSelection()<CR>
+" }}}
 
-" }}} Fix NeoVim Colorscheme BS
+" {{{ Fix NeoVim Colorscheme BS
 " https://www.ditig.com/256-colors-cheat-sheet
 " highlight ctrlsfFile guifg=#a0a0a0 guibg=#000000 ctermfg=0 ctermbg=1
 " highlight MatchParen cterm=bold ctermfg=0 ctermbg=7 gui=bold guifg=#2d2d2d guibg=#747369                                                                              
@@ -1675,7 +1727,21 @@ highlight MatchParen cterm=none ctermfg=none ctermbg=245
 " highlight MatchParen cterm=none ctermfg=none ctermbg=215
 " highlight MatchParen cterm=none ctermfg=none ctermbg=184
 " highlight MatchParen cterm=none ctermfg=none ctermbg=178
-" {{{ Fix NeoVim Colorscheme BS
+" }}}
 
-" {{{ Setup NU Treesitter stuff
-lua require('treesitter-nu')
+" {{{ Setup NU Treesitter
+" HACK : List of filetypes to skip tresitter-nu
+let g:treesitter_nu_skip_filetypes = ['python', 'bash']
+
+augroup NotCertainFiletypes
+    autocmd!
+    autocmd FileType * call MaybeSetupTreesitterNu()
+augroup END
+
+function! MaybeSetupTreesitterNu()
+    if index(g:treesitter_nu_skip_filetypes, &filetype) < 0
+        " Not in the skip list, so run setup
+        lua require('treesitter-nu')
+    endif
+endfunction
+" }}}
