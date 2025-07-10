@@ -8,9 +8,9 @@ journald_errors_jq_filter='. | select(.COREDUMP_EXE != "/usr/bin/urxvt" and ._EX
 err_count=0
 warn_count=0
 
-cred=$(     2>/dev/null tput setaf 1) || true
-cyellow=$(  2>/dev/null tput setaf 3) || true
-creset=$(   2>/dev/null tput sgr0) || true
+cred=$(2>/dev/null tput setaf 1) || true
+cyellow=$(2>/dev/null tput setaf 3) || true
+creset=$(2>/dev/null tput sgr0) || true
 
 # {{{1 cli
 usage() {
@@ -19,18 +19,20 @@ usage() {
 }
 while :; do
     case $1 in
-        -h|-\?|--help)
-            usage; exit ;;
-        -j|--journal)
-            journalctl --priority=3 --boot --catalog
-            exit 0
-            ;;
-        --)
-            shift || usage
-            break
-            ;;
-        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
-        *) break ;;
+    -h | -\? | --help)
+        usage
+        exit
+        ;;
+    -j | --journal)
+        journalctl --priority=3 --boot --catalog --no-pager
+        exit 0
+        ;;
+    --)
+        shift || usage
+        break
+        ;;
+    -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+    *) break ;;
     esac
 
     shift || usage
@@ -108,4 +110,3 @@ fi
 if [[ warn_count -eq 0 ]] && [[ err_count -eq 0 ]]; then
     echo "All good."
 fi
-
