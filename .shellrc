@@ -1,20 +1,20 @@
-# vim: set filetype=sh:
+# vim: set filetype=bash:
 
-is_bash=
-is_zsh=
-case $(/bin/ls -l /proc/$$/exe) in
-    *bash) is_bash=1 ;;
-    *zsh)  is_zsh=1 ;;
-esac
+# is_bash=
+# is_zsh=
+# case $(/bin/ls -l /proc/$$/exe) in
+# *bash) is_bash=1 ;;
+# *zsh) is_zsh=1 ;;
+# esac
 
 is_linux=
 is_windows=
 is_macos=
 case $OSTYPE in
-    linux-gnu*)  is_linux=1 ;;
-    darwin*)     is_macos=1 ;;
-    cygwin|msys) is_windows=1 ;;
-    *) printf "ERROR: could not determine OS via \$OSTYPE\n" >&2 ;;
+linux-gnu*) is_linux=1 ;;
+darwin*) is_macos=1 ;;
+cygwin | msys) is_windows=1 ;;
+*) printf "ERROR: could not determine OS via \$OSTYPE\n" >&2 ;;
 esac
 
 # - - -
@@ -53,21 +53,21 @@ alias ssh="TERM=xterm ssh"
 alias ip="ip -c=auto"
 
 # shortcuts
-alias -- +='sudo'
-alias -- -='less'
-alias   \?='egrep'
-alias  z\?='zegrep'
-alias    ~='sed'
-alias   z@='zcat'
+alias -- '+'='sudo'
+alias -- '-'='less'
+alias \?='egrep'
+alias z\?='zegrep'
+alias ~='sed'
+alias z@='zcat'
 
-if [[ $is_linux ]] || [[ $is_macos ]]; then
+if [ $is_linux ] || [ $is_macos ]; then
     alias dmesg='dmesg -H'
     alias rn="ranger"
 
-    if [[ $is_linux ]]; then
+    if [ $is_linux ]; then
         alias svim="sudoedit"
     fi
-elif [[ $is_windows ]]; then
+elif [ $is_windows ]; then
     alias thu="explorer ."
 fi
 
@@ -75,7 +75,10 @@ cdd() { cd "$(dirname "$1")"; }
 
 nh() {
     tmpfile=$(mktemp)
-    [[ -z "$*" ]] && { printf "give me a command to run\n"; return 0; }
+    [ -z "$*" ] && {
+        printf "give me a command to run\n"
+        return 0
+    }
     echo "stdout/stderr to ${tmpfile}"
     eval "nohup $* 1>\"${tmpfile}\" 2>&1"
 }
@@ -87,6 +90,7 @@ man() {
         man "$@"
 }
 
-if [[ -f "$HOME/.shellrc.local" ]]; then
-    source "$HOME/.shellrc.local"
+if [ -f "${HOME}/.shellrc.local" ]; then
+    # shellcheck disable=SC1091
+    source "${HOME}/.shellrc.local"
 fi
