@@ -1,11 +1,5 @@
 #!/bin/sh
-# gdb -ex=run -ex=quit --args "$@"
 gdb_script="${HOME}/.config/gdb-simple.gdb"
-# if [ ! -e "$gdb_script" ]; then
-#     echo "ERROR: Could not find gdb script: ${gdb_script}" >&2
-#     exit 1
-# fi
-# set -x
 
 # gdb -ex "src/game/g_combat.c:1250" -x "$gdb_script" --args "$@"
 gdb -x "$gdb_script" --args "$@"
