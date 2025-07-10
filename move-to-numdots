@@ -10,8 +10,9 @@ move() {
     if [[ "$from" != "$HOME"/** ]]; then
         die "I don't move files outside of \$HOME"
     fi
-    file=${from#$HOME/}
-    to=$HOME/.numdots/$file
+    file=${from#"${HOME}"/}
+    echo "$file"
+    to="${HOME}/.numdots/${file}"
 
     [[ ! -f "$from" ]] && die "from: $from should exist"
     [[ -f "$to" ]] && die "to: $to should not exist"
