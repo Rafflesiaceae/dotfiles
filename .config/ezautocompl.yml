@@ -1595,8 +1595,7 @@ find latest file matching pattern (.sh .bash): |
 
 strip final newline (.cmd .sh .bash): |
     sed -z '$ s/\n$//'
-shellcheck ignore/disable single run (.sh .bash): |
-    # shellcheck disable=SC2086
+ignore/disable shellcheck single run (.sh .bash): '# shellcheck disable=SC'
 clean/remove dir/file (.sh .bash): |
     clean() { { [ -d "$1" ] && rm -rf "$1" ;} || { [ -f "$1" ] && rm "$1"; } || true; }
 back/stacktrace an error (.bash): |
