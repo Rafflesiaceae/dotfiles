@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# tmux-run
+#
+# Executes any given argument (or each stdin line, if no args) as a separate split window
+set -eo pipefail
+
+SESSION="multi-$(date +%s)"
+
+cmds=()
+if [ "$#" -gt 0 ]; then
+    cmds=("$@")
+elif [ -r /dev/fd/8 ]; then
+    # Read from FD 8 if attached, ignore empty lines
+    mapfile -t cmds < <(grep -v '^$' <&8)
+else
+    printf "Usage: %s [command ...]  OR  echo -e 'cmd1\ncmd2' | %s\n" "$0" "$0"
+    printf "   or:   %s 8<<EOF\ncmd1\ncmd2\nEOF\n" "$0"
+    exit 1
+fi
+
+# run tmux
+tmux new-session -d -s "$SESSION" "${cmds[0]:-bash}"
+
+(
+    # wait for the session to be up and someone to be attached
+    while true; do
+        if tmux has-session -t "$SESSION" 2>/dev/null; then
+            if [ -n "$(tmux list-clients -t "$SESSION")" ]; then
+                break
+            fi
+        fi
+        sleep 0.1
+    done
+
+    tmux set-option -t "$SESSION" destroy-unattached on
+    # tmux set-option -t "$SESSION" remain-on-exit on
+) &
+
+# shift off the first command
+for i in "${!cmds[@]}"; do
+    if [ "$i" -eq 0 ]; then continue; fi
+    tmux split-window -h -t "$SESSION:0" "${cmds[$i]}"
+    tmux select-layout -t "$SESSION:0" even-vertical
+done
+
+tmux select-layout -t "$SESSION:0" even-vertical
+tmux attach-session -t "$SESSION"

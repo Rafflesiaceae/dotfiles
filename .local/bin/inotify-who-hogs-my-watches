@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+total_count=0
+
+for pid in $(ls /proc | grep '^[0-9]'); do
+	count=0
+	for fd in "/proc/$pid/fd/"*; do
+		if [ -e "$fd" ]; then
+			info=$(readlink "$fd")
+			if echo "$info" | grep -q inotify; then
+				count=$((count + 1))
+			fi
+		fi
+	done
+	if [ "$count" -gt 0 ]; then
+		total_count=$((total_count + count))
+		echo "PID $pid ($(ps -p "$pid" -o comm=)) is using $count inotify fd(s)"
+	fi
+done
+if [ "$total_count" -gt 0 ]; then
+	echo ""
+	echo "Total Count: ${total_count}"
+fi

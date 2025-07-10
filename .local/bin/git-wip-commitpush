@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+prompt() {
+    prompt="${1:-Continue?} (y/n) "
+    tput sc
+    while true; do
+        read -p "$prompt" -n 1 -r yn
+        case $yn in
+        [YyNn])
+            echo "$yn"
+            echo "" >/dev/tty
+            return 0
+            ;;
+        *)
+            tput el1
+            tput rc
+            ;;
+        esac
+    done
+}
+
+{
+    # Check if there are any changes (unstaged, staged, or untracked)
+    if [[ -z $(git status --porcelain) ]]; then
+        echo "No changes detected"
+        exit 0
+    fi
+
+    # Check for untracked files
+    if [[ -n $(git ls-files --others --exclude-standard) ]]; then
+        answer=$(prompt "Untracked files detected. Stage all changes including untracked files?")
+        if [[ "$answer" =~ [Yy] ]]; then
+            # Save list of untracked files
+            untracked=$(git ls-files --others --exclude-standard)
+            git add -A
+            echo "All changes (including untracked files) staged."
+            if [[ -n "$untracked" ]]; then
+                echo "Untracked files added:"
+                # Print each file on a separate line (optional: indent for clarity)
+                while IFS= read -r file; do
+                    printf '  %s\n' "$file"
+                done <<<"$untracked"
+            fi
+        else
+            git add -u
+            echo "Only unstaged changes staged."
+        fi
+    else
+        git add -u
+        echo "Only unstaged changes staged (no untracked files present)."
+    fi
+}
+
+git commit -m "WIP $(date +%s)"
+git push
