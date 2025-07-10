@@ -10,12 +10,16 @@ die() {
 
 local_bin_dir="${HOME}/.local/bin"
 
-[[ $# -ne 1 ]] && die "USAGE: pass a binary file to install to local bin"
+[[ $# -lt 1 ]] && die "USAGE: pass a binary file to install to local bin"
 
 input_path="$1"
 input_path=$(realpath "$input_path")
 
-input_fname=$(basename -- "$input_path")
+if [[ -n "$2" ]]; then
+    input_fname="$2"
+else
+    input_fname=$(basename -- "$input_path")
+fi
 target_path="${local_bin_dir}/${input_fname}"
 
 # prechecks
