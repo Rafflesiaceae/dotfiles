@@ -1,8 +1,24 @@
 #!/bin/bash
 set -eo pipefail
 now=$(date +%s)
-imgtiff=scan-brother-$now.tiff
+# imgtiff=scan-brother-$now.tiff
 imgpng=scan-brother-$now.png
 
-scanimage --source Flatbed --device "airscan:w0:Brother MFC-L2710DN series" --format=tiff --output-file "$imgtiff" --resolution 600 --progress
+# RESOLUTION=${RESOLUTION:-600}
+# scanimage --source Flatbed --device "airscan:w0:Brother MFC-L2710DN series" --format=tiff --output-file "$imgtiff" --resolution 600 --progress
+# device `airscan:w0:Brother MFC-L2710DN series' is a WSD Brother MFC-L2710DN series ip=192.168.0.241
+
+
+(
+    device="airscan:w0:Brother MFC-L2710DN series"
+    # XXX : the '--resolution' argument seems to take no effect at all
+    # XXX : the '--progress' argument seems to take no effect at all
+    set -x;
+    # scanimage --source Flatbed --device "airscan:w0:Brother MFC-L2710DN series" --format=png --resolution "$RESOLUTION" --progress --output-file "$imgpng";
+    scanimage --source Flatbed --device "$device" --format=png --output-file "$imgpng";
+)
+echo "result: $(realpath "$imgpng")"
+
+# scanimage --device "airscan:w0:Brother MFC-L2710DN series"  --format=png --output-file test.png --progress
+
 # magick convert "$imgtiff" "$imgpng"
