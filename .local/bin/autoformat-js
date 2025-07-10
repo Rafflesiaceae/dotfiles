@@ -1,7 +1,12 @@
 #!/bin/bash
+path=$1
+shift
+
+tab_width=$(oat editorconfig "$path" indent_size || echo "2")
+
 args=(
     --parser flow
-    --tab-width 4
+    --tab-width "$tab_width"
     --trailing-comma es5
 )
-prettier "${args[@]}" --write "$@"
+prettier "${args[@]}" --write "$path" "$@"

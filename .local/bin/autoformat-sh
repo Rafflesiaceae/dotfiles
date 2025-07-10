@@ -1,3 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
-shfmt -w "$1"
+args=(
+    --indent 4
+    -w
+)
+shfmt "${args[@]}" "$1"
