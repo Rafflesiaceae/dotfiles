@@ -1106,6 +1106,10 @@ converter (.nim): |
 
 # python {{{1
 
+pretty print (.python): |
+    from pprint import pprint
+    pprint(MYDICT)
+
 for each line in string (.python): |
     import io
     lines = io.StringIO(contents)
