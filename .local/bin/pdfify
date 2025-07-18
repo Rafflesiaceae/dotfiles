@@ -31,6 +31,6 @@ for img in "${sorted_imgs[@]}"; do
 done
 
 # Combine into single PDF
-convert "${jpgs[@]}" "$output_pdf"
+magick convert "${jpgs[@]}" "$output_pdf"
 
 echo "Created $output_pdf"
