@@ -1,4 +1,4 @@
-#!/bin/dash
+#!/usr/bin/env bash
 # Watches any file changes in the current directory and executes passed
 # commands in case there are changes
 
@@ -15,8 +15,6 @@ if [ ! $# -gt 0 ]; then
     usage
 fi
 
-buildcmd=$*
-
 entr_pid=""
 
 tmpfile=$(mktemp)
@@ -29,21 +27,32 @@ clean_tmpfile() {
 trap 'clean_tmpfile; exit' INT EXIT
 
 echo "[watch-any] $*"
+# shellcheck disable=SC2016
+buildcmd=('echo' '"[watch-any] [changed] $0"' '&&' "$@")
 
 while true; do
+    prune_expr=(
+        -name .git -o
+        -name .pixi -o
+        -name build -o
+        -name .idea -o
+        -name .cache -o
+        -name .task
+    )
+
+    if [ -n "$IGN" ]; then
+        for ign in $IGN; do
+            prune_expr+=(-o -name "$ign")
+        done
+    fi
+
     find . \
-        \( -name .git -o \
-        -name .pixi -o \
-        -name build -o \
-        -name .idea -o \
-        -name .cache -o \
-        -name .task \
-        \) -prune -o \
+        \( "${prune_expr[@]}" \) -prune -o \
         \( \( -type d -o -name "*.*" \) -a ! -path . \) \
         -print \
         >"$tmpfile"
 
-    entr -r -ds "$buildcmd" <"$tmpfile" &
+    entr -r -ds "${buildcmd[*]}" <"$tmpfile" &
     entr_pid=$!
     wait $entr_pid
 done
