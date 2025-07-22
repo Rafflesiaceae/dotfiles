@@ -1,2 +1,7 @@
 #!/bin/dash
+if [ $# -ne 1 ]; then
+    echo "Pass exactly one file to autoformat!" >&2
+    exit 1
+fi
+
 prettier --no-config --write "$1"
