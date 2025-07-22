@@ -912,7 +912,7 @@ EOF
             ;;
 # }}}
         pixi) # {{{2
-            xicat "pixi.toml" <<'EOF'
+            icat "pixi.toml" <<'EOF'
 [project]
 name = "projectname"
 authors = ["Projectname Team"]

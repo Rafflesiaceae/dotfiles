@@ -37,6 +37,7 @@ alias ri="podman run -i --rm"
 alias rit="podman run -it --rm"
 alias ws="cd ~/workspace"
 alias tsk="go-task"
+alias px="pixi run"
 
 # shell nav helper
 alias ....='cd ../../..'
