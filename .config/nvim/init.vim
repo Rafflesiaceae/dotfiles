@@ -837,6 +837,7 @@ for entry in [
       \ ['lua'                        ,  'autoformat-lua'],
       \ ['nix'                        ,  'nixpkgs-fmt'],
       \ ['python'                     ,  'autoformat-python'],
+      \ ['toml'                       ,  'autoformat-toml'],
       \ ['typescript,typescriptreact' ,  'autoformat-ts'],
       \ ['xml'                        ,  'autoformat-xml'],
       \ ['yaml,yaml.ansible'          ,  'autoformat-yml'],

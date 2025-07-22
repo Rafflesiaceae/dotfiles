@@ -79,6 +79,7 @@ sources = {
     "./.local/bin/autoformat-lua": "",
     "./.local/bin/autoformat-python": "",
     "./.local/bin/autoformat-sh": "",
+    "./.local/bin/autoformat-toml": "",
     "./.local/bin/autoformat-ts": "",
     "./.local/bin/autoformat-xml": "",
     "./.local/bin/autoformat-yml": "",
