@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+path=$1
+shift
+
+fname="${path%.*}"
+
+
+args=(
+    --standalone 
+    --css=default.css
+    --toc
+)
+
+pandoc "$path" "${args[@]}" -o "${fname}.html"

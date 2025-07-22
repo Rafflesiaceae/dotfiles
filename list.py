@@ -106,6 +106,7 @@ sources = {
     "./.local/bin/cmake-quickbuild": "",
     "./.local/bin/container-run": "",
     "./.local/bin/container-stop-all": "",
+    "./.local/bin/convert-md-to-html": "",
     "./.local/bin/copy-primary-sel-to-clipboard": "",
     "./.local/bin/cpwd": "",
     "./.local/bin/create-zip": "",
