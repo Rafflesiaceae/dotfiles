@@ -827,7 +827,7 @@ autocmd!
 for entry in [
       \ ['bash,sh'                    ,  'autoformat-sh'],
       \ ['c'                          ,  'autoformat-c'],
-      \ ['cpp'                        ,  'autoformat-cpp'],
+      \ ['cpp'                        ,  'autoformat-c'],
       \ ['css'                        ,  'autoformat-css'],
       \ ['go'                         ,  'autoformat-go'],
       \ ['hcl'                        ,  'autoformat-hcl'],
