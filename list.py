@@ -248,6 +248,7 @@ sources = {
     "./.local/bin/pulseaudio-restart": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",
+    "./.local/bin/quick-edit": "",
     "./.local/bin/raf-last-shell-output": "",
     "./.local/bin/raf-last-shell-output-extract": "",
     "./.local/bin/random-port": "",

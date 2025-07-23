@@ -1,0 +1,83 @@
+#!/bin/luajit
+local ffi = require("ffi")
+local bit = require("bit")
+
+ffi.cdef([[
+struct stat {
+    unsigned long  st_dev;
+    unsigned long  st_ino;
+    unsigned long  st_nlink;
+    unsigned int   st_mode;
+    unsigned int   st_uid;
+    unsigned int   st_gid;
+    unsigned long  st_rdev;
+    long           st_size;
+    long           st_blksize;
+    long           st_blocks;
+    unsigned long  st_atime;
+    unsigned long  st_mtime;
+    unsigned long  st_ctime;
+    // Only st_mode is actually used!
+};
+int stat(const char *pathname, struct stat *buf);
+]])
+
+local S_IFMT = 0xF000
+local S_IFDIR = 0x4000
+
+local function isdir(path)
+	local buf = ffi.new("struct stat")
+	if ffi.C.stat(path, buf) ~= 0 then
+		return false
+	end
+	return bit.band(buf.st_mode, S_IFMT) == S_IFDIR
+end
+
+local path = arg[1]
+if not path then
+	io.stderr:write("Usage: " .. arg[0] .. " <path>\n")
+	os.exit(1)
+end
+
+local function split_path(path)
+	local pattern = "[\\/]"
+	local parent, filename = path:match("^(.*" .. pattern .. ")([^" .. pattern .. "]+)$")
+	if not filename then
+		filename = path
+		parent = ""
+	end
+
+	local basename, ext = filename:match("^(.*)(%.[^%.]+)$")
+	if not ext then
+		basename = filename
+		ext = ""
+	end
+
+	return parent, filename, ext, basename
+end
+
+local function run(cmd)
+	os.exit(os.execute(cmd .. ' "' .. path:gsub('"', '\\"') .. '"') or 1)
+end
+
+local editor = os.getenv("EDITOR") or "vi"
+local parent, fname, ext, base = split_path(path)
+
+if isdir(path) then
+	os.exit(0)
+end
+
+local actions = {
+	[".iff"] = function()
+		run("simsedit")
+	end,
+	[".fam"] = function()
+		run("simsedit")
+	end,
+}
+
+if actions[ext:lower()] then
+	actions[ext:lower()]()
+else
+	run(editor)
+end
