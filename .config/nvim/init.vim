@@ -1339,6 +1339,25 @@ fu! s:Split()
 endfunction
 com! Split call s:Split()
 
+" {{{ AutoReload
+let g:auto_reload_enabled = 0
+
+function! ToggleAutoReload()
+    if g:auto_reload_enabled
+        echo "AutoReload already enabled (can't disable atm., just restart)"
+    else
+        let g:auto_reload_enabled = 1
+        augroup AutoReload
+            autocmd!
+            autocmd FocusGained,BufEnter * checktime
+        augroup END
+        echo "AutoReload enabled"
+    endif
+endfunction
+
+command! AutoReload call ToggleAutoReload()
+" }}}
+
 " {{{ vuild
 " requires:
 "     skywind3000/asyncrun.vim
