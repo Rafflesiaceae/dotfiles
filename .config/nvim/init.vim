@@ -1371,6 +1371,23 @@ func s:vuildSaveAndRun(cmd)
     execute ":AsyncRun -raw ".a:cmd
 endf
 
+" Search for build.sh in parent directories
+func s:vuildFindBuildScript()
+    let l:dir = expand('%:p:h')
+    while 1
+        let l:build_script = l:dir . '/build.sh'
+        if filereadable(l:build_script)
+            return l:build_script
+        endif
+        let l:parent = fnamemodify(l:dir, ':h')
+        if l:parent ==# l:dir
+            break
+        endif
+        let l:dir = l:parent
+    endwhile
+    return ''
+endf
+
 func! s:vuildRun()
     " stop already potential running process
     if g:asyncrun_status == "running"
