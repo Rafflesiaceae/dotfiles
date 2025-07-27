@@ -18,4 +18,4 @@ function toggle_video_decode()
 	end
 end
 
-mp.add_key_binding("F4", "toggle-video-decode", toggle_video_decode)
+mp.add_key_binding("F3", "toggle-video-decode", toggle_video_decode)
