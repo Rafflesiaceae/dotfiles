@@ -206,8 +206,8 @@ setopt pushdminus
 # {{{ dirstack
 DIRSTACKSIZE=200
 DIRSTACKFILE="$HOME/.cache/zsh/dirs"
+dirstack=( ${(f)"$(< $DIRSTACKFILE)"} )
 __cd_last_dirstack_dir() {
-    dirstack=( ${(f)"$(< $DIRSTACKFILE)"} )
     [[ -d $dirstack[1] ]] && cd "$dirstack[1]"
 }
 if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]] && [[ "$SH_STARTOPTS" == *autodir:* ]]; then  # set $SH_STARTOPTS
