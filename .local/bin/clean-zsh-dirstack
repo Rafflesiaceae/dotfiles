@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# This script removes non-existing directories and duplicates from the zsh
+# dirstack.
+#
+# Dirstack File: ( ~/.cache/zsh/dirs )
 set -eo pipefail
 
 dirs="$HOME/.cache/zsh/dirs"
@@ -6,13 +11,17 @@ dirs="$HOME/.cache/zsh/dirs"
 tmpfile=$(mktemp)
 cleanup_tmpfile() {
     rm "$tmpfile"
-}; trap 'cleanup_tmpfile' EXIT
+}
+trap 'cleanup_tmpfile' EXIT
 
 cp "$dirs" "$tmpfile"
 
-echo "" > "$dirs"
+: > "$dirs"
+declare -A seen
+
 while IFS= read -r line || [[ -n "$line" ]]; do
-    if [[ -d $line ]]; then
-        echo "$line" >> "$dirs"
+    if [[ -d "$line" && -z "${seen["$line"]}" ]]; then
+        echo "$line" >>"$dirs"
+        seen["$line"]=1
     fi
-done < "$tmpfile"
+done <"$tmpfile"
