@@ -13,7 +13,7 @@ local_bin_dir="${HOME}/.local/bin"
 [[ $# -lt 1 ]] && die "USAGE: pass a binary file to install to local bin"
 
 input_path="$1"
-input_path=$(realpath "$input_path")
+input_path=$(realpath -s "$input_path")
 
 if [[ -n "$2" ]]; then
     input_fname="$2"
