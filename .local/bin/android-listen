@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -eo pipefail
+app=$(android-application-id)
+set -x
+adb logcat --clear  # optional, clears old logs
+# adb shell am start -n "$app"/.MainActivity
+adb logcat | grep "$app"

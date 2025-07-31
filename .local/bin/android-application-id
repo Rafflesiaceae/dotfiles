@@ -1,0 +1,20 @@
+#!/bin/dash
+set -e
+
+# Find .git upwards from CWD and cd to its parent
+d="$PWD"
+while [ "$d" != "/" ]; do
+    if [ -d "$d/.git" ]; then
+        cd "$d"
+        break
+    fi
+    d=$(dirname "$d")
+done
+
+if [ ! -e app/build.gradle.kts ]; then
+    echo "Missing app/build.gradle.kts !" >&2
+    exit 1
+fi
+
+# Parse applicationId from app/build.gradle.kts
+grep -oP 'applicationId\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n1

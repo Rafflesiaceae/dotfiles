@@ -1,0 +1,12 @@
+#!/bin/dash
+clean_path=$(find-upwards "clean.sh")
+if [ -n "$clean_path" ]; then
+    printf "+ %s %s\n" "$clean_path" "$*"
+    "$clean_path" "$@"
+elif find-upwards "Taskfile.yml" >/dev/null; then
+    printf "+ go-task clean %s\n" "$*"
+    go-task clean "$@"
+else
+    printf "No way to clean found.\n" >&2
+    exit 1
+fi

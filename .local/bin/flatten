@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmpfile=$(mktemp)
+cleanup_tmpfile() {
+    rm -f "$tmpfile"
+}
+trap 'cleanup_tmpfile' EXIT INT
+
+oat --debug filetree flatten --llm "$@" > "$tmpfile"
+termpopup -ft "vim + '${tmpfile}'"
+cb < "${tmpfile}"

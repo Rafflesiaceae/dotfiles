@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eo pipefail
+app=$(android-application-id)
+echo "+ android-cycle-apk $1"
+set -x
+adb install -r "$1"
+
+# adb shell am start -n "$app"/.MainActivity
+# sleep 0.1
+# adb logcat --pid="$(adb shell pidof "$app")"
+
+adb logcat --clear  # optional, clears old logs
+adb shell am start -n "$app"/.MainActivity
+# sleep 0.1
+adb logcat | grep "$app"

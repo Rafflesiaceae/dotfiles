@@ -1,0 +1,13 @@
+#!/bin/dash
+cycle_path=$(find-upwards "cycle.sh")
+if [ -n "$cycle_path" ]; then
+    printf "+ %s %s\n" "$cycle_path" "$*" >&2
+    "$cycle_path" "$@"
+# elif find-upwards "Taskfile.yml" >/dev/null; then
+#     printf "+ go-task build %s\n" "$*"
+#     go-task build "$@"
+else
+    printf "No way to cycle found.\n" >&2
+    exit 1
+fi
+
