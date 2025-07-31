@@ -1,46 +1,22 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-aligned_apk="$1.aligned.apk"
-signed_apk="$1.signed.apk"
-final_apk="$1.final.apk"
+if [[ ! -e "$1" ]]; then
+    echo "> pass an unsigned .jar file" >&2
+    exit 1
+fi
 
-# cp "$1" "$aligned_apk"
+unsigned_apk="$1"
+aligned_apk="${unsigned_apk//-unsigned/-tmp-aligned}"
+signed_apk="${unsigned_apk//-unsigned/-signed}"
 
 set -x
 rm -rf "$aligned_apk"
 zipalign -v 4 "$1" "$aligned_apk"
 apksigner sign \
-  --ks ~/.android/debug.keystore \
-  --ks-key-alias androiddebugkey \
-  --ks-pass pass:android \
-  --key-pass pass:android \
-  --out "$final_apk" \
-  "$aligned_apk"
-adb install -r "$final_apk"
-
-
-adb shell am start -n com.example.myapp/.MainActivity
-
-# # jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 \
-# # 	-keystore ~/.android/debug.keystore \
-# # 	-storepass android -keypass android \
-# # 	"$signed_apk" androiddebugkey
-
-# jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
-#   -keystore ~/.android/debug.keystore \
-#   -storepass android -keypass android \
-#   "$signed_apk" androiddebugkey
-
-# set -x
-# zipaligned_apk="${signed_apk}.zipaligned.apk"
-# rm -rf "$zipaligned_apk"
-# zipalign -v 4 "$signed_apk" "$zipaligned_apk"
-
-# apksigner sign \
-#   --ks ~/.android/debug.keystore \
-#   --ks-key-alias androiddebugkey \
-#   --ks-pass pass:android \
-#   --key-pass pass:android \
-#   --out app-release-signed.apk \
-#   "$zipaligned_apk"
+    --ks ~/.android/debug.keystore \
+    --ks-key-alias androiddebugkey \
+    --ks-pass pass:android \
+    --key-pass pass:android \
+    --out "$signed_apk" \
+    "$aligned_apk"
