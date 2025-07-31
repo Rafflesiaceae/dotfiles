@@ -6,6 +6,8 @@ set -eo pipefail
 
 SESSION="multi-$(date +%s)"
 
+err=0
+
 cmds=()
 if [ "$#" -gt 0 ]; then
     cmds=("$@")
@@ -13,35 +15,59 @@ elif [ -r /dev/fd/8 ]; then
     # Read from FD 8 if attached, ignore empty lines
     mapfile -t cmds < <(grep -vE '^\s*$|^\s*#' <&8)
 else
-    printf "Usage: %s [command ...]  OR  echo -e 'cmd1\ncmd2' | %s\n" "$0" "$0"
-    printf "   or:   %s 8<<EOF\ncmd1\ncmd2\nEOF\n" "$0"
+    binname=$(basename "$0")
+    printf "Usage:\n\n%s '[cmd]'\n\n OR\n\n%s 8<<EOF\ncmd1\ncmd2\ncmd3\nEOF\n" "$binname" "$binname"
+    # printf "Usage: %s [command ...]\n\n   OR\n\necho -e 'cmd1\ncmd2' | %s\n" "$binname" "$binname"
+    # printf "   or:   %s 8<<EOF\ncmd1\ncmd2\nEOF\n" "$binname"
     exit 1
 fi
 
 # run tmux
 tmux new-session -d -s "$SESSION" "${cmds[0]:-bash}"
 
-(
-    # wait for the session to be up and someone to be attached
-    while true; do
-        if tmux has-session -t "$SESSION" 2>/dev/null; then
-            if [ -n "$(tmux list-clients -t "$SESSION")" ]; then
-                break
+{ # background process to set destroy-unattached on the tmux session, we can't do this right away because we won't attach right away
+    (
+        timeout=0
+        # wait for the session to be up and someone to be attached
+        while [[ "$timeout" -lt 10 ]]; do
+            if tmux has-session -t "$SESSION" 2>/dev/null; then
+                if [ -n "$(tmux list-clients -t "$SESSION")" ]; then
+                    break
+                fi
             fi
+            sleep 0.1 # we assume the machine is reasonably fast
+            timeout=$((timeout + 1))
+        done
+
+        tmux set-option -t "$SESSION" destroy-unattached on 2>/dev/null
+        # tmux set-option -t "$SESSION" remain-on-exit on
+    ) &
+    bg_pid=$!
+
+    cleanup_bg() {
+        if kill -0 "$bg_pid" 2>/dev/null; then
+            kill "$bg_pid"
+            : "Killed process $bg_pid"
+        else
+            : "Process $bg_pid does not exist or is already terminated"
         fi
-        sleep 0.1
+    }
+}
+
+{
+    # shift off the first command
+    for i in "${!cmds[@]}"; do
+        if [ "$i" -eq 0 ]; then continue; fi
+        tmux split-window -h -t "$SESSION:0" "${cmds[$i]}"
+        tmux select-layout -t "$SESSION:0" even-vertical
     done
 
-    tmux set-option -t "$SESSION" destroy-unattached on
-    # tmux set-option -t "$SESSION" remain-on-exit on
-) &
-
-# shift off the first command
-for i in "${!cmds[@]}"; do
-    if [ "$i" -eq 0 ]; then continue; fi
-    tmux split-window -h -t "$SESSION:0" "${cmds[$i]}"
     tmux select-layout -t "$SESSION:0" even-vertical
-done
+    tmux attach-session -t "$SESSION"
+} || {
+    printf "\n[tmux-run] Ran across an error during startup,\n           likely the command you have passed exited immediately.\n"
+    err=1
+}
 
-tmux select-layout -t "$SESSION:0" even-vertical
-tmux attach-session -t "$SESSION"
+cleanup_bg
+exit "$err"
