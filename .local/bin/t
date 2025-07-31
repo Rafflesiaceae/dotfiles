@@ -453,6 +453,18 @@ dependencies:
 EOF
         ;;
 # }}}
+        cycle) # {{{2
+            xicat "cycle.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+parentd="$(dirname "${BASH_SOURCE[0]}")"
+
+"${parentd}/build.sh"
+"${parentd}/MY_BINARY_REPLACE_THIS" "$@"
+EOF
+        ;;
+# }}}
         .editorconfig|editorconfig) # {{{2
             icat ".editorconfig" <<'EOF'
 [*]
@@ -929,6 +941,9 @@ platforms = ["linux-64", "osx-64", "win-64"]
 [dependencies]
 "python" = "*"
 "git" = "*"
+
+[pypi-dependencies]
+kas = "~=4.8.1"
 
 [feature.build.tasks]
 build = { cmd = ["cmake", "-S", ".", "-B", "build"]}
