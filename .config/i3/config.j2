@@ -124,7 +124,8 @@ bindsym »mod«+Ctrl+L exec "i3lock -i $HOME/.lock.bg.png -e -f"
 bindsym »mod«+q exec chromium
 bindsym »mod«+BackSpace exec evolution
 
-bindsym »mod«+M exec xtogglemouse
+bindsym »mod«+Shift+m exec mouse-toggle-cursor
+bindsym »mod«+m exec cb-surround-with-fences
 bindsym »mod«+o exec paup
 bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
 bindsym »mod«+F4 exec "termpopup --fullterm --no-wait -- vim \\"$(cb)\\""

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# Read clipboard contents
+content="$(cb)"
+
+# Remove empty last line, if present
+# (If the last line is empty, this removes it)
+if [[ -z "$(echo "$content" | tail -n1)" ]]; then
+    content="$(echo "$content" | sed '$d')"
+fi
+
+# Surround with ```
+# shellcheck disable=SC2016
+printf '```\n%s\n```\n' "${content}" | cb -i
