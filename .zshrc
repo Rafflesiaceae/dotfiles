@@ -210,7 +210,7 @@ dirstack=( ${(f)"$(< $DIRSTACKFILE)"} )
 __cd_last_dirstack_dir() {
     [[ -d $dirstack[1] ]] && cd "$dirstack[1]"
 }
-if [[ -f $DIRSTACKFILE ]] && [[ $#dirstack -eq 0 ]] && [[ "$SH_STARTOPTS" == *autodir:* ]]; then  # set $SH_STARTOPTS
+if [[ -f $DIRSTACKFILE ]] && [[ "$SH_STARTOPTS" == *autodir:* ]]; then  # set $SH_STARTOPTS
     export SH_STARTOPTS="${SH_STARTOPTS//autodir:/}" # pop off autodir from SH_STARTOPTS
     __cd_last_dirstack_dir
 elif [[ "$PWD" == "${HOME}/.lastdir" ]]; then  # explicit
