@@ -8,6 +8,7 @@ audio-channels=stereo
 
 # e.g.:
 hwdec=auto
+gpu-api=opengl     # see https://github.com/mpv-player/mpv/issues/13019
 sws-scaler=spline  # best software-scaler, won't get used if we use hwdec
 
 screenshot-format=png
