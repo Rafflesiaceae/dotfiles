@@ -62,13 +62,18 @@ fi
 
 git commit -m "WIP $(date +%s)"
 
-# optionally push depending on if a git remote is set or not
-if git rev-parse --is-inside-work-tree &>/dev/null; then
-    echo ""
-    if git remote | grep -q .; then
-        set -x
-        git push -q
-    else
-        echo "No remotes configured. Omitting Push."
+case "$1" in
+--np | -np) ;;
+*)
+    # optionally push depending on if a git remote is set or not
+    if git rev-parse --is-inside-work-tree &>/dev/null; then
+        echo ""
+        if git remote | grep -q .; then
+            set -x
+            git push -q
+        else
+            echo "No remotes configured. Omitting Push."
+        fi
     fi
-fi
+    ;;
+esac
