@@ -41,7 +41,9 @@ while true; do
     )
 
     if [ -n "$IGN" ]; then
-        for ign in $IGN; do
+        IFS=',' read -ra ignores <<< "$IGN"
+        for ign in "${ignores[@]}"; do
+            echo "[watch-any] [ignore] $ign"
             prune_expr+=(-o -name "$ign")
         done
     fi
