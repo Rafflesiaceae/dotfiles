@@ -161,22 +161,25 @@ x11=(
 )
 
 gui_applications=(
+    # gcolor2
+    # gdmap
+    # llpp
     audacity
     catfish
     chromium
     eog
     evince
-    # gcolor2
-    # gdmap
     geany
     gimp
+    gnome-themes-extra # Theme
     gparted
     inkscape
-    keepass
+    keepassxc
     libreoffice-fresh
-    # llpp
+    lxappearance-gtk3 # Theme
     lxrandr
     mpv
+    papirus-icon-theme # Theme
     pavucontrol
     rdesktop
     thunar
