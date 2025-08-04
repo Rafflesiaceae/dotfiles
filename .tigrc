@@ -12,6 +12,21 @@ set show-untracked = no
 set tab-size = 4
 set ignore-case = true
 
+# Colors
+color author green default
+color cursor black yellow
+color date yellow default
+color graph-commit green default
+color main-head magenta default
+color main-tag magenta default
+color stat-staged green default
+color stat-unstaged red default
+color stat-untracked yellow default
+color status white default
+color title-focus white black
+color tree.directory cyan default
+color tree.header white default
+
 # Keybindings
 # 
 #   !   Run the command in the foreground with output shown.
@@ -23,6 +38,8 @@ set ignore-case = true
 #   >   Re-open Tig instantly in the last displayed view after
 #       executing the command.
 #
+# Also see:
+# https://jonas.github.io/tig/doc/tigrc.5.html?q=#:~:text=Browsing%20state%20variables
 bind generic h scroll-left
 bind generic l scroll-right
 
@@ -90,17 +107,8 @@ bind generic <C-s> !@?git stash
 bind generic E !@code -g %(file):%(lineno)
 bind diff 7 !git diff %(commit)^ %(commit)
 
-# Colors
-color author green default
-color cursor black yellow
-color date yellow default
-color graph-commit green default
-color main-head magenta default
-color main-tag magenta default
-color stat-staged green default
-color stat-unstaged red default
-color stat-untracked yellow default
-color status white default
-color title-focus white black
-color tree.directory cyan default
-color tree.header white default
+# bind status i !sh -c 'echo "$(tig --current)" >> .gitignore && git add .gitignore'
+# bind status i !sh -c 'f="$(tig --current)"; grep -qxF "$f" .gitignore || echo "$f" >> .gitignore; git add .gitignore'
+# bind status i !sh -c 'git-ignore-add \"%(file)\"'
+# bind status i !sh -c 'git-ignore-add "%(file)"; exec tig status'
+bind status i +@sh -c 'git-ignore-add "%(file)"'

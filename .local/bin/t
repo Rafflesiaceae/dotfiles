@@ -453,6 +453,26 @@ dependencies:
 EOF
         ;;
 # }}}
+        build) # {{{2
+            xicat "build.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+# cd to parent dir of current script
+cd "$(dirname "${BASH_SOURCE[0]}")"
+EOF
+        ;;
+# }}}
+        clean) # {{{2
+            xicat "clean.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+# cd to parent dir of current script
+cd "$(dirname "${BASH_SOURCE[0]}")"
+EOF
+        ;;
+# }}}
         cycle) # {{{2
             xicat "cycle.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -462,6 +482,18 @@ parentd="$(dirname "${BASH_SOURCE[0]}")"
 
 "${parentd}/build.sh"
 "${parentd}/MY_BINARY_REPLACE_THIS" "$@"
+EOF
+        ;;
+# }}}
+        watch) # {{{2
+            xicat "watch.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmux-run 8<<WEOF
+php -S localhost:8011
+IGN=index.html watch-any './build.sh'
+WEOF
 EOF
         ;;
 # }}}

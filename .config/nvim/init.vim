@@ -837,6 +837,8 @@ for entry in [
       \ ['lua'                        ,  'autoformat-lua'],
       \ ['nix'                        ,  'nixpkgs-fmt'],
       \ ['python'                     ,  'autoformat-python'],
+      \ ['star'                       ,  'autoformat-star'],
+      \ ['starlark.python'            ,  'autoformat-star'],
       \ ['toml'                       ,  'autoformat-toml'],
       \ ['typescript,typescriptreact' ,  'autoformat-ts'],
       \ ['xml'                        ,  'autoformat-xml'],

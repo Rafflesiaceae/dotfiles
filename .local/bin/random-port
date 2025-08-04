@@ -1,2 +1,20 @@
 #!/bin/dash
-shuf -i1024-65535 -n1
+
+__random_port() {
+    shuf -i 1024-65535 -n 1
+}
+
+if [ -z "$1" ]; then
+    __random_port
+else
+    prefix="$1"
+    while :; do
+        num=$(__random_port)
+        case "$num" in
+        "$prefix"*)
+            echo "$num"
+            break
+            ;;
+        esac
+    done
+fi

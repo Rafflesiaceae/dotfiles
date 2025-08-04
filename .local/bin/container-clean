@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 set -eo pipefail
 set -x
+
+"docker"
 docker-compose rm --all --force --stop --volumes || true
 
-docker system prune --all
-docker volume prune
+docker system prune --all -f
+docker volume prune -f
 
-podman system prune --all
-podman volume prune
+: "podman"
+podman rm -a -f
+# podman container prune
+podman system prune --all -f
+podman volume prune -f
