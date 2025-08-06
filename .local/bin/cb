@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/dash
 die() {
     printf '%s\n' "$1" >&2
     exit "${2-1}"
@@ -22,32 +22,33 @@ cli_str=
 cli_tee=
 while :; do
     case $1 in
-        -h|-\?|--help)
-            usage ;;
-        -a|--append)
-            cli_append=1
-            ;;
-        -e|--edit)
-            cli_edit=1
-            ;;
-        -i|--in)
-            cli_in=1
-            ;;
-        -o|--out)
-            cli_out=1
-            ;;
-        -s|--str)
-            cli_str=1
-            ;;
-        -t|--tee)
-            cli_tee=1
-            ;;
-        --)
-            shift
-            break
-            ;;
-        -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
-        *) break ;;
+    -h | -\? | --help)
+        usage
+        ;;
+    -a | --append)
+        cli_append=1
+        ;;
+    -e | --edit)
+        cli_edit=1
+        ;;
+    -i | --in)
+        cli_in=1
+        ;;
+    -o | --out)
+        cli_out=1
+        ;;
+    -s | --str)
+        cli_str=1
+        ;;
+    -t | --tee)
+        cli_tee=1
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -?*) printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2 ;;
+    *) break ;;
     esac
 
     shift
@@ -55,37 +56,37 @@ done
 
 clip_out() { xclip -sel clip -o; }
 clip_in() {
-    if [[ $cli_append ]]; then
+    if [ $cli_append ]; then
         inp=$(cat -)
         printf "%s%s" "$(clip_out)" "$inp" | xclip -sel clip -i
-    elif [[ $cli_tee ]]; then
-         stdin=$(cat)
-         echo "$stdin"
-         printf "%s" "$stdin" | xclip -sel clip -i
+    elif [ $cli_tee ]; then
+        stdin=$(cat)
+        echo "$stdin"
+        printf "%s" "$stdin" | xclip -sel clip -i
     else
         cat - | xclip -sel clip -i
     fi
 }
 
-if [[ $cli_edit ]]; then
+if [ $cli_edit ]; then
     tmpfile=$(mktemp)
     cleanup_tmpfile() {
         rm -f "$tmpfile"
     }
     trap 'cleanup_tmpfile' EXIT INT
-    clip_out > "$tmpfile"
+    clip_out >"$tmpfile"
     "$EDITOR" "$tmpfile"
-    sed -z '$ s/\n$//' < "$tmpfile" | clip_in
-elif [[ $cli_out ]]; then
+    sed -z '$ s/\n$//' <"$tmpfile" | clip_in
+elif [ $cli_out ]; then
     clip_out
-elif  [[ $cli_in ]]; then
+elif [ $cli_in ]; then
     clip_in
-elif  [[ $cli_str ]]; then
+elif [ $cli_str ]; then
     printf "%s" "$1" | clip_in
-elif  [[ -f $1 ]]; then
-    cb < "$1"
+elif [ -f "$1" ]; then
+    cb <"$1"
 else
-    if [[ -t 0 ]]; then
+    if [ -t 0 ]; then
         clip_out
     else
         clip_in
