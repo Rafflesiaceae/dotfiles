@@ -6,10 +6,9 @@ shift
 
 fname="${path%.*}"
 
-
 args=(
-    --standalone 
-    --css=default.css
+    --standalone
+    --css=markdown.css
     --toc
 )
 
