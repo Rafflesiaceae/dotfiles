@@ -237,6 +237,7 @@ sources = {
     "./.local/bin/last-local-bins": "",
     "./.local/bin/lastdl": "",
     "./.local/bin/lastfile": "",
+    "./.local/bin/lookup-dns": "",
     "./.local/bin/loop-it": "",
     "./.local/bin/mark-code": "",
     "./.local/bin/meson-quickbuild": "",
