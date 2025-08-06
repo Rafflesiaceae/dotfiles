@@ -252,6 +252,7 @@ sources = {
     "./.local/bin/npmis": {"linux": ""},
     "./.local/bin/npmisd": {"linux": ""},
     "./.local/bin/num-set-desc": {"linux": ""},
+    "./.local/bin/numdots-update": "",
     "./.local/bin/open-file-in-current-revision": "",
     "./.local/bin/parcellite-history": "",
     "./.local/bin/patch-create": "",

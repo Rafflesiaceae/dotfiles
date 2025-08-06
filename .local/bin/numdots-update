@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+set -x
+
+cd "${HOME}/.numdots/"
+
+gitup
+./bootstrap.py
