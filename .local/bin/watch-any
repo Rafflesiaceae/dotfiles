@@ -41,10 +41,17 @@ while true; do
     )
 
     if [ -n "$IGN" ]; then
-        IFS=',' read -ra ignores <<< "$IGN"
+        IFS=',' read -ra ignores <<<"$IGN"
         for ign in "${ignores[@]}"; do
             echo "[watch-any] [ignore] $ign"
-            prune_expr+=(-o -name "$ign")
+            if [[ "$ign" == */ ]]; then
+                # Directory recursive ignore
+                ign="${ign%/}" # Remove trailing slash
+                prune_expr+=(-o -path "./$ign" -o -path "./$ign/*")
+            else
+                # Single file or directory name ignore only itself
+                prune_expr+=(-o -name "$ign")
+            fi
         done
     fi
 
