@@ -2,14 +2,17 @@
 set -eo pipefail
 
 # Read clipboard contents
-content="$(cb)"
+content="$(cb -o)"
 
-# Remove empty last line, if present
-# (If the last line is empty, this removes it)
-if [[ -z "$(echo "$content" | tail -n1)" ]]; then
-    content="$(echo "$content" | sed '$d')"
+# Abort if content is already fenced
+first_line="${content%%$'\n'*}"
+if [[ $first_line == '```' ]]; then
+    exit 0
 fi
+
+# Remove empty beginning and trailing empty lines
+content=$(printf '%s\n' "$content" | sed '/./,$!d; $!{ /^$/d }')
 
 # Surround with ```
 # shellcheck disable=SC2016
-printf '```\n%s\n```\n' "${content}" | cb -i
+printf '```\n%s\n```\n\n\n' "$content" | cb -i
