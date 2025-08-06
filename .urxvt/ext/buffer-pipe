@@ -1,5 +1,5 @@
 #!perl
-# buffer-pipe v0.1 (2025-06-11) (634d59bb18d59827)
+# buffer-pipe v0.2 (2025-08-06) (840b0f642e395176)
 #
 # rxvt-unicode perl script to expose the buffer contents of an urxvt instance
 # via a fifo pipe at '/tmp/urxvt-buffer-pipe-{PID}'
@@ -63,8 +63,12 @@ sub on_start {
                 my $end   = $term->nrow - 1;
 
                 for (my $i = $start; $i <= $end; ++$i) {
-                    my $line = $term->ROW_t($i);
-                    print $fh ($line // '') . "\n";
+                    my $line = $term->ROW_t($i) // '';
+
+                    # Remove all occurrences of Unicode codepoint U+FFFF
+                    $line =~ s/\x{FFFF}//g;
+
+                    print $fh $line . "\n";
                 }
 
                 close $fh;
