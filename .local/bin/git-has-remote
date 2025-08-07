@@ -1,0 +1,2 @@
+#!/bin/dash
+grep -q '^\[remote "'"$1"'"\]' "$(git rev-parse --show-toplevel)/.git/config"
