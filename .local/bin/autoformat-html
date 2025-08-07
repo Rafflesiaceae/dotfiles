@@ -4,24 +4,55 @@ set -eo pipefail
 # tidy --indent yes --wrap-attributes 1 -w 140 --quiet 1 --tidy-mark 0 --break-before-br "$1" | sponge "$1"
 
 args=(
-        --custom-tags yes
-        --indent yes
-        --wrap-attributes 1
-        -w 140
-        --quiet 1
-        --tidy-mark 0
-        --break-before-br
+    --break-before-br
+    --custom-tags yes
+    --drop-empty-elements no
+    --indent yes
+    --indent-with-tabs no
+    --markup yes
+    --quiet 1
+    --show-comments yes
+    --tidy-mark 0
+    --vertical-space no
+    --wrap 140
+    --wrap-attributes 1
+
+    # --mute 'Warning: <img> lacks "alt" attribute'
+    # --new-blocklevel-tags INCLUDE
+    # --new-inline-tags INCLUDE
+    # --indent-spaces 4
+    # --wrap 0
+    # --break-before-br no
+
+    --force-output yes
 )
 
 INPUT="$1"
-TMP=$(mktemp)
 
-if tidy "${args[@]}" "$INPUT" >"$TMP"; then
-        mv "$TMP" "$INPUT"
+if grep -q "<body>" "$INPUT"; then
+    # args+=(
+
+    # --show-body-only yes
+    #     )
+    :
 else
-        echo "❌ tidy failed on $INPUT"
-        # echo "----- Input content: -----"
-        # cat "$INPUT"
-        rm "$TMP"
-        exit 1
+    args+=(
+        --show-body-only yes
+    )
+fi
+
+# TMP=$(mktemp)
+TMP=/tmp/autoformat-html-tmp
+
+# if tidy "${args[@]}" "$INPUT" >"$TMP"; then
+tidy "${args[@]}" "$INPUT" >"$TMP" || true
+if [[ ! -s "$TMP" ]] || [[ ! $(grep -q '[^[:space:]]' "$TMP") ]]; then
+    # notify-send qwe asd
+    mv "$TMP" "$INPUT"
+else
+    echo "❌ tidy failed on $INPUT"
+    # echo "----- Input content: -----"
+    # cat "$INPUT"
+    rm "$TMP"
+    exit 1
 fi
