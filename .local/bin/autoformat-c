@@ -11,7 +11,7 @@ git_dir=$(git rev-parse --show-toplevel 2>/dev/null) && {
 }
 
 if [[ "$is_git_proj" ]]; then
-    
+
     # check for clang
     if [[ -e "${git_dir}/.clang-format" ]]; then
         # uncrustify --config "${git_dir}/uncrustify.cfg" --no-backup "$1"
@@ -29,7 +29,7 @@ if [[ "$is_git_proj" ]]; then
     # clang-format --style "file:${HOME}/.config/clang-format-google.yml" -i "$1"
     die "ERROR: Neither clang-format nor uncrustify configs found"
 else
-    clang-format --style "file:${HOME}/.config/clang-format-raf.yml" -i "$1"
+    clang-format --style "file:${HOME}/.config/clang-format-default.yml" -i "$1"
     die "ERROR: Not in a git worktree"
 fi
 
