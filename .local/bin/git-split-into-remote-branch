@@ -26,12 +26,20 @@ if git-has-changes any; then
     has_changes=1
 fi
 
+default_branch=$(git-default-branch) || true
+default_branch=${default_branch:-master}
+
+remote="origin"
+if git-has-remote "upstream"; then
+    remote="upstream"
+fi
+
 if [[ "$has_changes" ]]; then
     git stash
 fi
 if [[ -n "$commit" ]]; then
     set -x
-    git checkout "upstream/master"
+    git checkout "${remote}/${default_branch}"
     git checkout -B "$branch"
     git cherry-pick "$commit"
     git push --set-upstream origin "$branch"
