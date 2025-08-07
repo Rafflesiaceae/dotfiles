@@ -116,6 +116,7 @@ set textwidth=80
 autocmd BufEnter * :syntax sync minlines=1000 
 
 " Configurations
+let NERDTreeQuitOnOpen=1
 " {{{ NeoVIM Nonsense
 let g:editorconfig = v:false
 " }}}
@@ -1233,29 +1234,58 @@ endfunction
 com! ToggleCD call s:ToggleCD()
 nnoremap <leader>sd :ToggleCD<CR>
 
-nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
-
 lua << EOF
 function ExchangeBufferWithClipboard()
   local buf_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local buf_text = table.concat(buf_content, "\n")
-  local clipboard = vim.fn.getreg('+')
+
+  -- Get clipboard content and normalize it
+  local clipboard_lines = vim.split(vim.fn.getreg('+'), "\n")
+  if clipboard_lines[#clipboard_lines] == "" then
+    table.remove(clipboard_lines, #clipboard_lines)
+  end
+  local clipboard = table.concat(clipboard_lines, "\n")
 
   local msg = ""
   if buf_text == clipboard then
-    -- vim.api.nvim_echo({{"Buffer is identical to clipboard.", "None"}}, false, {})
     msg = "Buffer was identical to clipboard."
   else
-    -- Replace buffer with clipboard
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(clipboard, "\n"))
+    -- Replace buffer with normalized clipboard content
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, clipboard_lines)
     msg = "Buffer was replaced with clipboard content."
   end
 
   vim.cmd('write')
   vim.api.nvim_echo({{msg, "None"}}, false, {})
-
 end
 EOF
+nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
+
+lua << EOF
+function InsertClipboardAsCode(trim_last_line)
+  -- Get clipboard contents as a list of lines
+  local clipboard = vim.fn.getreg('+', 1, true)
+
+  -- Optionally trim the last line if empty
+  if trim_last_line and #clipboard > 0 and clipboard[#clipboard]:match('^%s*$') then
+    table.remove(clipboard, #clipboard)
+  end
+
+  -- Add code block lines
+  table.insert(clipboard, 1, '```')
+  table.insert(clipboard, '```')
+
+  -- Get current line number (0-based)
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  -- Delete the current line
+  vim.api.nvim_buf_set_lines(0, row-1, row, false, {})
+  -- Insert at the position of the deleted line
+  vim.api.nvim_buf_set_lines(0, row-1, row-1, false, clipboard)
+end
+EOF
+
+nnoremap <leader>sa :lua InsertClipboardAsCode(true)<CR>
+
 
 "" ??-?? forgot what this does
 function! EditJsonKVInLine(key)
@@ -1341,6 +1371,39 @@ fu! s:Split()
 endfunction
 com! Split call s:Split()
 
+" {{{ Autoversion
+function! s:RunAutoversion()
+  if &modified
+    echoerr "Please save or discard changes before running :Autoversion."
+    return
+  endif
+
+  let l:filename = expand('%:p')
+  if empty(l:filename)
+    echoerr "No file path detected."
+    return
+  endif
+
+  let l:cmd = 'autoversion ' . shellescape(l:filename)
+
+  " Set up an autocmd to reload the buffer after AsyncRun finishes
+  augroup AutoversionReload
+    autocmd!
+    autocmd User AsyncRunStop ++once call s:ReloadCurrentBuffer()
+  augroup END
+
+  execute ":AsyncRun -raw " . l:cmd
+endfunction
+
+function! s:ReloadCurrentBuffer()
+  " Reload the buffer silently (discarding unsaved changes if any — safe since we prevent running when modified)
+  silent! edit!
+  echo "Buffer reloaded after autoversion."
+endfunction
+
+command! Autoversion call <SID>RunAutoversion()
+" }}}
+
 " {{{ AutoReload
 let g:auto_reload_enabled = 0
 
@@ -1413,6 +1476,13 @@ func! s:vuildRun()
 
         let i += 1
     endwhile
+
+    " if not explicitly set RUN was found, run build.sh if present in parent directories
+    let l:build_script = s:vuildFindBuildScript()
+    if l:build_script != ''
+        call s:vuildSaveAndRun(fnameescape(l:build_script))
+        return 0
+    endif
 
     " if no explicitly set RUN was found, run something depending on syntax
     let filetype = &filetype
@@ -1766,6 +1836,7 @@ vnoremap <leader>sp :<C-u>call SplitVisualSelection()<CR>
 " highlight MatchParen cterm=none ctermfg=none ctermbg=243
 highlight Visual ctermfg=none ctermbg=239
 highlight MatchParen cterm=none ctermfg=none ctermbg=245
+highlight WinSeparator ctermfg=19 ctermbg=18
 " highlight MatchParen cterm=none ctermfg=none ctermbg=218
 " highlight MatchParen cterm=none ctermfg=none ctermbg=220
 " highlight MatchParen cterm=none ctermfg=none ctermbg=215
