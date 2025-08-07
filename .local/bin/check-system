@@ -61,9 +61,11 @@ if [[ -d "$shada_dir" ]]; then
 fi
 
 # {{{1 check for pacdiff files
-pacdiff_count=$(pacdiff --output | wc -l)
-if [[ $pacdiff_count -gt 0 ]]; then
-    warn "you have $pacdiff_count .pacdiff files - better run pacdiff"
+if [[ -f /etc/arch-release ]]; then
+    pacdiff_count=$(pacdiff --output | wc -l)
+    if [[ $pacdiff_count -gt 0 ]]; then
+        warn "you have $pacdiff_count .pacdiff files - better run pacdiff"
+    fi
 fi
 
 # {{{1 check for failed systemd units

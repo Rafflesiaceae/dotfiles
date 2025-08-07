@@ -24,7 +24,7 @@ if [[ -e "$img" ]]; then
     img=tmp
 fi
 
-if [[ "$(realpath "$inp")" != "$(realpath "$PWD")"* ]]; then
+if [[ -e "$inp" ]] && [[ "$(realpath "$inp")" != "$(realpath "$PWD")"* ]]; then
     (set -x; podman run --userns=keep-id --rm "${args[@]}" -i  --workdir "/opt/pwd" --entrypoint bash "$img" -l < "$inp")
 else
     (set -x; podman run --userns=keep-id --rm "${args[@]}" -it --workdir "/opt/pwd" --entrypoint bash "$img" -cl "$inp")
