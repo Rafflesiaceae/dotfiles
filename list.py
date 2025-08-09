@@ -57,6 +57,7 @@ sources = {
     "./.githooks/prepare-commit-msg-common-end": "",
     "./.githooks/prepare-commit-msg-common-start": "",
     "./.githooks/prepare-commit-msg-gerrit-auto-change-id": "",
+    # {{{
     "./.local/bin/#": "",
     "./.local/bin/add-breakpoint": {"linux": ""},
     "./.local/bin/agt": "",
@@ -208,6 +209,7 @@ sources = {
     "./.local/bin/git-undo-last-commit-but-keep-changes": "",
     "./.local/bin/git-undo-specific-hunks-but-keep-changes": "",
     "./.local/bin/git-unstage": "",
+    "./.local/bin/git-wip": "",
     "./.local/bin/git-wip-commitpush": "",
     "./.local/bin/gitm": "",
     "./.local/bin/gitp": "",
@@ -337,6 +339,7 @@ sources = {
     "./.local/bin/zoom-share-bar-hide": "",
     "./.local/bin_override/gimp": {"linux": ""},
     "./.local/bin_override/vimdiff": {"linux": ""},
+    # }}}
     "./.urxvt//ext/buffer-pipe": {"linux": ""},
     "./.qtcvimrc": "",
     "./.vim/colors/base16-kokonai.vim": {"linux": ""},
