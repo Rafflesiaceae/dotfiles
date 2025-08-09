@@ -1874,7 +1874,7 @@ check/test if application/program/command exists/is installed (.sh .bash): |
 prompt confirm key press (.sh .bash ;zsh): |
     prompt() {
         prompt="${1:-Continue?} (y/n) "
-        tput sc
+        tput sc >&2
         while true; do
             read -p "$prompt" -n 1 -r yn
             case $yn in
@@ -1884,8 +1884,8 @@ prompt confirm key press (.sh .bash ;zsh): |
                 return 0
                 ;;
             *)
-                tput el1
-                tput rc
+                tput el1 >&2
+                tput rc >&2
                 ;;
             esac
         done
@@ -1894,14 +1894,23 @@ prompt confirm key press (.sh .bash ;zsh): |
 prompt continue key press (.sh .bash ;zsh): |
     prompt_continue() {
         [[ $absolute_yes ]] && return
-        tput sc
+        tput sc >&2
         while true; do
             read -p "${1:-Continue?} (y/Y/n) " -n 1 -r yn
             case $yn in
-                [Y]*) declare -g absolute_yes=1; break ;;
-                [y]*) break ;;
-                [Nn]*) printf "\n"; exit 1 ;;
-                *) tput el1; tput rc ;;
+            [Y]*)
+                declare -g absolute_yes=1
+                break
+                ;;
+            [y]*) break ;;
+            [Nn]*)
+                printf "\n"
+                exit 1
+                ;;
+            *)
+                tput el1 >&2
+                tput rc >&2
+                ;;
             esac
         done
         printf "\n"
