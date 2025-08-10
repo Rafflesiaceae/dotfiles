@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# Get the current screen resolution
+# shellcheck disable=SC2063
+resolution=$(xrandr | grep '*' | awk '{print $1}')
+screen_width=$(echo "$resolution" | cut -d'x' -f1)
+screen_height=$(echo "$resolution" | cut -d'x' -f2)
+
+# Show image
+image="${HOME}/.lock.bg.1920.1200.png"
+echo "${screen_width}:${screen_height}"
+if [[ "$screen_width" == "3440" ]] && [[ "$screen_height" == "1440" ]]; then
+    image="${HOME}/.lock.bg.3440.1440.png"
+fi
+
+if [[ -e "$image" ]]; then
+    i3lock -i "$image" -e -f
+else
+    i3lock -e -f
+fi

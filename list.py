@@ -228,6 +228,7 @@ sources = {
     "./.local/bin/i3-make-sticky": {"linux": ""},
     "./.local/bin/i3-swap-workspaces": {"linux": ""},
     "./.local/bin/i3-type-mark": {"linux": ""},
+    "./.local/bin/i3lock-dyn": "",
     "./.local/bin/i3status-additional": "",
     "./.local/bin/inotify-who-hogs-my-watches": "",
     "./.local/bin/install-local-bin": {"linux": ""},
