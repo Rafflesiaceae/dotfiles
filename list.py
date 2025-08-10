@@ -180,6 +180,7 @@ sources = {
     "./.local/bin/git-has-remote": "",
     "./.local/bin/git-hookman": "",
     "./.local/bin/git-initial-commit": "",
+    "./.local/bin/git-is-a-git-workspace": "",
     "./.local/bin/git-is-branch-same-as-tracking": "",
     "./.local/bin/git-is-tracked": "",
     "./.local/bin/git-list-changed-files-in-commit": "",
