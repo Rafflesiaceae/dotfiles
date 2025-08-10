@@ -17,7 +17,7 @@ export GTK_THEME=Adwaita:dark
 ## Result
 Should look like:
 ```
-.config/gtk-3.0/settings.ini:
+~/.config/gtk-3.0/settings.ini:
     perm: "0644"
     content: |
         [Settings]
