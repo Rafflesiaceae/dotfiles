@@ -132,6 +132,7 @@ sources = {
     "./.local/bin/edit-current-urxvt-buffer": "",
     "./.local/bin/edit-current-urxvt-buffer-last-prompt": "",
     "./.local/bin/edit-from-base64-arg": "",
+    "./.local/bin/exp": "",
     "./.local/bin/expando": "",
     "./.local/bin/expandob": "",
     "./.local/bin/ferret-display": "",
