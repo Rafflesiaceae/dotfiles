@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 echo "+ git-wip-commitpush -np"
-git-wip-commitpush -np
+git-wip
 echo "+ cb | oat filetree expand"
 cb | oat filetree expand
 echo "+ git-wip-commitpush -np"
-git-wip-commitpush -np
+git-wip
