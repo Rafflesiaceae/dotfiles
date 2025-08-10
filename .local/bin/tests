@@ -1,0 +1,12 @@
+#!/bin/dash
+test_path=$(find-upwards "test.sh")
+if [ -e "$test_path" ]; then
+    printf "+ %s %s\n" "$test_path" "$*"
+    "$test_path" "$@"
+elif find-upwards "Taskfile.yml" >/dev/null; then
+    printf "+ go-task test %s\n" "$*"
+    go-task test "$@"
+else
+    printf "No way to test found.\n" >&2
+    exit 1
+fi

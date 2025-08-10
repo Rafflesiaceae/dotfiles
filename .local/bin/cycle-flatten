@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# set -x
+out=/tmp/query
+
+failedf=/tmp/query-failed
+rm -f "$failedf"
+{
+    if [[ "$1" != "nosource" ]]; then
+        echo "> Flattening..." >/dev/tty
+        echo "This is a flattened filetree represented as a YAML:"
+        echo '```'
+        flatten -o
+        echo '```'
+        echo ""
+    else
+
+        cat <<'EOF'
+This is an example flattened filetree represented as a YAML - use this as output format:
+```
+src/mysource.py:
+    perm: "0644"
+    content: |
+        #!/usr/bin/env python3
+        import sys
+
+        print("hello world")
+src/run.sh:
+    perm: "0755"
+    content: |
+        #!/usr/bin/env bash
+        set -eo pipefail
+        python ./src/mysource.py
+
+# ...
+```
+EOF
+    fi
+
+    failed=
+    echo "> Build..." >/dev/tty
+    if build >/tmp/query-build 2>&1; then
+        echo "> Tests..." >/dev/tty
+        if ! tests >/tmp/query-tests 2>&1; then
+            echo "Tests Failed:"
+            echo '```'
+            cat "/tmp/query-tests"
+            echo '```'
+            echo ""
+            echo "Implement what is required to fix the failing tests and output it in the same flattened filetree YAML structure as was provided before."
+            echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
+            echo ""
+            echo "If files are not changed don't output them."
+            touch "$failedf"
+        fi
+    else
+        echo "Build Failed:"
+        echo '```'
+        cat "/tmp/query-build"
+        echo '```'
+        echo ""
+        echo "Implement what is required to fix the build and output it in the same flattened filetree YAML structure as was provided before."
+        echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
+        echo ""
+        echo "If files are not changed don't output them."
+        touch "$failedf"
+    fi
+} >"$out"
+# } | tee "$out"
+
+if [[ -e "$failedf" ]]; then
+    vim + "$out"
+
+    if [[ ! -s "$out" ]] || ! grep -q '[^[:space:]]' "$out"; then
+        echo "Empty file, aborting..."
+        exit 1
+    fi
+
+    cb -i <"$out"
+    echo "Copied '$out' to clipboard!"
+    echo "Now paste it to ChatGPT and wait for the result."
+
+    wait-for-enter "after you have copied the result to your clipboard"
+
+    expando
+
+    tests
+fi
