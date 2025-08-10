@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# autoformat-groovy v0.1 (2025-08-08) (59c65e8546a41799)
+#
+# Autoformats a passed .groovy file, hacky - not fast.
+#
+# REQUIRES: gradle
+#
+# TODO : Add .editorconfig support (spotless/groovy has none :') )
+set -eo pipefail
+
+# Check if a file is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <path-to-groovy-file>"
+    exit 1
+fi
+
+# Get the file path
+FILE="$(realpath "$1")"
+# feditorconf=$(find-upwards .editorconfig) || true
+
+# Check if the file exists
+if [ ! -f "$FILE" ]; then
+    echo "File ${FILE} does not exist."
+    exit 1
+fi
+
+# Create a temporary Gradle project
+TEMP_DIR="${HOME}/.cache/autoformat-groovy/"
+
+# Initialize Gradle project - (:
+if [[ ! -d "$TEMP_DIR" ]]; then
+    echo "> Setting up spotless"
+    mkdir -p "$TEMP_DIR"
+    cd "$TEMP_DIR"
+    gradle init --type basic --dsl groovy --project-name temp-spotless-project --quiet </dev/null
+
+    # Add Spotless plugin to build.gradle
+    cat <<EOL >build.gradle
+    plugins {
+        // id 'com.diffplug.spotless' version '6.0.0'
+        id 'com.diffplug.spotless' version '6.21.0' // Use the latest version
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    spotless {
+        groovy {
+            target 'tmp.groovy'
+            greclipse()
+            indentWithSpaces(4)
+            trimTrailingWhitespace()
+            endWithNewline()
+            // editorConfig()
+        }
+    }
+EOL
+else
+    cd "$TEMP_DIR"
+fi
+
+# rm -f ./.editorconfig
+# if [[ -n "$feditorconf" ]]; then
+#     cp "$feditorconf" ".editorconfig"
+# fi
+
+cp "$FILE" "tmp.groovy"
+
+echo "> Formatting $FILE via Spotless..."
+# ./gradlew spotlessApply --no-configuration-cache --quiet
+gradle spotlessApply --no-configuration-cache --quiet
+# >/dev/null 2>&1 </dev/null
+
+cp "tmp.groovy" "$FILE"

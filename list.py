@@ -78,6 +78,7 @@ sources = {
     "./.local/bin/autoformat-css": "",
     "./.local/bin/autoformat-docker": "",
     "./.local/bin/autoformat-go": "",
+    "./.local/bin/autoformat-groovy": "",
     "./.local/bin/autoformat-hcl": "",
     "./.local/bin/autoformat-html": "",
     "./.local/bin/autoformat-js": "",

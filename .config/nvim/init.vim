@@ -835,6 +835,7 @@ for entry in [
       \ ['cpp'                        ,  'autoformat-c'],
       \ ['css'                        ,  'autoformat-css'],
       \ ['go'                         ,  'autoformat-go'],
+      \ ['groovy'                     ,  'autoformat-groovy'],
       \ ['hcl'                        ,  'autoformat-hcl'],
       \ ['html'                       ,  'autoformat-html'],
       \ ['javascript'                 ,  'autoformat-js'],
