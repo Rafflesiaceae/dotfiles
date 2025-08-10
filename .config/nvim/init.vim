@@ -45,6 +45,10 @@ let g:mapleader = ","
 set nocompatible
 filetype off
 
+set backup
+set backupdir=$HOME/.vim/backup
+
+
 " required for Ycm GoTo
 set maxmempattern=8192
 
