@@ -204,6 +204,7 @@ sources = {
     "./.local/bin/git-submodule-delete": "",
     "./.local/bin/git-submodule-remove": "",
     "./.local/bin/git-submodule-reset": "",
+    "./.local/bin/git-tag": "",
     "./.local/bin/git-undo-amend": "",
     "./.local/bin/git-undo-keep-changes": "",
     "./.local/bin/git-undo-last-commit-but-keep-changes": "",

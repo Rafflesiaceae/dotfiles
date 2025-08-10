@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+# git tag -a "$1" -m "$2"
+git tag -a "$1"
