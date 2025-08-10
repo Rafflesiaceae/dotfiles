@@ -130,6 +130,7 @@ sources = {
     "./.local/bin/docker-compose-open-volume": "",
     "./.local/bin/docker-run": "",
     "./.local/bin/drb": "",
+    "./.local/bin/dump-clipboard-image": "",
     "./.local/bin/edit-clipboard": "",
     "./.local/bin/edit-current-urxvt-buffer": "",
     "./.local/bin/edit-current-urxvt-buffer-last-prompt": "",

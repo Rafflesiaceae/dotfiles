@@ -35,11 +35,21 @@
     <description></description>
     <range>*</range>
     <patterns>*</patterns>
-    <directories />
     <audio-files />
     <image-files />
     <other-files />
     <text-files />
     <video-files />
+  </action>
+  <action>
+    <icon>node-join</icon>
+    <name>Dump clipboard image</name>
+    <submenu></submenu>
+    <unique-id>1754845471347836-1</unique-id>
+    <command>dump-clipboard-image %f</command>
+    <description></description>
+    <range>*</range>
+    <patterns>*</patterns>
+    <directories />
   </action>
 </actions>

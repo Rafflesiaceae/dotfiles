@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Requires: xclip (X11). Optional: ImageMagick `convert` for non-PNG clipboard formats.
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: $0 <output-dir>" >&2
+    exit 1
+fi
+
+say() {
+    if [[ -t 1 ]]; then
+        echo "$@"
+    else
+        notify-send --urgency=low "[dump-clipboard-image]" "$*"
+    fi
+}
+
+
+if [[ -d "$1" ]]; then
+    outdir=$(realpath "$1")
+
+    timestamp="$(date +"%Y-%m-%d_%H-%M-%S")"
+    outfile="${outdir}/dump-clipboard-image-${timestamp}.png"
+else
+    outfile="$1"
+fi
+
+# List available clipboard targets
+targets="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null || true)"
+if [[ -z "$targets" ]]; then
+    say "No clipboard targets found (is an image currently copied?)." >&2
+    exit 2
+fi
+
+# Choose the best available image target (prefer PNG, then common formats)
+choose_target() {
+    local t
+    for t in image/png image/webp image/jpeg image/jpg image/bmp image/tiff image/x-xpixmap image/x-xbitmap; do
+        if grep -i -x -q "$t" <<<"$targets"; then
+            echo "$t"
+            return 0
+        fi
+    done
+    return 1
+}
+
+target="$(choose_target || true)"
+if [[ -z "${target:-}" ]]; then
+    say "Clipboard does not contain a supported image type." >&2
+    exit 3
+fi
+
+# Read and write/convert to PNG
+if [[ "$target" == "image/png" ]]; then
+    if ! xclip -selection clipboard -t image/png -o >"$outfile"; then
+        say "Failed to read image/png from clipboard. $(cb || true)" >&2
+        exit 4
+    fi
+else
+    if ! command -v convert >/dev/null 2>&1; then
+        say "Need ImageMagick 'convert' to transform ${target} to PNG. Please install it." >&2
+        exit 5
+    fi
+    if ! xclip -selection clipboard -t "$target" -o | convert - "$outfile"; then
+        say "Failed to read ${target} from clipboard or convert to PNG." >&2
+        exit 6
+    fi
+fi
+
+say "Saved: ${outfile}"
