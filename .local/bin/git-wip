@@ -20,6 +20,18 @@ prompt() {
     done
 }
 
+found_commit_message=
+{
+    if [[ -f "wip-commit-message" ]]; then
+        # Detect, remember and remove wip-commit-message
+        tmpfile=$(mktemp)
+        trap 'rm -f "$tmpfile"' EXIT INT
+        cp wip-commit-message "$tmpfile"
+        rm "wip-commit-message"
+        found_commit_message=1
+    fi
+}
+
 {
     # Check if there are any changes (unstaged, staged, or untracked)
     if [[ -z $(git status --porcelain) ]]; then
@@ -69,4 +81,9 @@ if [[ -n "$changes" ]]; then
     done <<<"$changes"
 fi
 
-git commit -m "WIP $(date +%s)"
+# Implicitly use 'wip-commit-message' if found
+if [[ "$found_commit_message" ]] && [[ -s "$tmpfile" ]]; then
+    git commit -F "$tmpfile"
+else
+    git commit -m "WIP $(date +%s)"
+fi
