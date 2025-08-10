@@ -2,74 +2,76 @@
 # prints additional info to i3status in pango format
 set -eo pipefail
 die() {
-	printf '%b\n' "$1" >&2
-	exit "${2-1}"
+    printf '%b\n' "$1" >&2
+    exit "${2-1}"
 }
 
 case "$1" in
 tick) # "main"
-	print_contents() {
-		result=()
+    print_contents() {
+        result=()
 
-		# show count of running docker containers
-		docker_containers=""
-		docker_containers=$(docker ps --format table | wc -l || true)
-		if [[ "$docker_containers" -gt 1 ]]; then
-			result+=("$(printf "docker: <span foreground='#1F97EE'>%s</span>" "$((docker_containers - 1))")")
-		fi
+        # show count of running docker containers
+        if command -v docker &>/dev/null; then
+            docker_containers=""
+            docker_containers=$(docker ps --format table | tail -n +2 | wc -l || true)
+            if [[ "$docker_containers" -gt 0 ]]; then
+                result+=("$(printf "docker: <span foreground='#1F97EE'>%s</span>" "${docker_containers}")")
+            fi
+        fi
 
-		# show count of running pdm containers
-		podman_containers=""
-		podman_containers=$(podman ps --format table | wc -l || true)
-		if [[ "$podman_containers" -gt 1 ]]; then
-			result+=("$(printf "podman: <span foreground='#1F97EE'>%s</span>" "$((podman_containers - 1))")")
-		fi
+        # show count of running pdm containers
+        podman_containers=""
+        podman_containers=$(podman ps --format table | tail -n +2 | wc -l || true)
+        if [[ "$podman_containers" -gt 0 ]]; then
+            result+=("$(printf "podman: <span foreground='#1F97EE'>%s</span>" "${podman_containers}")")
+        fi
 
-		# show count of failed systemd units
-		systemd_failed_units=$(systemctl list-units --state=failed | tail -n 1 | awk '{ print $1 }')
-		if [[ "$systemd_failed_units" -gt 0 ]]; then
-			result+=("$(printf "systemd-failed:<span foreground='#FD0000'>%s</span>" "$((systemd_failed_units))")")
-		fi
+        # show count of failed systemd units
+        systemd_failed_units=$(systemctl list-units --state=failed | tail -n 1 | awk '{ print $1 }')
+        if [[ "$systemd_failed_units" -gt 0 ]]; then
+            result+=("$(printf "systemd-failed:<span foreground='#FD0000'>%s</span>" "$((systemd_failed_units))")")
+        fi
 
-		# inform about possible ArchLinux upgrade (5+ days)
-		{
-			last_full_system_upgrade="$(grep -i 'full system upgrade' /var/log/pacman.log | tail -1 | awk -F'[][]' '{print $2}' | xargs -I{} date --date="{}" +%s)"
-			if [ -n "$last_full_system_upgrade" ]; then
+        # inform about possible ArchLinux upgrade (5+ days)
+        if [[ -e /var/log/pacman.log ]]; then
+            last_full_system_upgrade="$(grep -i 'full system upgrade' /var/log/pacman.log | tail -1 | awk -F'[][]' '{print $2}' | xargs -I{} date --date="{}" +%s)"
+            if [ -n "$last_full_system_upgrade" ]; then
                 now="$(date +%s)"
-				days_since=$(((now - last_full_system_upgrade) / 86400))
-				if [ "$days_since" -ge 5 ]; then
+                days_since=$(((now - last_full_system_upgrade) / 86400))
+                if [ "$days_since" -ge 5 ]; then
                     result+=("$(printf "<span foreground='#FDA202'>%s</span>" "Update ArchLinux")")
-                    
-				fi
-			fi
-		}
 
-		echo "${result[@]}"
+                fi
+            fi
+        fi
 
-		## printf "🏃<span foreground='#FD0000'>%s</span>" "error"
-		## printf "🏃<span foreground='#FDA202'>%s</span>" "warning"
-		## printf "🏃<span foreground='#AD8F5C'>%s</span>" "not-normal"
-		## printf "🏃%s" "normal"
-	}
+        echo "${result[@]}"
 
-	out=$(print_contents)
-	if [[ -n "$out" ]]; then
-		printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
-		printf "%s" "$out"
-		printf "</span>)</span> \n"
-	fi
-	;;
+        ## printf "🏃<span foreground='#FD0000'>%s</span>" "error"
+        ## printf "🏃<span foreground='#FDA202'>%s</span>" "warning"
+        ## printf "🏃<span foreground='#AD8F5C'>%s</span>" "not-normal"
+        ## printf "🏃%s" "normal"
+    }
+
+    out=$(print_contents)
+    if [[ -n "$out" ]]; then
+        printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
+        printf "%s" "$out"
+        printf "</span>)</span> \n"
+    fi
+    ;;
 *) # daemon
-	pipetmpf=/tmp/.i3status.additional.tmp
-	pipef=/tmp/.i3status.additional
-	cleanup() {
-		printf "" >"$pipef"
-	}
-	trap 'cleanup' EXIT INT
-	while :; do
-		("$0" tick || echo "???") >"$pipetmpf"
-		mv "$pipetmpf" "$pipef" || true
-		sleep 10
-	done
-	;;
+    pipetmpf=/tmp/.i3status.additional.tmp
+    pipef=/tmp/.i3status.additional
+    cleanup() {
+        printf "" >"$pipef"
+    }
+    trap 'cleanup' EXIT INT
+    while :; do
+        ("$0" tick || echo "???") >"$pipetmpf"
+        mv "$pipetmpf" "$pipef" || true
+        sleep 10
+    done
+    ;;
 esac
