@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-lastpath=$(cat ~/.cache/zsh/dirs | tail -n 1)
+lastpath=$(cat ~/.cache/zsh/dirs | head -n 1)
 if [[ -t 1 ]]; then
     echo "Copied: ${lastpath}"
 else
