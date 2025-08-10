@@ -1,4 +1,6 @@
 [global]
+always_run_script = true  # run scripts even when notifications are suppressed
+
 font = Consolas 11
 
 mouse_left_click = do_action, close_current
@@ -193,5 +195,12 @@ timeout = 0
 #    appname = Pidgin
 #    summary = *twitter.com*
 #    urgency = normal
-#
+
+[forward-chromium-chatgpt-notifications]
+    # appname = "Chromium"
+    summary = "ChatGPT::*::*" # glob patterns are allowed
+    skip_display = true    # don't show the popup
+    history_ignore = true  # also keep it out of history
+    script = ~/.local/bin/chatgpt-on-state-change
+
 # vim: ft=cfg

@@ -108,6 +108,7 @@ sources = {
     "./.local/bin/certificate-show-fingerprint": "",
     "./.local/bin/cf": "",
     "./.local/bin/cfp": {"linux": ""},
+    "./.local/bin/chatgpt-on-state-change": "",
     "./.local/bin/check-if-tcp-port-is-open": "",
     "./.local/bin/check-sh-dash": "",
     "./.local/bin/check-system": "",

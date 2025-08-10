@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -eo pipefail
+IFS=':' read -ra vars <<< "$2"
+
+
+titleb64="$(echo "${vars[2]}")"
+title="$(echo "$titleb64" | base64 -d)"
+aria="$(echo "${vars[4]}")"
+
+
+finished="Start voice mode"
+typing="Send prompt"
+started="Stop streaming"
+
+cached="${HOME}/.cache/chatgpt-on-state-change"
+titled="${cached}/${titleb64}"
+
+startedf=${cached}/started
+
+mkdir -p "$cached"
+
+case "$aria" in
+    "$finished")
+        if [[ -f "$startedf" ]]; then
+            rm "$startedf"
+            notify-send --urgency=low "ChatGPT" "Finished: $title"
+        fi
+        ;;
+    "$typing")
+        ;;
+    "$started")
+        touch "$startedf"
+        ;;
+esac
+
