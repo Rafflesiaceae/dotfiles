@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -eo pipefail
-echo "+ git-wip-commitpush -np"
-git-wip
+if git-is-a-git-workspace; then
+    echo "+ git-wip"
+    git-wip
+fi
 echo "+ cb | oat filetree expand"
 cb | oat filetree expand
-echo "+ git-wip-commitpush -np"
-git-wip
+if git-is-a-git-workspace; then
+    echo "+ git-wip"
+    git-wip
+fi
