@@ -1943,10 +1943,7 @@ check if string is number (.sh .bash): |
 
 create temporary file (.sh .bash): |
     tmpfile=$(mktemp)
-    cleanup_tmpfile() {
-        rm -f "$tmpfile"
-    }
-    trap 'cleanup_tmpfile' EXIT INT
+    trap 'rm -f "$tmpfile"' EXIT INT
 
 create temporary directory (.sh .bash): |
     tmpdir=$(mktemp -d)
