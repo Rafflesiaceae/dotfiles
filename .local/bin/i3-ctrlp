@@ -1,3 +1,10 @@
 #!/bin/sh
 i3-type-mark --key Escape --key ctrl+c --key ctrl+u --key ctrl+p --key Return ctrlp
 i3-type-mark --key Escape --key ctrl+c --key ctrl+u --key ctrl+p --key Return ctrlp2
+i3-type-mark --key Escape --key ctrl+c --key ctrl+c --key ctrl+u --key ctrl+p --key Return ctrlpc
+
+(
+    i3-type-mark --key Escape --key ctrl+c --key ctrl+c ctrlwp
+    sleep 0.5
+    i3-type-mark --key Escape --key ctrl+u --key ctrl+p --key Return ctrlwp
+) &
