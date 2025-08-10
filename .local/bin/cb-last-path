@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+lastpath=$(cat ~/.cache/zsh/dirs | tail -n 1)
+if [[ -t 1 ]]; then
+    echo "Copied: ${lastpath}"
+else
+    notify-send --urgency=low "[cb-last-path]" "$lastpath"
+fi
+cb -s "$lastpath"

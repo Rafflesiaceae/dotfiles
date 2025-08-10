@@ -102,6 +102,7 @@ sources = {
     "./.local/bin/cb": "",
     "./.local/bin/cb-img": "",
     "./.local/bin/cb-img-jpg": "",
+    "./.local/bin/cb-last-path": "",
     "./.local/bin/cb-surround-with-fences": "",
     "./.local/bin/cbwatch": "",
     "./.local/bin/certificate-show-fingerprint": "",
