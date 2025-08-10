@@ -16,10 +16,10 @@ if [[ "$is_primary" ]]; then
     xclip_sel=primary
 fi
 
-xclip -sel "$xclip_sel" -o > "$tmpfile"
-"$EDITOR" "$tmpfile"
+xclip -sel "$xclip_sel" -o >"$tmpfile"
+"$EDITOR" + "$tmpfile"
 truncate -s-1 "$tmpfile"
-xclip -sel "$xclip_sel" -i < "$tmpfile"
+xclip -sel "$xclip_sel" -i <"$tmpfile"
 if [[ "$is_primary" ]]; then
-    xclip -sel "clipboard" -i < "$tmpfile"
+    xclip -sel "clipboard" -i <"$tmpfile"
 fi
