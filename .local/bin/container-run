@@ -20,12 +20,26 @@ args+=("$@")
 
 if [[ -e "$img" ]]; then
     echo "> gotta build the image first"
-    (set -x; buildah build --layers --tag tmp "$img")
+    (
+        set -x
+        buildah build --layers --tag tmp "$img"
+    )
     img=tmp
 fi
 
 if [[ -e "$inp" ]] && [[ "$(realpath "$inp")" != "$(realpath "$PWD")"* ]]; then
-    (set -x; podman run --userns=keep-id --rm "${args[@]}" -i  --workdir "/opt/pwd" --entrypoint bash "$img" -l < "$inp")
+    (
+        set -x
+        podman run --userns=keep-id "${args[@]}" -i --workdir "/opt/pwd" --entrypoint bash "$img" -l <"$inp"
+    )
+elif [[ "$inp" == "-" ]]; then
+    (
+        set -x
+        podman run --userns=keep-id "${args[@]}" --workdir "/opt/pwd" -i "$img"
+    )
 else
-    (set -x; podman run --userns=keep-id --rm "${args[@]}" -it --workdir "/opt/pwd" --entrypoint bash "$img" -cl "$inp")
+    (
+        set -x
+        podman run --userns=keep-id "${args[@]}" -it --workdir "/opt/pwd" --entrypoint bash "$img" -cl "$inp"
+    )
 fi
