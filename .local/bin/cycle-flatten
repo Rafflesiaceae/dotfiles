@@ -142,6 +142,4 @@ if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
     wait-for-enter "after you have copied the result to your clipboard"
 
     expando
-
-    tests
 fi
