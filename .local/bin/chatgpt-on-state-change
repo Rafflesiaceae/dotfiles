@@ -2,10 +2,9 @@
 set -eo pipefail
 IFS=':' read -ra vars <<< "$2"
 
-
-titleb64="$(echo "${vars[2]}")"
-title="$(echo "$titleb64" | base64 -d)"
-aria="$(echo "${vars[4]}")"
+titleb64=$("${vars[2]}")
+title=$(echo "$titleb64" | base64 -d)
+aria=$("${vars[4]}")
 
 
 finished="Start voice mode"
@@ -32,4 +31,3 @@ case "$aria" in
         touch "$startedf"
         ;;
 esac
-
