@@ -86,11 +86,8 @@ EOF
             echo '```'
             cat "/tmp/query-tests"
             echo '```'
-            # echo ""
-            # echo "Implement what is required to fix the failing tests and output it in the same flattened filetree YAML structure as was provided before."
-            # echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
-            # echo ""
-            # echo "If files are not changed don't output them."
+            echo ""
+
             touch "$failedf"
         fi
     else
@@ -100,20 +97,14 @@ EOF
         echo '```'
         cat "/tmp/query-build"
         echo '```'
-        # echo ""
-        # echo "Implement what is required to fix the build and output it in the same flattened filetree YAML structure as was provided before."
-        # echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
-        # echo ""
-        # echo "If files are not changed don't output them."
+        echo ""
+
         touch "$failedf"
     fi
     if [[ "$edit" ]]; then
         echo "TODO"
-        # echo ""
-        # echo "Implement what is required to fix the build and output it in the same flattened filetree YAML structure as was provided before."
-        # echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
+        echo ""
     fi
-    echo ""
     echo "Implement what is required to fix this and output it in the same flattened filetree YAML structure as was provided before."
     echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
     echo ""
@@ -123,7 +114,6 @@ EOF
     echo 'Inside, write a git commit body - the title max being 50 characters (starting with 'CGPT: ') and the body description 640 characters at most (wrapped at 80 characters per line).'
     echo 'Concisely describe what the issue was that you tried to fix and how you attempt to fix it.'
 } >"$out"
-# } | tee "$out"
 
 if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
     if [[ "$edit" ]]; then
