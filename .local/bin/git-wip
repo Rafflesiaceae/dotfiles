@@ -57,7 +57,7 @@ found_commit_message=
             git add -A
             ;;
         [Nn]*)
-            exit 0
+            exit 7
             ;;
         [Ss])
             git add -u
