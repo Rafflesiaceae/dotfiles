@@ -42,14 +42,16 @@ failedf=/tmp/query-failed
 rm -f "$failedf"
 
 {
+    printf "" >/dev/tty
     if [[ ! "$nosource" ]]; then
-        echo "> Flattening..." >/dev/tty
+        printf "Flatten " >/dev/tty
         echo "This is a flattened filetree represented as a YAML:"
         echo ""
         echo '```'
         flatten -o
         echo '```'
         echo ""
+        printf "✓ " >/dev/tty
     else
 
         cat <<'EOF'
@@ -76,22 +78,26 @@ src/run.sh:
 EOF
     fi
 
-    echo "> Build..." >/dev/tty
+    printf "Build " >/dev/tty
     if build >/tmp/query-build 2>&1; then
-        echo "> Tests..." >/dev/tty
+        printf "✓ " >/dev/tty
+        printf "Tests" >/dev/tty
         if ! tests >/tmp/query-tests 2>&1; then
-            echo "> ... Tests Failed" >/dev/tty
+            echo "Failed" >/dev/tty
             echo "Tests Failed:"
             echo ""
             echo '```'
             cat "/tmp/query-tests"
             echo '```'
             echo ""
+            printf "✘ " >/dev/tty
 
             touch "$failedf"
+        else
+            printf "✓ " >/dev/tty
         fi
     else
-        echo "> ... Build Failed" >/dev/tty
+            printf "✘ " >/dev/tty
         echo "Build Failed:"
         echo ""
         echo '```'
@@ -113,7 +119,16 @@ EOF
     echo "Also add a new file to the filetree named: ${commitmessagef}"
     echo 'Inside, write a git commit body - the title max being 50 characters (starting with 'CGPT: ') and the body description 640 characters at most (wrapped at 80 characters per line).'
     echo 'Concisely describe what the issue was that you tried to fix and how you attempt to fix it.'
+
+    printf "\n" >/dev/tty
 } >"$out"
+
+# Check ChatGPT limits
+if ! limits=$(chatgpt-check-limits < "$out"); then
+    notify-send --urgency=critical "[cycle-flatten]" "$limits"
+else
+    echo "(ChatGPT Limits: ${limits})" >&2
+fi
 
 if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
     if [[ "$edit" ]]; then
