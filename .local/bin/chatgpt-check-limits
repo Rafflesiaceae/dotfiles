@@ -1,0 +1,106 @@
+#!/usr/bin/env luajit
+-- chatgpt-check-limits
+-- Defaults to ChatGPT-5 (Thinking) input limit: 272,000 tokens.
+-- (GPT-5 total context: 400,000 tokens; max reasoning+output ~128,000)
+-- Source for limits: OpenAI GPT-5 for Developers (Aug 2025).
+
+-- Usage:
+--   cat file.txt | chatgpt-check-limits
+--   echo "text"   | chatgpt-check-limits --method words
+--   # override:
+--   cat file.txt | chatgpt-check-limits --max 8192
+--
+-- Exit code: 0 if used < max; 1 if used >= max; 2 on usage error.
+
+local DEFAULT_MAX = 272000 -- GPT-5 (Thinking) max input tokens
+
+local function print_usage()
+  io.stderr:write(([[
+Usage: chatgpt-check-limits [--max <MAX_TOKENS>] [--method bytes4|words]
+
+Reads stdin, estimates tokens, prints "<used> / <max> tokens (X%%)",
+and exits non-zero if used >= max.
+
+Defaults:
+  --max    %d   (ChatGPT-5 Thinking input limit)
+  --method bytes4
+
+Methods:
+  bytes4 (default)  ~1 token per ~4 bytes (ceil(#bytes/4))
+  words             1 token per whitespace-separated word
+]]):format(DEFAULT_MAX))
+end
+
+-- Simple CLI parsing
+local args = {}
+do
+  local i = 1
+  while i <= #arg do
+    local a = arg[i]
+    if a == "--help" or a == "-h" then
+      print_usage()
+      os.exit(2)
+    elseif a == "--max" then
+      if i == #arg then
+        io.stderr:write("Error: --max requires a value\n")
+        print_usage()
+        os.exit(2)
+      end
+      args.max = tonumber(arg[i + 1])
+      i = i + 1
+    elseif a == "--method" then
+      if i == #arg then
+        io.stderr:write("Error: --method requires a value\n")
+        print_usage()
+        os.exit(2)
+      end
+      args.method = tostring(arg[i + 1])
+      i = i + 1
+    else
+      io.stderr:write("Error: unknown option: " .. tostring(a) .. "\n")
+      print_usage()
+      os.exit(2)
+    end
+    i = i + 1
+  end
+end
+
+-- Defaults & validation
+local max_tokens = args.max or DEFAULT_MAX
+if (not max_tokens) or max_tokens <= 0 then
+  io.stderr:write("Error: --max must be a positive integer\n")
+  print_usage()
+  os.exit(2)
+end
+local method = args.method or "bytes4"
+if method ~= "bytes4" and method ~= "words" then
+  io.stderr:write("Error: --method must be 'bytes4' or 'words'\n")
+  print_usage()
+  os.exit(2)
+end
+
+-- Read all stdin
+local input = io.read("*a") or ""
+local used
+
+if method == "bytes4" then
+  -- Estimate: ~4 bytes ≈ 1 token (ceil).
+  local bytes = #input
+  used = math.ceil(bytes / 4)
+else
+  -- Very rough: 1 token per whitespace-separated word.
+  local count = 0
+  for _ in string.gmatch(input, "%S+") do
+    count = count + 1
+  end
+  used = count
+end
+
+-- Report and exit
+local pct = (used / max_tokens) * 100
+io.write(string.format("%d / %d tokens used (%.1f%%) via %s\n", used, max_tokens, pct, method))
+if used >= max_tokens then
+  os.exit(1)
+else
+  os.exit(0)
+end
