@@ -74,6 +74,21 @@ fi
 
 cdd() { cd "$(dirname "$1")"; }
 
+gcl() {
+    if [[ "$#" -lt 1 ]]; then
+        echo "pass an URL to clone" >&2
+        return 1
+    fi
+    url="$1"
+    dir="${url##*/}"   # -> somerepo.git
+    dir="${dir%.git}" # -> somerepo
+
+    if [[ ! -d "$dir" ]]; then
+        git clone "$url"
+    fi
+    cd "$dir"
+}
+
 nh() {
     tmpfile=$(mktemp)
     [ -z "$*" ] && {
