@@ -4,6 +4,7 @@ set -eo pipefail
 # set -x
 out=/tmp/query
 
+# {{{1 CLI
 usage() {
     echo "usage: [-h|--help] [-ns|--nosource] [-e|--edit] <file>"
     exit "${1:-1}"
@@ -35,26 +36,40 @@ while :; do
     shift || usage
 done
 
+# {{{1 Main
+
 commitmessagef=wip-commit-message
 rm -f "$commitmessagef"
 
 failedf=/tmp/query-failed
 rm -f "$failedf"
 
-{
-    printf "" >/dev/tty
-    if [[ ! "$nosource" ]]; then
-        printf "Flatten " >/dev/tty
-        echo "This is a flattened filetree represented as a YAML:"
-        echo ""
-        echo '```'
-        flatten -o
-        echo '```'
-        echo ""
-        printf "✓ " >/dev/tty
-    else
+single_cycle() {
+    {
+        printf "┏━━━━━━━━━━━━━━━━━━┓\n┗" >/dev/tty
+        if [[ ! "$nosource" ]]; then
+            printf "Flatten " >/dev/tty
+            echo "This is a flattened filetree represented as a YAML:"
+            echo ""
+            echo '```'
+            flatten -o
+            echo '```'
+            echo ""
+            printf "✓ " >/dev/tty
 
-        cat <<'EOF'
+            # print last 20 git commit titles
+            if git rev-parse --git-dir >/dev/null 2>&1; then
+                echo "Last 20 git commit titles:"
+                echo ""
+                echo '```'
+                git log -n 20 --pretty=format:%s
+                echo ""
+                echo '```'
+                echo ""
+            fi
+        else
+
+            cat <<'EOF'
 This is an example flattened filetree represented as a YAML - use this as output format:
 
 ```
@@ -76,75 +91,83 @@ src/run.sh:
 ```
 
 EOF
-    fi
+        fi
 
-    printf "Build " >/dev/tty
-    if build >/tmp/query-build 2>&1; then
-        printf "✓ " >/dev/tty
-        printf "Tests" >/dev/tty
-        if ! tests >/tmp/query-tests 2>&1; then
-            echo "Failed" >/dev/tty
-            echo "Tests Failed:"
-            echo ""
-            echo '```'
-            cat "/tmp/query-tests"
-            echo '```'
-            echo ""
+        printf "Build " >/dev/tty
+        if build >/tmp/query-build 2>&1; then
+            printf "✓ " >/dev/tty
+            printf "Tests" >/dev/tty
+            if ! tests >/tmp/query-tests 2>&1; then
+                echo "Failed" >/dev/tty
+                echo "Tests Failed:"
+                echo ""
+                echo '```'
+                cat "/tmp/query-build"
+                echo '```'
+                echo ""
+                printf "✘ " >/dev/tty
+
+                touch "$failedf"
+            else
+                printf "✓ " >/dev/tty
+            fi
+        else
             printf "✘ " >/dev/tty
+            echo "Build Failed:"
+            echo ""
+            echo '```'
+            cat "/tmp/query-build"
+            echo '```'
+            echo ""
 
             touch "$failedf"
-        else
-            printf "✓ " >/dev/tty
         fi
+        if [[ "$edit" ]]; then
+            echo "TODO"
+            echo ""
+        fi
+
+        echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
+        echo "Implement what is required to fix this and return a single fenced yaml code block with only the changed files and no extra text."
+        echo ""
+        echo "If files are not changed don't output them."
+        echo ""
+        echo "Also add a new file to the filetree named: ${commitmessagef}"
+        echo 'Inside, write a git commit body - the title max being 50 characters (starting with 'CGPT: ') and the body description 640 characters at most (wrapped at 80 characters per line).'
+        echo 'Concisely describe what the issue was that you tried to fix and how you attempt to fix it.'
+
+        printf "\n" >/dev/tty
+    } >"$out"
+
+    # Check ChatGPT limits
+    if ! limits=$(chatgpt-check-limits <"$out"); then
+        notify-send --urgency=critical "[cycle-flatten]" "$limits"
     else
-            printf "✘ " >/dev/tty
-        echo "Build Failed:"
-        echo ""
-        echo '```'
-        cat "/tmp/query-build"
-        echo '```'
-        echo ""
-
-        touch "$failedf"
-    fi
-    if [[ "$edit" ]]; then
-        echo "TODO"
-        echo ""
-    fi
-    echo "Implement what is required to fix this and output it in the same flattened filetree YAML structure as was provided before."
-    echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
-    echo ""
-    echo "If files are not changed don't output them."
-    echo ""
-    echo "Also add a new file to the filetree named: ${commitmessagef}"
-    echo 'Inside, write a git commit body - the title max being 50 characters (starting with 'CGPT: ') and the body description 640 characters at most (wrapped at 80 characters per line).'
-    echo 'Concisely describe what the issue was that you tried to fix and how you attempt to fix it.'
-
-    printf "\n" >/dev/tty
-} >"$out"
-
-# Check ChatGPT limits
-if ! limits=$(chatgpt-check-limits < "$out"); then
-    notify-send --urgency=critical "[cycle-flatten]" "$limits"
-else
-    echo "(ChatGPT Limits: ${limits})" >&2
-fi
-
-if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
-    if [[ "$edit" ]]; then
-        vim + "$out"
+        printf "CGPT Limits: %s\n" "${limits}" >&2
     fi
 
-    if [[ ! -s "$out" ]] || ! grep -q '[^[:space:]]' "$out"; then
-        echo "Empty file, aborting..."
-        exit 1
+    if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
+        if [[ "$edit" ]]; then
+            vim + "$out"
+        fi
+
+        if [[ ! -s "$out" ]] || ! grep -q '[^[:space:]]' "$out"; then
+            echo "Empty file, aborting..."
+            exit 1
+        fi
+
+        cb -i <"$out"
+        # echo "Copied '$out' to clipboard!"
+        # echo "Now paste it to ChatGPT and wait for the result."
+
+        wait-for-enter "after you have the response of ChatGPT in your Clipboard"
+
+        expando
+
+        if [[ -e "$failedf" ]]; then
+            return 1
+        fi
     fi
+}
 
-    cb -i <"$out"
-    echo "Copied '$out' to clipboard!"
-    echo "Now paste it to ChatGPT and wait for the result."
-
-    wait-for-enter "after you have copied the result to your clipboard"
-
-    expando
-fi
+while ! single_cycle; do :; done
