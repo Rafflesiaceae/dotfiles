@@ -6,6 +6,11 @@ titleb64="${vars[2]}"
 title=$(echo "$titleb64" | base64 -d)
 aria="${vars[4]}"
 
+# Ignore "ChatGPT" notifications (can sometimes happen when loading the page)
+if [[ "$title" == "ChatGPT" ]]; then
+    exit 0
+fi
+
 cached="${HOME}/.cache/chatgpt-on-state-change"
 titled="${cached}/${titleb64}"
 
