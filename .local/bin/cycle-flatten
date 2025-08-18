@@ -52,7 +52,7 @@ single_cycle() {
             echo "This is a flattened filetree represented as a YAML:"
             echo ""
             echo '```'
-            flatten -o
+            flatten
             echo '```'
             echo ""
             printf "✓ " >/dev/tty
@@ -96,16 +96,15 @@ EOF
         printf "Build " >/dev/tty
         if build >/tmp/query-build 2>&1; then
             printf "✓ " >/dev/tty
-            printf "Tests" >/dev/tty
+            printf "Tests " >/dev/tty
             if ! tests >/tmp/query-tests 2>&1; then
-                echo "Failed" >/dev/tty
+                printf "✘ " >/dev/tty
                 echo "Tests Failed:"
                 echo ""
                 echo '```'
-                cat "/tmp/query-build"
+                cat "/tmp/query-tests"
                 echo '```'
                 echo ""
-                printf "✘ " >/dev/tty
 
                 touch "$failedf"
             else
@@ -143,7 +142,8 @@ EOF
     if ! limits=$(chatgpt-check-limits <"$out"); then
         notify-send --urgency=critical "[cycle-flatten]" "$limits"
     else
-        printf "CGPT Limits: %s\n" "${limits}" >&2
+        # printf "CGPT Limits: %s\n" "${limits}" >&2
+        :
     fi
 
     if [[ "$edit" ]] || [[ -e "$failedf" ]]; then
@@ -157,15 +157,15 @@ EOF
         fi
 
         cb -i <"$out"
-        # echo "Copied '$out' to clipboard!"
-        # echo "Now paste it to ChatGPT and wait for the result."
 
-        wait-for-enter "after you have the response of ChatGPT in your Clipboard"
+        wait-for-enter "Copied to clipboard. Press Enter after you have the response of ChatGPT in your Clipboard..."
 
         expando
 
         if [[ -e "$failedf" ]]; then
             return 1
+        elif [[ "$edit" ]]; then 
+            exit 0
         fi
     fi
 }
