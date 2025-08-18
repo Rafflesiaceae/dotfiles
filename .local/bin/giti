@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# init-git-with-user.sh
+# Checks we're not already inside a Git repo, lets you pick a user via fzf,
+# then runs: git init -> gitusers <picked-first-col> -> git-initial-commit
+
+set -euo pipefail
+
+# 0) Sanity checks
+for cmd in git fzf gitusers git-initial-commit; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: required command '$cmd' not found in PATH." >&2
+    exit 1
+  fi
+done
+
+# 1) Refuse to run inside an existing Git repo
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Error: $(pwd) is already an initialized Git repository." >&2
+  exit 1
+fi
+
+# 2) Prompt for user: run `gitusers | tail -n +2 | fzf` and take first column
+users_out="$(gitusers | tail -n +2)"
+if [[ -z "${users_out// }" ]]; then
+  echo "Error: 'gitusers' returned no selectable rows." >&2
+  exit 1
+fi
+
+if ! selection="$(printf '%s\n' "$users_out" | fzf --prompt='Pick user > ')"; then
+  echo "Aborted: no selection made." >&2
+  exit 1
+fi
+
+first_col="$(awk '{print $1}' <<<"$selection")"
+if [[ -z "${first_col// }" ]]; then
+  echo "Error: could not parse the first column from your selection: '$selection'." >&2
+  exit 1
+fi
+
+# 3) Initialize and configure
+git init
+gitusers "$first_col"
+
+# 4) Initial commit
+git-initial-commit

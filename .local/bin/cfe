@@ -1,0 +1,2 @@
+#!/bin/dash
+cycle-flatten -e "$@"
