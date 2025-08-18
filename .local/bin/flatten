@@ -1,14 +1,2 @@
-#!/usr/bin/env bash
-set -eo pipefail
-
-tmpfile=$(mktemp)
-trap 'rm -f "$tmpfile"' EXIT INT
-
-if [[ "$1" == "-o" ]]; then
-    shift
-    oat --debug filetree flatten "$@"
-else
-    oat --debug filetree flatten --llm "$@" >"$tmpfile"
-    termpopup -ft "vim + '${tmpfile}'"
-    cb <"${tmpfile}"
-fi
+#!/bin/dash
+oat --debug filetree flatten "$@"
