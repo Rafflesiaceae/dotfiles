@@ -1030,6 +1030,18 @@ tasks:
 EOF
             ;;
     # }}}
+        tests) # {{{2
+            xicat "test.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+# cd to parent dir of current script
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+set -x
+EOF
+        ;;
+# }}}
         github-actions) # {{{2
             icat ".github/workflows/ci.yml" <<'EOF'
 name: CI
