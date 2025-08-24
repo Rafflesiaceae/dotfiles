@@ -92,8 +92,9 @@ base=(
     pacman-contrib
     pkg-config
     polkit
-    pulseaudio
-    pulseaudio-alsa
+    pipewire
+    pipewire-pulse
+    pipewire-audio
     python-pynvim
     qemu
     ranger
