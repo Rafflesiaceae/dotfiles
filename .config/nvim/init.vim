@@ -1865,3 +1865,67 @@ function! MaybeSetupTreesitterNu()
     endif
 endfunction
 " }}}
+
+" {{{ Prepend current file's directory to ~/.cache/zsh/dirs (if not already first line)
+lua << EOF
+-- Prepend current file's directory to ~/.cache/zsh/dirs (if not already first line)
+if vim.g.loaded_prepend_dir_to_zsh_dirs then
+  return
+end
+vim.g.loaded_prepend_dir_to_zsh_dirs = true
+
+local function prepend_dir_to_zsh_dirs()
+  -- Only act on normal file buffers with a name
+  if vim.bo.buftype ~= "" then return end
+  local name = vim.api.nvim_buf_get_name(0)
+  if name == "" then return end
+
+  -- Ignore remote/URI buffers
+  if name:match("^%w+://") then return end
+
+  -- Compute absolute directory of current file
+  local curfile = vim.fn.fnamemodify(name, ":p")
+  local dir = vim.fn.simplify(vim.fn.fnamemodify(curfile, ":p:h"))
+  if dir == "" then return end
+
+  -- Target list file
+  local listfile = vim.fn.expand("~/.cache/zsh/dirs")
+
+  -- Avoid recursion if editing the list file itself
+  if vim.fn.fnamemodify(curfile, ":p") == vim.fn.fnamemodify(listfile, ":p") then
+    return
+  end
+
+  -- Ensure parent directory exists
+  local listdir = vim.fn.fnamemodify(listfile, ":h")
+  if vim.fn.isdirectory(listdir) == 0 then
+    vim.fn.mkdir(listdir, "p")
+  end
+
+  -- Read first line (if any)
+  local first = ""
+  if vim.fn.filereadable(listfile) == 1 then
+    local firstline = vim.fn.readfile(listfile, "", 1)
+    if #firstline > 0 then
+      first = firstline[1]
+    end
+  end
+
+  -- Prepend only if the first line isn't already the same directory
+  if first ~= dir then
+    local contents = {}
+    if vim.fn.filereadable(listfile) == 1 then
+      contents = vim.fn.readfile(listfile)
+    end
+    table.insert(contents, 1, dir)
+    pcall(vim.fn.writefile, contents, listfile) -- silently ignore write errors
+  end
+end
+
+local grp = vim.api.nvim_create_augroup("PrependDirToZshDirs", { clear = true })
+vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
+  group = grp,
+  callback = prepend_dir_to_zsh_dirs,
+})
+EOF
+" }}}
