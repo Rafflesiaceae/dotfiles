@@ -1877,6 +1877,7 @@ vim.g.loaded_prepend_dir_to_zsh_dirs = true
 -- >>> Add paths here to ignore (exact prefixes). Examples included:
 local ignore_prefixes = {
   "/tmp",                  -- ignore /tmp and all subdirs
+  "~/.local/bin",                  -- ignore /tmp and all subdirs
   -- "~/.cache",           -- you can use ~; it's expanded below
   -- "/var/tmp",
 }
