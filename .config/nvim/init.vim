@@ -1874,34 +1874,60 @@ if vim.g.loaded_prepend_dir_to_zsh_dirs then
 end
 vim.g.loaded_prepend_dir_to_zsh_dirs = true
 
+-- >>> Add paths here to ignore (exact prefixes). Examples included:
+local ignore_prefixes = {
+  "/tmp",                  -- ignore /tmp and all subdirs
+  -- "~/.cache",           -- you can use ~; it's expanded below
+  -- "/var/tmp",
+}
+-- Normalize ignore list (expand ~, absolute, no trailing slash)
+local normalized_ignores = (function()
+  local out = {}
+  for _, p in ipairs(ignore_prefixes) do
+    local expanded = vim.fn.expand(p)
+    local abs = vim.fn.simplify(vim.fn.fnamemodify(expanded, ":p"))
+    abs = abs:gsub("/+$", "") -- strip trailing /
+    table.insert(out, abs)
+  end
+  return out
+end)()
+
+local function is_ignored(dir)
+  local d = dir:gsub("/+$", "") -- strip trailing /
+  for _, pref in ipairs(normalized_ignores) do
+    if d == pref or d:sub(1, #pref + 1) == pref .. "/" then
+      return true
+    end
+  end
+  return false
+end
+
 local function prepend_dir_to_zsh_dirs()
   -- Only act on normal file buffers with a name
   if vim.bo.buftype ~= "" then return end
   local name = vim.api.nvim_buf_get_name(0)
   if name == "" then return end
-
   -- Ignore remote/URI buffers
   if name:match("^%w+://") then return end
-
   -- Compute absolute directory of current file
   local curfile = vim.fn.fnamemodify(name, ":p")
   local dir = vim.fn.simplify(vim.fn.fnamemodify(curfile, ":p:h"))
   if dir == "" then return end
 
+  -- Skip if directory is in ignore list
+  if is_ignored(dir) then return end
+
   -- Target list file
   local listfile = vim.fn.expand("~/.cache/zsh/dirs")
-
   -- Avoid recursion if editing the list file itself
   if vim.fn.fnamemodify(curfile, ":p") == vim.fn.fnamemodify(listfile, ":p") then
     return
   end
-
   -- Ensure parent directory exists
   local listdir = vim.fn.fnamemodify(listfile, ":h")
   if vim.fn.isdirectory(listdir) == 0 then
     vim.fn.mkdir(listdir, "p")
   end
-
   -- Read first line (if any)
   local first = ""
   if vim.fn.filereadable(listfile) == 1 then
@@ -1910,7 +1936,6 @@ local function prepend_dir_to_zsh_dirs()
       first = firstline[1]
     end
   end
-
   -- Prepend only if the first line isn't already the same directory
   if first ~= dir then
     local contents = {}
