@@ -163,6 +163,7 @@ sources = {
     "./.local/bin/gerrit-change-id": "",
     "./.local/bin/gh-apply-pr": "",
     "./.local/bin/git-abort": "",
+    "./.local/bin/git-amend-to-particular-commit": "",
     "./.local/bin/git-cleanup-local-remote-files": "",
     "./.local/bin/git-continue": "",
     "./.local/bin/git-copy-current-revision": "",

@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# edit-and-amend.sh
+# Usage: ./edit-and-amend.sh <commit-ish>
+
+set -Eeuo pipefail
+
+err() { printf "\e[31mERROR:\e[0m %s\n" "$*" >&2; }
+info() { printf "\e[36m==>\e[0m %s\n" "$*"; }
+
+# --- Preflight ---------------------------------------------------------------
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    err "Not inside a git repository."
+    exit 1
+fi
+
+if [ $# -ne 1 ]; then
+    err "Expected exactly one argument: the commit id to edit."
+    echo "Usage: $0 <commit-ish>"
+    exit 1
+fi
+TARGET_COMMIT="$1"
+
+# Validate the commit-ish
+if ! git rev-parse --verify "${TARGET_COMMIT}^{commit}" >/dev/null 2>&1; then
+    err "Argument '${TARGET_COMMIT}' is not a valid commit."
+    exit 1
+fi
+
+# Make sure the index is up-to-date with the working tree metadata
+git update-index -q --refresh || true
+
+# 1) proceed only if there are staged changes
+if git diff --cached --quiet; then
+    err "There are no staged changes. Aborting as requested."
+    exit 1
+fi
+info "Detected staged changes."
+
+# We'll track whether we stashed unstaged changes so we know whether to restore them.
+UNSTAGED_STASHED=0
+
+# Helper to detect any unstaged or untracked changes
+have_unstaged() {
+    if ! git diff --quiet; then
+        return 0
+    fi
+    # include untracked as "unstaged" for cleanliness during rebase
+    if [ -n "$(git ls-files --others --exclude-standard)" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# 2) take the unstaged changes and git stash them if there are any
+if have_unstaged; then
+    info "Stashing UNSTAGED (and untracked) changes..."
+    git stash push -u -k -m "pre-edit:unstaged $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null
+    UNSTAGED_STASHED=1
+else
+    info "No unstaged or untracked changes to stash."
+fi
+
+# 3) then take the staged changes and separately git stash them
+# At this point only staged changes remain; a normal 'git stash push' will stash them.
+info "Stashing STAGED changes..."
+git stash push -m "pre-edit:staged $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null
+
+# 4) noninteractively edit the passed commit
+info "Editing commit ${TARGET_COMMIT} noninteractively..."
+git-rebase-noninteractive-single --edit "${TARGET_COMMIT}"
+
+# 5) pop the git stash that has the previously staged changes (top of stack)
+#    NOTE: We intentionally do NOT use --index here so they come back as unstaged.
+info "Restoring previously STAGED changes from stash..."
+git stash pop >/dev/null || {
+    err "Failed to pop the staged-changes stash. Resolve any conflicts and re-run from step 6."
+    exit 1
+}
+
+# 6) stage these changes
+info "Staging restored changes..."
+git add -A
+
+# 7) amend these changes, popping up $EDITOR to edit the commit message
+info "Amending commit (opening \$EDITOR for the message)..."
+git commit --amend
+
+# 8) run git-continue to finish the commit edit
+info "Continuing rebase/edit..."
+git-continue
+
+# 9) pop the previously unstaged changes (if any) and keep them UNSTAGED
+if [ "$UNSTAGED_STASHED" -eq 1 ]; then
+    info "Restoring previously UNSTAGED (and untracked) changes..."
+    # No --index: we want them left unstaged
+    git stash pop >/dev/null || {
+        err "Failed to pop the unstaged-changes stash. You may need to resolve conflicts and pop manually."
+        exit 1
+    }
+else
+    info "No previously unstaged changes to restore."
+fi
+
+info "Done."
