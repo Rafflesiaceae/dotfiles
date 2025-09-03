@@ -7,6 +7,9 @@ set -Eeuo pipefail
 err() { printf "\e[31mERROR:\e[0m %s\n" "$*" >&2; }
 info() { printf "\e[36m==>\e[0m %s\n" "$*"; }
 
+# Never recurse into submodules for ANY git command:
+git_nr() { git -c submodule.recurse=false "$@"; }
+
 # --- Preflight ---------------------------------------------------------------
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     err "Not inside a git repository."
@@ -20,85 +23,121 @@ if [ $# -ne 1 ]; then
 fi
 TARGET_COMMIT="$1"
 
+# Fallback: just amend current commit (your special sentinel)
+if [[ "$TARGET_COMMIT" == "0000000000000000000000000000000000000000" ]]; then
+    git_nr commit --amend
+    exit 0
+fi
+
 # Validate the commit-ish
 if ! git rev-parse --verify "${TARGET_COMMIT}^{commit}" >/dev/null 2>&1; then
     err "Argument '${TARGET_COMMIT}' is not a valid commit."
     exit 1
 fi
 
-# Make sure the index is up-to-date with the working tree metadata
-git update-index -q --refresh || true
+git_nr update-index -q --refresh || true
 
 # 1) proceed only if there are staged changes
-if git diff --cached --quiet; then
+if git_nr diff --cached --quiet; then
     err "There are no staged changes. Aborting as requested."
     exit 1
 fi
 info "Detected staged changes."
 
-# We'll track whether we stashed unstaged changes so we know whether to restore them.
+# Workspace
+TMPDIR="$(mktemp -d -t edit-amend.XXXXXX)"
+cleanup() { rm -rf "$TMPDIR"; }
+trap cleanup EXIT
+
+ALL_STAGED="$TMPDIR/all_staged.nul" # NUL-delimited list of ALL staged paths
+ALLOWED_NUL="$TMPDIR/allowed.nul"   # NUL-delimited list excluding submodules
+PATCH="$TMPDIR/staged.patch"        # Binary patch of allowed staged changes
+
+# Collect staged paths (NUL-delimited; robust to spaces/newlines)
+git_nr diff --cached --name-only -z >"$ALL_STAGED"
+
+# Discover submodule gitlinks (mode 160000)
+SUBMODS_TXT="$TMPDIR/submods.txt"
+: >"$SUBMODS_TXT"
+git submodule--helper list 2>/dev/null | awk '{print $4}' >>"$SUBMODS_TXT" || true
+git ls-files -s | awk '$1=="160000"{print $4}' >>"$SUBMODS_TXT" || true
+sort -u -o "$SUBMODS_TXT" "$SUBMODS_TXT"
+
+# Filter out submodule paths
+: >"$ALLOWED_NUL"
+if [ -s "$ALL_STAGED" ]; then
+    while IFS= read -r -d '' p; do
+        if grep -Fxq -- "$p" "$SUBMODS_TXT"; then
+            continue # skip gitlinks entirely
+        fi
+        printf '%s\0' "$p" >>"$ALLOWED_NUL"
+    done <"$ALL_STAGED"
+fi
+
+# Refuse if the only staged items were submodule pointers
+if [ ! -s "$ALLOWED_NUL" ]; then
+    err "Only submodule pointer changes are staged; refusing to proceed to avoid repinning."
+    exit 1
+fi
+
+# Read allowed paths into an array
+ALLOWED_ARR=()
+if command -v mapfile >/dev/null 2>&1; then
+    mapfile -d '' -t ALLOWED_ARR <"$ALLOWED_NUL"
+else
+    while IFS= read -r -d '' p; do ALLOWED_ARR+=("$p"); done <"$ALLOWED_NUL"
+fi
+
+# Create a patch of ONLY those allowed staged changes
+git_nr diff --cached --binary -- "${ALLOWED_ARR[@]}" >"$PATCH"
+
+# 2) stash UNSTAGED (and untracked) changes; keep index intact
 UNSTAGED_STASHED=0
-
-# Helper to detect any unstaged or untracked changes
-have_unstaged() {
-    if ! git diff --quiet; then
-        return 0
-    fi
-    # include untracked as "unstaged" for cleanliness during rebase
-    if [ -n "$(git ls-files --others --exclude-standard)" ]; then
-        return 0
-    fi
-    return 1
-}
-
-# 2) take the unstaged changes and git stash them if there are any
-if have_unstaged; then
+if ! git_nr diff --quiet || [ -n "$(git_nr ls-files --others --exclude-standard)" ]; then
     info "Stashing UNSTAGED (and untracked) changes..."
-    git stash push -u -k -m "pre-edit:unstaged $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null
+    git_nr stash push -u -k -m "pre-edit:unstaged $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null
     UNSTAGED_STASHED=1
 else
     info "No unstaged or untracked changes to stash."
 fi
 
-# 3) then take the staged changes and separately git stash them
-# At this point only staged changes remain; a normal 'git stash push' will stash them.
-info "Stashing STAGED changes..."
-git stash push -m "pre-edit:staged $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null
+# 3) hide the staged changes WITHOUT using stash (which can carry gitlinks):
+info "Temporarily hiding originally STAGED (non-submodule) changes..."
+git_nr reset -q -- "${ALLOWED_ARR[@]}"    # unstage them
+git_nr checkout -q -- "${ALLOWED_ARR[@]}" # restore working tree for those paths to HEAD
 
 # 4) noninteractively edit the passed commit
 info "Editing commit ${TARGET_COMMIT} noninteractively..."
 git-rebase-noninteractive-single --edit "${TARGET_COMMIT}"
 
-# 5) pop the git stash that has the previously staged changes (top of stack)
-#    NOTE: We intentionally do NOT use --index here so they come back as unstaged.
-info "Restoring previously STAGED changes from stash..."
-git stash pop >/dev/null || {
-    err "Failed to pop the staged-changes stash. Resolve any conflicts and re-run from step 6."
+# 5) restore previously staged changes (WITHOUT touching submodules)
+info "Restoring the previously staged changes..."
+if ! git_nr apply --3way --whitespace=nowarn "$PATCH"; then
+    err "Failed to re-apply saved changes (patch did not apply cleanly). Resolve conflicts and retry."
     exit 1
-}
+fi
 
-# 6) stage these changes
-info "Staging restored changes..."
-git add -A
+# 6) stage ONLY the original set (include deletions)
+info "Staging restored changes (exact original set)..."
+git_nr add -A -- "${ALLOWED_ARR[@]}"
 
-# 7) amend these changes, popping up $EDITOR to edit the commit message
+# 7) amend (opens $EDITOR)
 info "Amending commit (opening \$EDITOR for the message)..."
-git commit --amend
+git_nr commit --amend
 
-# 8) run git-continue to finish the commit edit
+# 8) finish edit
 info "Continuing rebase/edit..."
 git-continue
 
-# 9) pop the previously unstaged changes (if any) and keep them UNSTAGED
+# 9) pop previously UNSTAGED changes and keep them unstaged
 if [ "$UNSTAGED_STASHED" -eq 1 ]; then
     info "Restoring previously UNSTAGED (and untracked) changes..."
-    # No --index: we want them left unstaged
-    git stash pop >/dev/null || {
-        err "Failed to pop the unstaged-changes stash. You may need to resolve conflicts and pop manually."
+    git_nr stash pop >/dev/null || {
+        err "Failed to pop the unstaged-changes stash. Resolve conflicts and pop manually."
         exit 1
     }
 else
     info "No previously unstaged changes to restore."
 fi
 
-info "Done."
+info "Done (submodules untouched)."
