@@ -2,19 +2,25 @@
 set -eo pipefail
 
 # set -x
-out=/tmp/query
+out=/tmp/chatgpt-query
+
+gitws=$(git rev-parse --show-toplevel 2>/dev/null || true)
 
 # {{{1 CLI
 usage() {
-    echo "usage: [-h|--help] [-ns|--nosource] [-e|--edit] <file>"
+    echo "usage: [-h|--help] [-nb|--nobuild] [-ns|--nosource] [-e|--edit] <file>"
     exit "${1:-1}"
 }
+nobuild=
 nosource=
 edit=
 while :; do
     case $1 in
     -h | -\? | --help)
         usage 0
+        ;;
+    -nb | --nobuild)
+        nobuild=1
         ;;
     -ns | --nosource)
         nosource=1
@@ -58,7 +64,7 @@ single_cycle() {
             printf "✓ " >/dev/tty
 
             # print last 20 git commit titles
-            if git rev-parse --git-dir >/dev/null 2>&1; then
+            if [[ "$gitws" ]]; then
                 echo "Last 20 git commit titles:"
                 echo ""
                 echo '```'
@@ -93,36 +99,45 @@ src/run.sh:
 EOF
         fi
 
-        printf "Build " >/dev/tty
-        if build >/tmp/query-build 2>&1; then
-            printf "✓ " >/dev/tty
-            printf "Tests " >/dev/tty
-            if ! tests >/tmp/query-tests 2>&1; then
+        if [[ ! "$nobuild" ]]; then
+            printf "Build " >/dev/tty
+            if timeout -v '3s' build >/tmp/query-build 2>&1; then
+                printf "✓ " >/dev/tty
+                printf "Tests " >/dev/tty
+                if ! tests >/tmp/query-tests 2>&1; then
+                    printf "✘ " >/dev/tty
+                    echo "Tests Failed:"
+                    echo ""
+                    echo '```'
+                    cat "/tmp/query-tests"
+                    echo '```'
+                    echo ""
+
+                    touch "$failedf"
+                else
+                    printf "✓ " >/dev/tty
+                fi
+            else
                 printf "✘ " >/dev/tty
-                echo "Tests Failed:"
+                echo "Build Failed:"
                 echo ""
                 echo '```'
-                cat "/tmp/query-tests"
+                cat "/tmp/query-build"
                 echo '```'
                 echo ""
 
                 touch "$failedf"
-            else
-                printf "✓ " >/dev/tty
             fi
-        else
-            printf "✘ " >/dev/tty
-            echo "Build Failed:"
-            echo ""
-            echo '```'
-            cat "/tmp/query-build"
-            echo '```'
-            echo ""
-
-            touch "$failedf"
         fi
+
         if [[ "$edit" ]]; then
             echo "TODO"
+            echo ""
+        fi
+
+        if [[ "$gitws" ]] && [[ -e "${gitws}/chatgpt-query-additional" ]]; then
+            echo ""
+            cat "${gitws}/chatgpt-query-additional"
             echo ""
         fi
 
@@ -156,6 +171,7 @@ EOF
             exit 1
         fi
 
+        cp "$out" "${out}.$(date -u +"%Y-%m-%dT%H-%M-%SZ")"
         cb -i <"$out"
 
         wait-for-enter "Copied to clipboard. Press Enter after you have the response of ChatGPT in your Clipboard..."
@@ -164,7 +180,7 @@ EOF
 
         if [[ -e "$failedf" ]]; then
             return 1
-        elif [[ "$edit" ]]; then 
+        elif [[ "$edit" ]]; then
             exit 0
         fi
     fi
