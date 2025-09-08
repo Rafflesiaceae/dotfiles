@@ -1,5 +1,5 @@
 #!/bin/dash
-test_path=$(find-upwards "test.sh")
+test_path=$(find-upwards "test.sh" || find-upwards "tests.sh" || true)
 if [ -e "$test_path" ]; then
     printf "+ %s %s\n" "$test_path" "$*"
     "$test_path" "$@"
