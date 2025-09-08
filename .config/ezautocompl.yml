@@ -2034,6 +2034,7 @@ on/trap error (.bash): |
     trap 'on_error' ERR
 
 date-alphabetical-sort (.cmd .sh .bash): date +%Y.%m.%d\ %T\ +%Z
+date-alphabetical-sort-filename (.cmd .sh .bash): date -u +"%Y-%m-%dT%H-%M-%SZ"
 
 date-short-time (.cmd .sh .bash): date +%T
 date-posix (.cmd .sh .bash): date +%s
