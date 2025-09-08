@@ -2,88 +2,88 @@
 set -eo pipefail
 
 prompt() {
-    prompt="${1:-Continue?} (y/s/n) "
-    tput sc >&2
-    while true; do
-        read -p "$prompt" -n 1 -r yn
-        case $yn in
-        [YyNnSs])
-            printf "%s" "$yn"
-            echo "" >/dev/tty
-            return 0
-            ;;
-        *)
-            tput el1 >&2
-            tput rc >&2
-            ;;
-        esac
-    done
+prompt="${1:-Continue?} (y/s/n) "
+tput sc >&2
+while true; do
+    read -p "$prompt" -n 1 -r yn
+    case $yn in
+    [YyNnSs])
+        printf "%s" "$yn"
+        echo "" >/dev/tty
+        return 0
+        ;;
+    *)
+        tput el1 >&2
+        tput rc >&2
+        ;;
+    esac
+done
 }
 
 found_commit_message=
 {
-    if [[ -f "wip-commit-message" ]]; then
-        # Detect, remember and remove wip-commit-message
-        tmpfile=$(mktemp)
-        trap 'rm -f "$tmpfile"' EXIT INT
-        cp wip-commit-message "$tmpfile"
-        rm "wip-commit-message"
-        found_commit_message=1
-    fi
+if [[ -f "wip-commit-message" ]]; then
+    # Detect, remember and remove wip-commit-message
+    tmpfile=$(mktemp)
+    trap 'rm -f "$tmpfile"' EXIT INT
+    cp wip-commit-message "$tmpfile"
+    rm "wip-commit-message"
+    found_commit_message=1
+fi
 }
 
 {
-    # Check if there are any changes (unstaged, staged, or untracked)
-    if [[ -z $(git status --porcelain) ]]; then
-        echo "No changes detected"
+# Check if there are any changes (unstaged, staged, or untracked)
+if [[ -z $(git status --porcelain) ]]; then
+    echo "No changes detected"
+    exit 0
+fi
+
+# Check for untracked files
+if [[ -n $(git ls-files --others --exclude-standard) ]]; then
+    untracked=$(git ls-files --others --exclude-standard)
+    if [[ -n "$untracked" ]]; then
+        echo "Untracked files detected:"
+        # Print each file on a separate line (optional: indent for clarity)
+        while IFS= read -r file; do
+            printf '  %s\n' "$file"
+        done <<<"$untracked"
+    fi
+
+    answer=$(prompt "Stage all changes including untracked files?")
+    case "$answer" in
+    [Yy])
+        echo "All changes (including untracked files) staged."
+        git add -A
+        ;;
+    [Nn]*)
         exit 0
-    fi
-
-    # Check for untracked files
-    if [[ -n $(git ls-files --others --exclude-standard) ]]; then
-        untracked=$(git ls-files --others --exclude-standard)
-        if [[ -n "$untracked" ]]; then
-            echo "Untracked files detected:"
-            # Print each file on a separate line (optional: indent for clarity)
-            while IFS= read -r file; do
-                printf '  %s\n' "$file"
-            done <<<"$untracked"
-        fi
-
-        answer=$(prompt "Stage all changes including untracked files?")
-        case "$answer" in
-        [Yy])
-            echo "All changes (including untracked files) staged."
-            git add -A
-            ;;
-        [Nn]*)
-            exit 7
-            ;;
-        [Ss])
-            git add -u
-            echo "Only unstaged changes staged."
-            ;;
-        *)
-            exit 9
-            ;;
-        esac
-    else
+        ;;
+    [Ss])
         git add -u
-        echo "Only unstaged changes staged (no untracked files present)."
-    fi
+        echo "Only unstaged changes staged."
+        ;;
+    *)
+        exit 9
+        ;;
+    esac
+else
+    git add -u
+    echo "Only unstaged changes staged (no untracked files present)."
+fi
 }
 
 # print changes
 changes=$(git diff --cached --name-only)
 if [[ -n "$changes" ]]; then
-    while IFS= read -r file; do
-        printf '  %s\n' "$file"
-    done <<<"$changes"
+while IFS= read -r file; do
+    printf '  %s\n' "$file"
+done <<<"$changes"
 fi
 
 # Implicitly use 'wip-commit-message' if found
 if [[ "$found_commit_message" ]] && [[ -s "$tmpfile" ]]; then
-    git commit -F "$tmpfile"
+git commit -F "$tmpfile"
 else
     git commit -m "WIP $(date +%s)"
 fi
