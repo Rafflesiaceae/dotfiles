@@ -1,12 +1,36 @@
 #!/usr/bin/env bash
 set -eo pipefail
-if git-is-a-git-workspace; then
+
+usage() {
+    echo "usage: [-h|--help] [-nc|--nocommit]"
+    exit "${1:-1}"
+}
+nocommit=
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            usage 0 ;;
+        -nc|--nocommit)
+            nocommit=1
+            ;;
+        --)
+            shift || usage
+            break
+            ;;
+        -?*) printf 'ERROR: Unknown option: %s\n' "$1" >&2; usage ;;
+        *) break ;;
+    esac
+
+    shift || usage
+done
+
+if [[ ! "$nocommit" ]] && git-is-a-git-workspace; then
     echo "+ git-wip"
     git-wip
 fi
 echo "+ cb | oat filetree expand"
 cb | oat filetree expand
-if git-is-a-git-workspace; then
+if [[ ! "$nocommit" ]] && git-is-a-git-workspace; then
     echo "+ git-wip"
     git-wip
 fi
