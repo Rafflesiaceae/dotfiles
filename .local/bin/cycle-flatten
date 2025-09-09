@@ -8,11 +8,13 @@ gitws=$(git rev-parse --show-toplevel 2>/dev/null || true)
 
 # {{{1 CLI
 usage() {
-    echo "usage: [-h|--help] [-nb|--nobuild] [-ns|--nosource] [-e|--edit] <file>"
+    echo "usage: [-h|--help] [-nb|--nobuild] [-nc|--nocommit] [-ns|--nosource] [-e|--edit] <file>"
     exit "${1:-1}"
 }
 nobuild=
+nocommit=
 nosource=
+notest=
 edit=
 while :; do
     case $1 in
@@ -22,8 +24,15 @@ while :; do
     -nb | --nobuild)
         nobuild=1
         ;;
+    -nc | --nocommit)
+        nocommit=1
+        ;;
     -ns | --nosource)
         nosource=1
+        ;;
+    -nt | --notest)
+        # TODO
+        notest=1
         ;;
     -e | --edit)
         edit=1
@@ -101,7 +110,7 @@ EOF
 
         if [[ ! "$nobuild" ]]; then
             printf "Build " >/dev/tty
-            if timeout -v '3s' build >/tmp/query-build 2>&1; then
+            if build >/tmp/query-build 2>&1; then
                 printf "✓ " >/dev/tty
                 printf "Tests " >/dev/tty
                 if ! tests >/tmp/query-tests 2>&1; then
@@ -176,7 +185,11 @@ EOF
 
         wait-for-enter "Copied to clipboard. Press Enter after you have the response of ChatGPT in your Clipboard..."
 
-        expando
+        if [[ "$nocommit" ]]; then
+            expando --nocommit
+        else
+            expando
+        fi
 
         if [[ -e "$failedf" ]]; then
             return 1
