@@ -111,6 +111,21 @@ mkdirc() {
     cd "$1"
 }
 
+cdg() {
+    local d
+    d="$(pwd)"
+    while [[ "$d" != "/" ]]; do
+        if [[ -d "$d/.git" ]] || [[ -f "$d/.git" ]]; then
+            # If .git is a file (worktree/submodule), read gitdir to locate actual dir,
+            # but we still want the repo root 'd'
+            cd "$d" >/dev/null 2>&1
+            return 0
+        fi
+        d="$(dirname "$d")"
+    done
+    return 1
+}
+
 if [ -f "${HOME}/.shellrc.local" ]; then
     # shellcheck disable=SC1091
     source "${HOME}/.shellrc.local"
