@@ -235,6 +235,7 @@ sources = {
     "./.local/bin/gitsup": "",
     "./.local/bin/gitup": "",
     "./.local/bin/grr": "",
+    "./.local/bin/gru": "",
     "./.local/bin/hex-to-decimal": "",
     "./.local/bin/i3-chrome-open-url-in-mpv": {"linux": ""},
     "./.local/bin/i3-ctrlc": {"linux": ""},
