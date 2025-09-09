@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# readarray -t files < <(find . -type f)
+readarray -t files < <(find . -type f -exec grep -Iq . {} \; -print)
+
+# files=()
+
+# while read -r file; do
+#     {
+#         if file "$file" | grep -q "text"; then
+#             # echo "$file"
+#             files+=("$file")
+#             # vim-resave "$file"
+#         fi
+#         # [[ "$line" == *"$(basename "$0")" ]] && continue # skip this script itself
+#         # # all subprocesses here will inherit the command as stdin, not the tty, so we need to set it explicitly again
+#         # vimdiff "$PWD/$line" "/$line"
+#     } </dev/tty
+# done < <(find . -type f)
+
+vim-resave "${files[@]}"
