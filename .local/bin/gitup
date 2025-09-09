@@ -6,21 +6,28 @@ function switch_if_necessary() {
     fi
 }
 
+# set -x
 # "cli"
 switch=
-for arg do
-  shift
-  case "$arg" in
-      -h|--help) printf "usage: gitup [-c|--change|-s|--switch] [BRANCH]...\npulls given branch\n"; exit 0;;
-      -c|--change|-s|--switch) switch=1; continue ;;
-  esac
-  set -- "$@" "$arg"
+for arg; do
+    shift
+    case "$arg" in
+    -h | --help)
+        printf "usage: gitup [-c|--change|-s|--switch] [BRANCH]...\npulls given branch\n"
+        exit 0
+        ;;
+    -c | --change | -s | --switch)
+        switch=1
+        continue
+        ;;
+    esac
+    set -- "$@" "$arg"
 done
 
 # default to current branch
 if [[ $# -eq 0 ]]; then
-  current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
-  set -- "$current_branch" 
+    current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
+    set -- "$current_branch"
 fi
 
 now=$(date +%Y.%m.%d.%s).$RANDOM
@@ -32,24 +39,24 @@ previous_branch=$(git rev-parse --abbrev-ref HEAD) || exit 3
 
 for branch in "$@"; do
     switch_if_necessary "$branch" || exit 4
-    printf "> pulling changes (%s) ..." "$branch"
+    printf "> pulling changes (%s) ... " "$branch"
     git pull --quiet --rebase || exit 5
     printf "done\n"
 done
-
 
 [[ $switch ]] || { switch_if_necessary "$previous_branch" || exit 6; }
 
 now_stash_ref=$(git stash list | sed -rn "s/(stash@\{[^\}]+\}).*${now}$/\1/p") || exit 7
 if [[ "$now_stash_ref" ]]; then
-  git stash pop --quiet "$now_stash_ref"; popret=$?
-  case $popret in
-      0) ;;
-      1)
-          printf "\nCONFLICTS:\n"
-          git diff --name-only --diff-filter=U
-          exit 8
-          ;;
-      *) exit $((9+popret)) ;;
-  esac
+    git stash pop --quiet "$now_stash_ref"
+    popret=$?
+    case $popret in
+    0) ;;
+    1)
+        printf "\nCONFLICTS:\n"
+        git diff --name-only --diff-filter=U
+        exit 8
+        ;;
+    *) exit $((9 + popret)) ;;
+    esac
 fi
