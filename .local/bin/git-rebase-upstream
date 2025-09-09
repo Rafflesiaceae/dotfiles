@@ -1,16 +1,117 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+
+if [ -t 1 ]; then
+    # cblack=$(   2>/dev/null tput setaf 0) || true
+    # cred=$(     2>/dev/null tput setaf 1) || true
+    # cgreen=$(   2>/dev/null tput setaf 2) || true
+    # cyellow=$(  2>/dev/null tput setaf 3) || true
+    # cblue=$(    2>/dev/null tput setaf 4) || true
+    cmagenta=$( 2>/dev/null tput setaf 5) || true
+    # ccyan=$(    2>/dev/null tput setaf 6) || true
+    # cwhite=$(   2>/dev/null tput setaf 7) || true
+    creset=$(   2>/dev/null tput sgr0) || true
+
+    # cBblack=$(  2>/dev/null tput setab 0) || true
+    # cBred=$(    2>/dev/null tput setab 1) || true
+    # cBgreen=$(  2>/dev/null tput setab 2) || true
+    # cByellow=$( 2>/dev/null tput setab 3) || true
+    # cBblue=$(   2>/dev/null tput setab 4) || true
+    # cBmagent=$( 2>/dev/null tput setab 5) || true
+    # cBcyan=$(   2>/dev/null tput setab 6) || true
+    # cBwhite=$(  2>/dev/null tput setab 7) || true
+
+    # cbold=$(        2>/dev/null tput bold) || true
+    # citalic=$(      2>/dev/null tput sitm) || true
+    # cunitalic=$(    2>/dev/null tput ritm) || true
+    # cunderline=$(   2>/dev/null tput smul) || true
+    # cununderline=$( 2>/dev/null tput rmul) || true
+fi
+
+info() {
+    printf "%b%s%b %b\n" "$cmagenta" "[git-rebase-upstream]" "$creset" "$1"
+}
+
+_if_branch_exists() {
+    git show-ref --verify --quiet "refs/remotes/$1"
+}
+
+_checkout() {
+    info "upstream_branch: ${upstream_branch}"
+    # git -c advice.detachedHead=false checkout "$@"
+}
+
+_determine_upstream_branch() {
+    # info "determining upstream_branch"
+
+    case "$1" in
+    c | current | u | upstream)
+        upstream_branch="${upstream_remote}/${current_branch}"
+        _checkout "$upstream_branch"
+        return
+        ;;
+    "")
+        upstream_branch="${upstream_remote}/main"
+        if _if_branch_exists "$upstream_branch"; then
+            _checkout "$upstream_branch"
+            return
+        fi
+
+        upstream_branch="${upstream_remote}/master"
+        if _if_branch_exists "$upstream_branch"; then
+            _checkout "$upstream_branch"
+            return
+        fi
+
+        info "ERROR: couldn't determine upstream_branch"
+        exit 1
+        ;;
+    *)
+        upstream_branch="${upstream_remote}/${1:-${current_branch}}"
+        _checkout "$upstream_branch"
+        return
+        ;;
+    esac
+}
+
 current_branch_full=$(git symbolic-ref HEAD)
 current_branch=${current_branch_full#"refs/heads/"}
 
-upstream_branch="upstream/${1:-${current_branch}}"
+upstream_remote="upstream"
+if ! git remote get-url "$upstream_remote" >/dev/null 2>&1; then
+    info "remote 'upstream' misssing, falling back to 'origin'..."
+    upstream_remote="origin"
+fi
 
-set -x
-gitup || true
-git remote update
+echo "+ git remote update --prune"
+git remote update --prune
+{
+
+current_branch="$(git rev-parse --abbrev-ref HEAD)"
+if [[ "$current_branch" == "HEAD" ]]; then
+  echo "Detached HEAD; skipping git pull."
+  exit 0
+fi
+
+# Determine upstream (e.g., origin/feature-x) and config (remote + merge ref)
+upstream="$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)"
+
+if [[ -z "$upstream" ]]; then
+  echo "Branch '$current_branch' has no upstream configured; skipping git pull."
+  exit 0
+fi
+    echo "+ gitup"
+    gitup || true
+}
+# echo "+ git remote update"
+# git remote update
+
+_determine_upstream_branch "$1"
+
 # git co "upstream/${current_branch}"
-git co "$upstream_branch"
-upstream_commit=$(git rev-parse HEAD)
-git co "${current_branch}"
+# git co "$upstream_branch"
+# upstream_commit=$(git rev-parse HEAD)
+upstream_commit=$(git rev-parse "${upstream_branch}")
+# git co "${current_branch}"
 git rebase "$upstream_commit"
