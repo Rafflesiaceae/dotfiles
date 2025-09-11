@@ -117,6 +117,7 @@ sources = {
     "./.local/bin/check-sh-dash": "",
     "./.local/bin/check-system": "",
     "./.local/bin/check-xml": "",
+    "./.local/bin/cpif": "",
     "./.local/bin/clean": "",
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",
