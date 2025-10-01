@@ -15,6 +15,7 @@ set ignore-case = true
 # Colors
 color author green default
 color cursor black yellow
+color cursor-blur black yellow
 color date yellow default
 color graph-commit green default
 color main-head magenta default
