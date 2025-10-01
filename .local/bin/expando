@@ -24,13 +24,19 @@ while :; do
     shift || usage
 done
 
-if [[ ! "$nocommit" ]] && git-is-a-git-workspace; then
+projrootd=$(find-cycle-flatten-root || true)
+
+if [[ "$projrootd" ]]; then
+    cd "$projrootd"
+fi
+
+if [[ ! "$nocommit" && "$projrootd" ]]; then
     echo "+ git-wip"
     git-wip
 fi
 echo "+ cb | oat filetree expand"
 cb | oat filetree expand
-if [[ ! "$nocommit" ]] && git-is-a-git-workspace; then
+if [[ ! "$nocommit" && "$projrootd" ]]; then
     echo "+ git-wip"
     git-wip
 fi
