@@ -1955,3 +1955,44 @@ vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
 })
 EOF
 " }}}
+
+" lua << EOF
+" vim.lsp.enable('kotlin_lsp')
+" EOF
+
+" {{{ SplitJumpAndSync
+" Split, jump to nearest //! comment above, and sync horizontal scrolling
+function! s:SplitJumpAndSyncHor() abort
+  " 1) Ensure nowrap is set (so horizontal scroll actually happens)
+  if &l:wrap
+    setlocal nowrap
+  endif
+
+  " 2) Split the window (horizontal split of the current buffer)
+  split
+
+  " 3) Move to the above window
+  wincmd k
+
+  " 4) From the cursor line upward, find a line starting with optional indent then //! ...
+  "    If found, the cursor lands there; if not, cursor stays where it was.
+  call search('^\s*///', 'bcW')
+
+  " 5) Sync horizontal scrolling between the two split windows
+  "    (Use only horizontal binding; no vertical coupling.)
+  "    Set on the current (top) window:
+  setlocal scrollbind
+  set scrollopt=hor
+
+  "    Set on the other (bottom) window:
+  wincmd j
+  setlocal scrollbind
+  set scrollopt=hor
+
+  "    Return to the above window (where we positioned on the //! line)
+  wincmd k
+endfunction
+
+" Map to <leader>V in normal mode
+nnoremap <silent> <leader>V :call <SID>SplitJumpAndSyncHor()<CR>
+" }}}
