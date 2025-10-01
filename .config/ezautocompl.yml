@@ -75,6 +75,8 @@ resolve a dns/domain (.cmd): dig +short lwn.net
 
 dont prompt for password for ssh call (.cmd .ssh): -o PasswordAuthentication=no
 
+sync/mirror a directory (.cmd .rsync): rsync -aHAX --delete SOURCE/ DESTINATION/
+
 xargs for each line (.cmd .xargs): xargs -rL 1
 xargs for each line w args (.cmd .xargs): xargs -I '{}' echo "{}"
 
