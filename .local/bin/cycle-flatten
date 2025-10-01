@@ -53,6 +53,8 @@ done
 
 # {{{1 Main
 
+export DEBUG=1
+
 commitmessagef=wip-commit-message
 rm -f "$commitmessagef"
 
@@ -150,7 +152,7 @@ EOF
             echo ""
         fi
 
-        echo 'Add additional debug prints in case they are necessary to confirm the fixes.'
+        echo 'Add additional debug prints in case they are necessary to confirm the fixes - if possible only when $DEBUG env is set.'
         echo "Implement what is required to fix this and return a single fenced yaml code block with only the changed files and no extra text."
         echo ""
         echo "If files are not changed don't output them."
