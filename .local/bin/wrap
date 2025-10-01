@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- prerequisites -----------------------------------------------------------
+for dep in zip xclip python3; do
+  if ! command -v "$dep" >/dev/null 2>&1; then
+    echo "Error: '$dep' is required but not installed." >&2
+    exit 1
+  fi
+done
+
+# --- where to put the archive ------------------------------------------------
+outdir="${HOME}/.cache/wrap"
+mkdir -p "$outdir"
+
+base="$(basename "$PWD")"
+ts="$(date -u +%Y%m%dT%H%M%SZ)"   # alpha-sortable, UTC
+dest="${outdir}/${base}-${ts}.zip"
+
+# --- build the zip (as a single top-level folder, includes dotfiles) ---------
+parent="$(dirname "$PWD")"
+(
+  cd "$parent"
+  zip -rq "$dest" "$base"
+)
+
+# --- X11 clipboard: file reference for paste-uploads in Chrome ---------------
+# Use the GNOME convention x-special/gnome-copied-files:
+#   first line: "copy" or "cut"
+#   subsequent lines: file:// URIs
+file_uri="$(
+python3 - <<'PY' "$dest"
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]).resolve()
+print(p.as_uri())
+PY
+)"
+
+# Put "copy\n<file_uri>\n" onto the clipboard with the correct MIME type.
+# Chrome will accept Ctrl+V as a file upload from this.
+printf 'copy\n%s' "$file_uri" | xclip -selection clipboard -t x-special/gnome-copied-files
+printf '%s' "$file_uri" | xclip -selection clipboard -t text/uri-list
+
+# --- print the absolute path -------------------------------------------------
+printf '%s\n' "$dest"

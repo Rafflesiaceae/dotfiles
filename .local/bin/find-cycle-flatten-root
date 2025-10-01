@@ -1,0 +1,31 @@
+#!/bin/dash
+# Walk up from the current directory (or $1) to find .flattenallow or .flattenignore.
+# If found, print the directory path and exit 0; otherwise exit 1 with no output.
+
+start=${1:-.}
+
+# # If a file path is given, start from its directory
+# if [ ! -d "$start" ]; then
+#     start=$(dirname "$start")
+# fi
+
+# # If the path begins with '-', make it explicitly relative to avoid 'cd -'
+# case "$start" in
+#     -*) start="./$start" ;;
+# esac
+
+# Enter starting directory; fail silently if not possible
+cd "$start" 2>/dev/null || exit 1
+
+while :; do
+    if [ -e ".flattenallow" ] || [ -e ".flattenignore" ]; then
+        pwd -P
+        exit 0
+    fi
+
+    cur=$(pwd -P)
+    [ "$cur" = "/" ] && exit 1
+
+    cd .. 2>/dev/null || exit 1
+done
+

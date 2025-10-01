@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmpfile=$(mktemp)
+trap 'rm -f "$tmpfile"' EXIT INT
+
+if [[ ! -e "$2" ]]; then
+    curl --fail --retry 3 -L -o "$tmpfile" "$1"
+    mv "$tmpfile" "$2"
+fi
+
+# if [[ -n "$2" ]]; then
+#     curl --fail --retry 3 -L -o "$2" "$1"
+# else
+#     curl --fail --retry 3 -L -O "$1"
+# fi
