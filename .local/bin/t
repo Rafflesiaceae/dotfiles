@@ -967,7 +967,7 @@ channels = [
     "conda-forge",
 ]
 
-platforms = ["linux-64", "osx-64", "win-64"]
+platforms = ["linux-64", "win-64", "osx-64", "osx-arm64"]
 
 [tasks]
 "test" = { cmd = ["python", "./test.py"] }
