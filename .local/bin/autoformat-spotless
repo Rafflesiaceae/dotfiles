@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# autoformat-groovy v0.3 (2025-09-22) (9860b78bc0323eb0)
+#
+# Autoformats a passed .groovy file, hacky - not fast.
+#
+# REQUIRES: gradle
+#
+# TODO : Add .editorconfig support (spotless/groovy has none :') )
+set -eo pipefail
+
+# CLI {{{1
+# Check if a file is provided
+if [ $# -eq 0 ]; then
+    echo "Usage: $0 <path-to-groovy-file>"
+    exit 1
+fi
+
+# Get the file path
+FILE="$(realpath "$1")"
+FNAMEWEXT=$(basename -- "$FILE")
+FEXT="${FNAMEWEXT##*.}"
+
+# feditorconf=$(find-upwards .editorconfig) || true
+
+# Check if the file exists
+if [ ! -f "$FILE" ]; then
+    echo "File ${FILE} does not exist."
+    exit 1
+fi
+
+# readarray -t files < <(find . -name "*.groovy")
+
+# Init Gradle Project {{{1
+# Create a temporary Gradle project
+TEMP_DIR="${HOME}/.cache/autoformat-spotless/"
+
+set -x
+# set -x
+gradlep_hash="cd1893e4-c839-44e1-86cb-945d9e7cf080"
+
+# Initialize Gradle project - (:
+hashf="${TEMP_DIR}/autoformat-hash"
+if [[ ! -e "$hashf" || "$(cat "$hashf")" != "$gradlep_hash" ]] || [[ ! -d "$TEMP_DIR" ]]; then
+    echo "> Setting up spotless"
+    rm -rf "$TEMP_DIR"
+    mkdir -p "${TEMP_DIR}"
+    cd "$TEMP_DIR"
+
+    gradle init --type basic --dsl groovy --project-name temp-spotless-project --quiet </dev/null
+
+    # Add Spotless plugin to build.gradle
+    cat <<EOL >build.gradle
+    plugins {
+        id 'com.diffplug.spotless' version '7.2.1'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+
+    spotless {
+        groovy {
+            target 'inputs/*.groovy', 'inputs/*Jenkinsfile*', 'inputs/Jenkinsfile*'
+
+            greclipse()
+            leadingTabsToSpaces(4)
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+
+        // Kotlin source (src/**)
+        kotlin {
+            // Adjust targets as needed
+            target 'inputs/*.kt'
+            ktfmt()
+            // Use ktlint and defer to .editorconfig for rules
+            //ktlint() // You can also pass a version: ktlint('1.3.1')
+            //ktlint().editorConfigOverride(mapOf("disabled_rules" to "filename"))
+            // Make Spotless read EditorConfig settings (indent, max line length, etc.)
+            // Common whitespace hygiene (these will complement editorconfig)
+            leadingTabsToSpaces(4)
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+
+        // Kotlin Gradle scripts (*.kts)
+        kotlinGradle {
+            target 'inputs/*.kts'
+            ktlint()
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+    }
+EOL
+
+    mkdir "inputs"
+    echo "$gradlep_hash" >"$hashf"
+else
+    cd "$TEMP_DIR"
+fi
+
+rm -f "./inputs/"*
+
+# Autoformat {{{1
+# rm -f ./.editorconfig
+# if [[ -n "$feditorconf" ]]; then
+#     cp "$feditorconf" ".editorconfig"
+# fi
+
+# tmpf="inputs/tmp.${FEXT}"
+tmpf="inputs/${FNAMEWEXT}"
+
+cp "$FILE" "$tmpf"
+
+echo "> Formatting $FILE via Spotless..."
+# ./gradlew spotlessApply --no-configuration-cache --quiet
+gradle spotlessApply --no-configuration-cache --quiet
+# >/dev/null 2>&1 </dev/null
+
+cp "$tmpf" "$FILE"

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -eo pipefail
+rg --files -0 |
+    xargs -0 -P "$(nproc)" -n 200 file --mime-type |
+    awk -F: '$2 ~ /^[[:space:]]*text\// || $2 ~ /application\/x-empty/ {print $1}'

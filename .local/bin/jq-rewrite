@@ -1,0 +1,24 @@
+#!/bin/dash
+set -e
+
+case "$1" in
+-c | --check)
+    jq <"$1" >/dev/null
+    ;;
+*)
+    tmpfile=$(mktemp)
+    trap 'rm -f "$tmpfile"' EXIT INT
+
+    jq <"$1" >"$tmpfile"
+    mv "$tmpfile" "$1"
+    ;;
+esac
+
+# # false | true
+# # echo "[jq-rewrite] $1"
+# jq <"$1" | sponge "$1"
+
+# # inp.json → '{'
+# # jq-rewrite inp.json → BRICHT
+# # inp.json → ''
+# # jq-rewrite inp.json → SUCCESS

@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Hide visible Zoom windows 5x/sec, but never touch systray/panels/tray icons.
+# Also keep any WM_NAME=="cpt_frame_xcb_window" unmapped while running.
+# On Ctrl-C, only remap windows that this script actually unmapped.
+
+set -u
+
+# --- Config ---
+CLASS_REGEX='[Zz]oom'   # WM_CLASS match for Zoom
+RATE=0.2                # seconds between checks (5x/sec)
+
+# --- Deps ---
+have() { command -v "$1" >/dev/null 2>&1; }
+have xdotool  || { echo "xdotool is required" >&2; exit 1; }
+have xwininfo || { echo "xwininfo is required" >&2; exit 1; }
+have xprop    || { echo "xprop is required" >&2; exit 1; }
+
+# --- Helpers ---
+window_exists() {
+  xdotool getwindowname "$1" >/dev/null 2>&1
+}
+
+is_viewable() {
+  # returns 0 if "Map State: IsViewable"
+  local state
+  state=$(xwininfo -id "$1" 2>/dev/null | awk -F: '/Map State/ {gsub(/^[ \t]+/,"",$2); print $2}')
+  [[ "$state" == "IsViewable" ]]
+}
+
+has_type_dock() {
+  xprop -id "$1" _NET_WM_WINDOW_TYPE 2>/dev/null | grep -q '_NET_WM_WINDOW_TYPE_DOCK'
+}
+
+has_strut() {
+  xprop -id "$1" _NET_WM_STRUT_PARTIAL 2>/dev/null | grep -q '=' \
+  || xprop -id "$1" _NET_WM_STRUT 2>/dev/null | grep -q '='
+}
+
+is_i3bar_like() {
+  xprop -id "$1" WM_CLASS 2>/dev/null | grep -qiE '"i3bar"|bar-[0-9]+' \
+  || xprop -id "$1" WM_NAME  2>/dev/null | grep -qi 'i3bar'
+}
+
+has_22_by_22() {
+  # XEmbed tray icons expose _XEMBED_INFO
+  # xprop -id "$1" 2>/dev/null >> /tmp/out
+  # xprop -id "$1" _XEMBED_INFO 2>/dev/null | grep -q '='
+  # xprop -id "$1" WM_NORMAL_HINTS 2>/dev/null >> /tmp/out
+  xprop -id "$1" WM_NORMAL_HINTS 2>/dev/null | grep -q '22 by 22'
+}
+
+is_override_redirect() {
+  # many tray/menu popups are override-redirect
+  xwininfo -id "$1" 2>/dev/null | awk -F: '/Override Redirect/ {print tolower($2)}' | grep -q yes
+}
+
+is_systray_or_panel() {
+  local wid="$1"
+  # has_type_dock "$wid" || has_strut "$wid" || is_i3bar_like "$wid" || has_22_by_22 "$wid" || is_override_redirect "$wid"
+  has_type_dock "$wid" || has_strut "$wid" || is_i3bar_like "$wid" || has_22_by_22 "$wid"
+}
+
+# Track only windows we actually unmapped (so cleanup can remap only those)
+declare -A UNMAPPED_BY_ME=()
+
+CLEANED=0
+cleanup() {
+  [[ $CLEANED -eq 1 ]] && return
+  CLEANED=1
+  echo
+  echo "Restoring ${#UNMAPPED_BY_ME[@]} window(s) unmapped by this script..."
+  for wid in "${!UNMAPPED_BY_ME[@]}"; do
+    window_exists "$wid" || continue
+    # Only remap if still not viewable; don't override user actions
+    if ! is_viewable "$wid"; then
+      xdotool windowmap "$wid" 2>/dev/null
+    fi
+  done
+}
+
+trap 'cleanup; exit 0' INT TERM
+trap 'cleanup' EXIT
+
+while :; do
+  # --- 1) Zoom windows: unmap ONLY if visible; never touch systray/panel/tray icons
+  while read -r wid; do
+    [[ -z "${wid:-}" ]] && continue
+    window_exists "$wid" || continue
+
+    # Skip systray/panels/tray icons/popups entirely
+    if is_systray_or_panel "$wid"; then
+      continue
+    fi
+
+      # notify-send "DIS" "$wid"
+    if is_viewable "$wid"; then
+      xdotool windowunmap "$wid" 2>/dev/null
+      sleep 0.02
+      if ! is_viewable "$wid"; then
+        UNMAPPED_BY_ME["$wid"]=1
+      fi
+    fi
+  done < <(xdotool search --all --class "$CLASS_REGEX" 2>/dev/null | sort -u)
+
+  # --- 2) cpt_frame_xcb_window: keep unmapped while running; restore on cleanup
+  while read -r cwid; do
+    [[ -z "${cwid:-}" ]] && continue
+    window_exists "$cwid" || continue
+    if is_viewable "$cwid"; then
+      xdotool windowunmap "$cwid" 2>/dev/null
+      sleep 0.02
+      if ! is_viewable "$cwid"; then
+        UNMAPPED_BY_ME["$cwid"]=1
+      fi
+    fi
+  done < <(xdotool search --name '^cpt_frame_xcb_window$' 2>/dev/null | sort -u)
+
+  # Housekeeping: drop entries for windows that disappeared
+  for wid in "${!UNMAPPED_BY_ME[@]}"; do
+    window_exists "$wid" || unset 'UNMAPPED_BY_ME[$wid]'
+  done
+
+  sleep "$RATE"
+done
