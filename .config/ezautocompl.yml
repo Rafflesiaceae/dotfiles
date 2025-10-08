@@ -1430,7 +1430,28 @@ dataclass (.python): |
         def total_costs(self) -> List[float]:
             return [ price * self.quantity_on_hand for price in self.unit_prices ]
 
+# java/groovy {{{1
+dependency substitution (.java .kotlin): |
+    // activate this for quickly iterating changes on heimdall-dt-model
+    includeBuild("../../review-service") {
+      dependencySubstitution {
+        substitute(module("com.dynatrace.cae:heimdall-dt-model"))
+          .using(project(":heimdall-dt-model"))
+      }
+    }
+
 # javascript / typescript {{{1
+dependency substitution (.java): |
+    /*
+    // activate this for quickly iterating changes on heimdall-dt-model
+    includeBuild("../../review-service") {
+      dependencySubstitution {
+        substitute(module("com.dynatrace.cae:heimdall-dt-model"))
+          .using(project(":heimdall-dt-model"))
+      }
+    }
+    */
+
 gather all links of a website (.js .devtools): |
     var output = [];
     document.querySelectorAll('a').forEach((item) => output.push(item.href));
