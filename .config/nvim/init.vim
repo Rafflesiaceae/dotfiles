@@ -486,7 +486,7 @@ nnoremap <leader>B :sp<CR><C-W><C-J>:e ~/breakpoints<CR>G
 
 nnoremap <C-s> :w!<CR>
 inoremap <C-s> <C-O>:w!<CR>
-nnoremap <leader>w :w!<CR>
+" nnoremap <leader>w :w!<CR>
 nnoremap <leader>W :w!<CR>:e!<CR>
 nnoremap <leader>l :e!<CR>
 
@@ -528,6 +528,10 @@ au TermOpen * tnoremap <buffer> <Esc> <c-\><c-n>
 au FileType fzf tunmap <buffer> <Esc>
 
 cnoremap <C-a> <Home>
+
+inoremap <C-q> <Esc>:q!<CR>
+inoremap <C-a> <Esc>:wq!<CR>
+nnoremap <C-a> :wq!<CR>
 
 vnoremap Y "+y<CR>
 vnoremap <C-c> "+y<CR>
@@ -577,7 +581,9 @@ nnoremap gp `[v`]
 " nnoremap <silent> <BS> :YcmCompleter GoToReferences<cr>
 set wildcharm=<tab>
 nnoremap <leader>2 :YcmCompleter RefactorRename <C-r><C-w>
-nnoremap <BS> :YcmCompleter <tab>
+nnoremap <BS> :YcmCompleter GoToReferences<CR>
+nnoremap <leader>w :YcmCompleter <tab>
+" nnoremap <leader>w :YcmCompleter GetHover
 nnoremap <CR> :YcmCompleter GoTo<CR>
 nnoremap <leader>R :YcmCompleter RefactorRename <C-r><C-w>
 nnoremap <leader>t :YcmCompleter GoToType<CR>
@@ -830,6 +836,7 @@ autocmd BufRead,BufNewFile *.lds set filetype=ld
 augroup _leader_j
 autocmd!
 for entry in [
+      \ ['Jenkinsfile'                ,  'autoformat-groovy'],
       \ ['bash,sh'                    ,  'autoformat-sh'],
       \ ['c'                          ,  'autoformat-c'],
       \ ['cpp'                        ,  'autoformat-c'],
@@ -840,6 +847,7 @@ for entry in [
       \ ['html'                       ,  'autoformat-html'],
       \ ['javascript'                 ,  'autoformat-js'],
       \ ['json'                       ,  'autoformat-json'],
+      \ ['kotlin'                     ,  'autoformat-kotlin'],
       \ ['lua'                        ,  'autoformat-lua'],
       \ ['nix'                        ,  'nixpkgs-fmt'],
       \ ['python'                     ,  'autoformat-python'],
@@ -1503,6 +1511,9 @@ func! s:vuildRun()
         call s:vuildSaveAndRun("lua %")
     elseif filetype == "html"
         call s:vuildSaveAndRun("chromium %")
+    elseif filetype == "kotlin"
+        call s:vuildSaveAndRun("run-kotlin %")
+        " call s:vuildSaveAndRun("kotrun %")
     elseif filetype == "go"
         " check if file ends with `_test`
         if expand("%:r") =~ "_test" 
@@ -1865,95 +1876,37 @@ function! MaybeSetupTreesitterNu()
     endif
 endfunction
 " }}}
-
-" {{{ Prepend current file's directory to ~/.cache/zsh/dirs (if not already first line)
-lua << EOF
--- Prepend current file's directory to ~/.cache/zsh/dirs (if not already first line)
-if vim.g.loaded_prepend_dir_to_zsh_dirs then
-  return
-end
-vim.g.loaded_prepend_dir_to_zsh_dirs = true
-
--- >>> Add paths here to ignore (exact prefixes). Examples included:
-local ignore_prefixes = {
-  "/tmp",                  -- ignore /tmp and all subdirs
-  "~/.local/bin",                  -- ignore /tmp and all subdirs
-  -- "~/.cache",           -- you can use ~; it's expanded below
-  -- "/var/tmp",
-}
--- Normalize ignore list (expand ~, absolute, no trailing slash)
-local normalized_ignores = (function()
-  local out = {}
-  for _, p in ipairs(ignore_prefixes) do
-    local expanded = vim.fn.expand(p)
-    local abs = vim.fn.simplify(vim.fn.fnamemodify(expanded, ":p"))
-    abs = abs:gsub("/+$", "") -- strip trailing /
-    table.insert(out, abs)
-  end
-  return out
-end)()
-
-local function is_ignored(dir)
-  local d = dir:gsub("/+$", "") -- strip trailing /
-  for _, pref in ipairs(normalized_ignores) do
-    if d == pref or d:sub(1, #pref + 1) == pref .. "/" then
-      return true
-    end
-  end
-  return false
-end
-
-local function prepend_dir_to_zsh_dirs()
-  -- Only act on normal file buffers with a name
-  if vim.bo.buftype ~= "" then return end
-  local name = vim.api.nvim_buf_get_name(0)
-  if name == "" then return end
-  -- Ignore remote/URI buffers
-  if name:match("^%w+://") then return end
-  -- Compute absolute directory of current file
-  local curfile = vim.fn.fnamemodify(name, ":p")
-  local dir = vim.fn.simplify(vim.fn.fnamemodify(curfile, ":p:h"))
-  if dir == "" then return end
-
-  -- Skip if directory is in ignore list
-  if is_ignored(dir) then return end
-
-  -- Target list file
-  local listfile = vim.fn.expand("~/.cache/zsh/dirs")
-  -- Avoid recursion if editing the list file itself
-  if vim.fn.fnamemodify(curfile, ":p") == vim.fn.fnamemodify(listfile, ":p") then
+" {{{ Pop current buffer to new vim instance
+" Resolve realpath of current buffer, echo via system(), then close buffer
+function! EchoRealpathCloseBuf() abort
+  let l:path = expand('%:p')
+  if empty(l:path)
+    echoerr 'Current buffer has no file path.'
     return
-  end
-  -- Ensure parent directory exists
-  local listdir = vim.fn.fnamemodify(listfile, ":h")
-  if vim.fn.isdirectory(listdir) == 0 then
-    vim.fn.mkdir(listdir, "p")
-  end
-  -- Read first line (if any)
-  local first = ""
-  if vim.fn.filereadable(listfile) == 1 then
-    local firstline = vim.fn.readfile(listfile, "", 1)
-    if #firstline > 0 then
-      first = firstline[1]
-    end
-  end
-  -- Prepend only if the first line isn't already the same directory
-  if first ~= dir then
-    local contents = {}
-    if vim.fn.filereadable(listfile) == 1 then
-      contents = vim.fn.readfile(listfile)
-    end
-    table.insert(contents, 1, dir)
-    pcall(vim.fn.writefile, contents, listfile) -- silently ignore write errors
-  end
-end
+  endif
 
-local grp = vim.api.nvim_create_augroup("PrependDirToZshDirs", { clear = true })
-vim.api.nvim_create_autocmd({ "BufReadPost", "BufNewFile" }, {
-  group = grp,
-  callback = prepend_dir_to_zsh_dirs,
-})
-EOF
+  " Canonicalize (absolute, simplified, resolve symlinks)
+  let l:realpath = fnamemodify(simplify(resolve(l:path)), ':p')
+
+  " Make a system() call to echo it, and show the result in Vim's messages
+  " let l:out = system('termpopup -ft -- vim ' . shellescape(l:realpath))
+
+  silent exec '!termpopup -ft -- vim ' . shellescape(l:realpath) . ' &'
+  " echom trim(l:out)
+
+  " Close the current buffer (no bang to avoid data loss)
+  bdelete
+endfunction
+
+" <Plug> mapping for flexibility
+nnoremap <silent> <Plug>(EchoRealpathCloseBuf) :call EchoRealpathCloseBuf()<CR>
+
+nmap <silent> <leader>t <Plug>(EchoRealpathCloseBuf)
+unmap <leader>te
+unmap <leader>tm
+unmap <leader>tc
+unmap <leader>to
+unmap <leader>tn
 " }}}
 
 " lua << EOF
@@ -1996,3 +1949,9 @@ endfunction
 " Map to <leader>V in normal mode
 nnoremap <silent> <leader>V :call <SID>SplitJumpAndSyncHor()<CR>
 " }}}
+
+augroup SetTxtIfNoFiletype
+  autocmd!
+  autocmd BufRead,BufNewFile *
+        \ if empty(&filetype) | setlocal filetype=txt | endif
+augroup END
