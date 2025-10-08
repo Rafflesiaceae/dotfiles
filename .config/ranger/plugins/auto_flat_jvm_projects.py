@@ -26,4 +26,4 @@ def hook_init(fm):
     fm.signal_bind("cd", on_cd)  # run on every directory change
     return _old_hook_init(fm)
 
-ranger.api.hook_init = hook_init
+# ranger.api.hook_init = hook_init
