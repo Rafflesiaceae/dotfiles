@@ -122,7 +122,7 @@ Environment:
   SYNCFS_REMOTE   Required for push/pull/status. Base remote for rsync, e.g. "user@host:/var/syncfs" or a local path.
 
 Notes:
-  - Preserves perms and mtimes (-rlpt), not ownership. Excludes ".syncfs" and ".git/", and respects per-directory ".gitignore" files (via rsync filter).
+  - Preserves perms and mtimes (-rlpt), not ownership. Excludes ".syncfs", respects per-directory ".gitignore" files (via rsync filter), and **always syncs the `.git` directory**.
   - Local last-sync time is stored as POSIX seconds inside ".syncfs" (first line must be numeric).
   - Stable remote key: if your .syncfs contains a line like `id=YOUR_ID` (or `key=...`), that value is used to compute the remote path. Otherwise, the absolute path is canonicalized by replacing your HOME prefix with `~` (so `/home/alice/proj` and `/home/bob/proj` map to the same key `~/proj`).
   - Remote last-push time is stored in "${SYNCFS_REMOTE}/${md5(realpath(syncdir))}.timestamp" (internally computed from the stable key described above).
@@ -131,9 +131,9 @@ EOF
 
 # rsync options: recursive, symlinks, perms (exec bits), times; itemize changes; exclude marker
 RSYNC_OPTS=(-rlpt --itemize-changes --out-format='%i %n%L' --exclude='.syncfs')
-# Honor Git ignore rules and skip the VCS dir if present.
+# Honor Git ignore rules but always include the VCS metadata (.git).
 # The per-dir filter below treats any ".gitignore" as an rsync filter file (optional with '-' so missing files are fine).
-RSYNC_OPTS+=("--exclude=.git/" "--filter" ":- .gitignore")
+RSYNC_OPTS+=("--include=/.git" "--include=/.git/**" "--filter" ":- .gitignore")
 
 remote_base() { printf '%s' "${SYNCFS_REMOTE%/}"; }
 remote_path_for() {
@@ -164,6 +164,14 @@ remote_file_fetch() { # $1 remote-file, $2 local-dest; returns 0 on success
     /* | ./* | ../*) [ -f "$src" ] && cp -f "$src" "$dst" 2>/dev/null ;;
     *) rsync "$src" "$dst" >/dev/null 2>&1 ;;
     esac
+}
+
+ensure_remote_base_exists() {
+    local base
+    base="$(remote_base)"
+    if ! remote_dir_exists "$base"; then
+        die "SYNCFS_REMOTE base not found or unreachable: $base"
+    fi
 }
 
 # Dry-run that tolerates rsync 23/24 (common with GVFS/remote FS)
@@ -226,7 +234,15 @@ do_init() {
     if [ -e "$f" ]; then
         echo "'.syncfs' already exists here: $f"
     else
-        touch "$f"
+        cat >"$f" <<'SYNCFS_MARKER'
+0
+# syncfs marker for the directory.
+# The first line is the last-sync timestamp in POSIX seconds.
+# Leave it as 0 initially; it will be updated on push/pull.
+# You may add notes below this line; they are ignored.
+SYNCFS_MARKER
+        chmod 0644 "$f" 2>/dev/null || true
+        echo "Created example $f"
     fi
     open_in_editor "$f"
 }
@@ -313,6 +329,7 @@ need awk
 syncdir="$(find_syncdir)" || die "no .syncfs found from $PWD upwards"
 [ -d "$syncdir" ] || die "syncdir does not exist: $syncdir"
 : "${SYNCFS_REMOTE:?SYNCFS_REMOTE environment variable must be set}"
+ensure_remote_base_exists
 
 case "${1-}" in
 push) do_push "$syncdir" ;;
