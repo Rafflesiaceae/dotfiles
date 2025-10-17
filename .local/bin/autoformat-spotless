@@ -34,9 +34,8 @@ fi
 # Create a temporary Gradle project
 TEMP_DIR="${HOME}/.cache/autoformat-spotless/"
 
-set -x
 # set -x
-gradlep_hash="cd1893e4-c839-44e1-86cb-945d9e7cf080"
+gradlep_hash="cd1773e4-c839-44e1-86cb-945d9e7cf080"
 
 # Initialize Gradle project - (:
 hashf="${TEMP_DIR}/autoformat-hash"
@@ -74,8 +73,8 @@ if [[ ! -e "$hashf" || "$(cat "$hashf")" != "$gradlep_hash" ]] || [[ ! -d "$TEMP
             target 'inputs/*.kt'
             ktfmt()
             // Use ktlint and defer to .editorconfig for rules
-            //ktlint() // You can also pass a version: ktlint('1.3.1')
-            //ktlint().editorConfigOverride(mapOf("disabled_rules" to "filename"))
+            // ktlint() // You can also pass a version: ktlint('1.3.1')
+            // ktlint().editorConfigOverride(mapOf("disabled_rules" to "filename"))
             // Make Spotless read EditorConfig settings (indent, max line length, etc.)
             // Common whitespace hygiene (these will complement editorconfig)
             leadingTabsToSpaces(4)
@@ -87,6 +86,7 @@ if [[ ! -e "$hashf" || "$(cat "$hashf")" != "$gradlep_hash" ]] || [[ ! -d "$TEMP
         kotlinGradle {
             target 'inputs/*.kts'
             ktlint()
+            leadingTabsToSpaces(4)
             trimTrailingWhitespace()
             endWithNewline()
         }
