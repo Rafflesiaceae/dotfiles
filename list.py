@@ -363,6 +363,7 @@ sources = {
     "./.local/bin/xra": "",
     "./.local/bin/xrandr-reset": "",
     "./.local/bin/xsleep": "",
+    "./.local/bin/syncfs": "",
     "./.local/bin/zoom-share-bar-hide": "",
     "./.local/bin_override/gimp": {"linux": ""},
     "./.local/bin_override/vimdiff": {"linux": ""},
