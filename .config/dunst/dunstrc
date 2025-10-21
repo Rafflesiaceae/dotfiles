@@ -1,7 +1,8 @@
 [global]
 always_run_script = true  # run scripts even when notifications are suppressed
 
-font = Consolas 11
+# font = Consolas 11
+font = Sans 11
 
 mouse_left_click = do_action, close_current
 mouse_middle_click = close_all
@@ -29,6 +30,7 @@ plain_text=no
 format = "<b>%s</b>\n%b \n%p"
 
 alignment = left
+vertical_alignment = top
 ignore_newline = no         # ignore newlines '\n' in notifications.
 indicate_hidden = yes       # Show how many messages are currently hidden (because of geometry).
 monitor = 0                 # Which monitor should the notifications be displayed on.
@@ -66,6 +68,11 @@ hide_duplicates_count = yes
 # screen width minus the width defined in within the geometry option.
 #geometry = "300x5-30+20"
 geometry = "0x5-30-50"
+
+width = (0, 420)
+
+max_icon_size = 48
+# min_icon_size = 12
 
 # The transparency of the window. range: [0; 100]
 # This option will only work if a compositing windowmanager is present (e.g. xcompmgr, compiz, etc..)
