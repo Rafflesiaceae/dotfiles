@@ -141,6 +141,7 @@ sources = {
     "./.local/bin/docker-run": "",
     "./.local/bin/drb": "",
     "./.local/bin/dump-clipboard-image": "",
+    "./.local/bin/dunst-reload": "",
     "./.local/bin/edit-clipboard": "",
     "./.local/bin/edit-current-urxvt-buffer": "",
     "./.local/bin/edit-current-urxvt-buffer-last-prompt": "",
