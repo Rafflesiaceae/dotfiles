@@ -1,9 +1,15 @@
 #!/bin/dash
 set -e
 
-defaultbranchf="$(git-show-toplevel-path)/.git-default-branch" || true
-if [ -e "$defaultbranchf" ]; then
-    cat "$defaultbranchf"
+if [ "$1" = "-l" ]; then
+    branch=$(git rev-parse --abbrev-ref origin/HEAD)
+    branch=${branch#origin/}
+    echo "$branch"
 else
-    git remote show origin | grep 'HEAD branch' | awk '{print $NF}'
+    defaultbranchf="$(git-show-toplevel-path)/.git-default-branch" || true
+    if [ -e "$defaultbranchf" ]; then
+        cat "$defaultbranchf"
+    else
+        git remote show origin | grep 'HEAD branch' | awk '{print $NF}'
+    fi
 fi

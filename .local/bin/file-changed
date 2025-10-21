@@ -33,7 +33,7 @@ while :; do
     shift || usage 1
 done
 
-hash() { xxh128sum - | cut -d ' ' -f1; }
+hash() { md5sum - | cut -d ' ' -f1; }
 
 cached=$HOME/.cache/file-changed
 mkdir -p "$cached" || true

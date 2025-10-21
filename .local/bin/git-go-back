@@ -19,12 +19,36 @@ readarray -t checkout_history < <(printf "%s\n" "${checkout_history[@]}" | remov
 # filter dead branches
 readarray -t nondead_local_branches < <(git for-each-ref --format='%(refname:short)' refs/heads/)
 nondead_checkout_history=()
-for br in "${checkout_history[@]}" ; do
+for br in "${checkout_history[@]}"; do
     # shellcheck disable=SC2076
     if [[ " ${nondead_local_branches[*]} " =~ " ${br} " ]]; then
         nondead_checkout_history+=("$br")
     fi
 done
+
+# Deduplicate an array in place, preserving first occurrences.
+# Usage:
+#   arr=(a b a c "with space" b "" "")
+#   uniq_inplace           # operates on 'arr' by default
+#   # or: uniq_inplace arr # explicit array name
+uniq_inplace() {
+  local -n _arr="${1:-arr}"  # nameref to target array (Bash ≥ 4.3)
+  declare -A _seen=()
+  local _out=() x
+
+  for x in "${_arr[@]}"; do
+    if [[ -z ${_seen[$x]+_} ]]; then
+      _out+=("$x")
+      _seen["$x"]=1
+    fi
+  done
+
+  _arr=("${_out[@]}")
+}
+
+nondead_checkout_history+=("$(git-default-branch -l)")
+
+uniq_inplace nondead_checkout_history
 
 if [[ "$1" == "co" ]] && [[ -n "$2" ]]; then
     git checkout --quiet "${nondead_checkout_history[$2]}"
@@ -35,4 +59,3 @@ else
     uncaused_will_or_conscious_choice=$(printf "%s\n" "${nondead_checkout_history[@]}" | fzf) || exit 0
     git checkout --quiet "$uncaused_will_or_conscious_choice"
 fi
-
