@@ -5,7 +5,7 @@ die() {
 }
 
 usage() {
-    echo "usage: cb [-a|--append] [-e|--edit] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
+    echo "usage: cb [-a|--append] [-e|--edit] [-cf|--copyfile] [-i|--in] [-o|--out] [-s|--str <str>] [-t|--tee]"
     exit 1
 }
 
@@ -16,10 +16,13 @@ usage_and_die() {
 
 cli_append=
 cli_edit=
+cli_copy_file=
 cli_in=
+cli_list=
 cli_out=
 cli_str=
 cli_tee=
+cli_path=
 while :; do
     case $1 in
     -h | -\? | --help)
@@ -31,8 +34,17 @@ while :; do
     -e | --edit)
         cli_edit=1
         ;;
+    -cf | --copy-file)
+        cli_copy_file=1
+        [ ! "$2" ] && die "ERROR: '$1' requires a non-empty option argument."
+        cli_path=$2
+        shift || usage
+        ;;
     -i | --in)
         cli_in=1
+        ;;
+    -l | --list)
+        cli_list=1
         ;;
     -o | --out)
         cli_out=1
@@ -54,8 +66,29 @@ while :; do
     shift
 done
 
-clip_out() { xclip -sel clip -o; }
+clip_out() {
+    xclip -sel clip -o
+}
 clip_in() {
+    if [ $cli_copy_file ]; then
+        dest=$(realpath "$cli_path")
+
+        file_uri="$(
+            python3 - "$dest" <<'PY'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]).resolve()
+print(p.as_uri())
+PY
+        )"
+
+        # Put "copy\n<file_uri>\n" onto the clipboard with the correct MIME type.
+        # Chrome will accept Ctrl+V as a file upload from this.
+        printf 'copy\n%s' "$file_uri" | xclip -selection clipboard -t x-special/gnome-copied-files
+        printf '%s' "$file_uri" | xclip -selection clipboard -t text/uri-list
+
+        exit 0
+    fi
+
     if [ $cli_append ]; then
         inp=$(cat -)
         printf "%s%s" "$(clip_out)" "$inp" | xclip -sel clip -i
@@ -68,7 +101,15 @@ clip_in() {
     fi
 }
 
-if [ $cli_edit ]; then
+if [ $cli_copy_file ]; then
+    clip_in
+elif [ $cli_list ]; then
+    if [ -z "$1" ]; then
+        xclip -selection clipboard -o -t TARGETS
+    else
+        xclip -selection clipboard -o -t "$1"
+    fi
+elif [ $cli_edit ]; then
     tmpfile=$(mktemp)
     cleanup_tmpfile() {
         rm -f "$tmpfile"
