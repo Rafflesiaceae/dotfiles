@@ -531,7 +531,7 @@ cnoremap <C-a> <Home>
 
 inoremap <C-q> <Esc>:q!<CR>
 inoremap <C-a> <Esc>:wq!<CR>
-nnoremap <C-a> :wq!<CR>
+" nnoremap <C-a> :wq!<CR>
 
 vnoremap Y "+y<CR>
 vnoremap <C-c> "+y<CR>
