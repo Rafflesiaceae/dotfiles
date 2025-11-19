@@ -1,106 +1,174 @@
 #!/usr/bin/env luajit
--- chatgpt-check-limits
--- Defaults to ChatGPT-5 (Thinking) input limit: 272,000 tokens.
--- (GPT-5 total context: 400,000 tokens; max reasoning+output ~128,000)
--- Source for limits: OpenAI GPT-5 for Developers (Aug 2025).
-
--- Usage:
---   cat file.txt | chatgpt-check-limits
---   echo "text"   | chatgpt-check-limits --method words
---   # override:
---   cat file.txt | chatgpt-check-limits --max 8192
 --
--- Exit code: 0 if used < max; 1 if used >= max; 2 on usage error.
+-- Simple stdin/file token-budget checker for GPT-5.1 Thinking.
+--
+-- NOTE: This uses an APPROXIMATION:
+--         tokens ≈ ceil(character_count / CHARS_PER_TOKEN)
+-- For typical English/code, 1 token ≈ 3–4 characters on average.
+-- This is good enough to know if you're "way under" or "way over"
+-- the 272,000 input-token limit, but it won't exactly match
+-- OpenAI's internal tokenizer.
+--
 
-local DEFAULT_MAX = 272000 -- GPT-5 (Thinking) max input tokens
+-- Hard model limit (input tokens) for GPT-5.1 Thinking:
+local MAX_INPUT_TOKENS = 272000
 
-local function print_usage()
-  io.stderr:write(([[
-Usage: chatgpt-check-limits [--max <MAX_TOKENS>] [--method bytes4|words]
+-- You can override this via env var CHARS_PER_TOKEN if you like:
+--   CHARS_PER_TOKEN=3 luajit token_check.lua < bigfile.txt
+local CHARS_PER_TOKEN = tonumber(os.getenv("CHARS_PER_TOKEN")) or 4
 
-Reads stdin, estimates tokens, prints "<used> / <max> tokens (X%%)",
-and exits non-zero if used >= max.
+-- Fractions for "way-under" and "way-over" gray zones
+--  - way-under: <= SAFE_FRACTION * MAX_INPUT_TOKENS
+--  - gray (below limit): SAFE_FRACTION*MAX .. MAX -> "possibly still okay"
+--  - gray (above limit): MAX .. OVER_FRACTION*MAX -> "possibly not okay anymore"
+--  - way-over: >= OVER_FRACTION * MAX_INPUT_TOKENS
+local SAFE_FRACTION = 0.75
+local OVER_FRACTION = 1.25
 
-Defaults:
-  --max    %d   (ChatGPT-5 Thinking input limit)
-  --method bytes4
+----------------------------------------------------------------------
+-- Help / usage
+----------------------------------------------------------------------
+local function print_help(progname)
+  progname = progname or "token_check.lua"
+  io.write(string.format([[
+Usage: %s [options] [file]
 
-Methods:
-  bytes4 (default)  ~1 token per ~4 bytes (ceil(#bytes/4))
-  words             1 token per whitespace-separated word
-]]):format(DEFAULT_MAX))
+Reads text from a file or STDIN, approximates token usage for
+GPT-5.1 Thinking, and reports whether the input is way-under,
+near, or way-over the input-token limit (%d tokens).
+
+If [file] is "-" or omitted, input is read from STDIN.
+
+Options:
+  -h, --help           Show this help and exit.
+
+Environment:
+  CHARS_PER_TOKEN=NUM  Override the default of %g chars per token used
+                       in the approximation.
+
+Exit codes:
+  0  Input comfortably within token budget (way-under).
+  1  Near the limit (gray area) OR no/invalid input (usage error).
+  2  Input is way over the model's input-token limit.
+]], progname, MAX_INPUT_TOKENS, CHARS_PER_TOKEN))
 end
 
--- Simple CLI parsing
-local args = {}
-do
-  local i = 1
-  while i <= #arg do
-    local a = arg[i]
-    if a == "--help" or a == "-h" then
-      print_usage()
-      os.exit(2)
-    elseif a == "--max" then
-      if i == #arg then
-        io.stderr:write("Error: --max requires a value\n")
-        print_usage()
-        os.exit(2)
-      end
-      args.max = tonumber(arg[i + 1])
-      i = i + 1
-    elseif a == "--method" then
-      if i == #arg then
-        io.stderr:write("Error: --method requires a value\n")
-        print_usage()
-        os.exit(2)
-      end
-      args.method = tostring(arg[i + 1])
-      i = i + 1
-    else
-      io.stderr:write("Error: unknown option: " .. tostring(a) .. "\n")
-      print_usage()
-      os.exit(2)
-    end
-    i = i + 1
+----------------------------------------------------------------------
+-- Utility: read all of stdin
+----------------------------------------------------------------------
+local function read_all_stdin()
+  local chunks = {}
+  while true do
+    local chunk = io.read(8192)
+    if not chunk then break end
+    chunks[#chunks + 1] = chunk
   end
+  return table.concat(chunks)
 end
 
--- Defaults & validation
-local max_tokens = args.max or DEFAULT_MAX
-if (not max_tokens) or max_tokens <= 0 then
-  io.stderr:write("Error: --max must be a positive integer\n")
-  print_usage()
-  os.exit(2)
-end
-local method = args.method or "bytes4"
-if method ~= "bytes4" and method ~= "words" then
-  io.stderr:write("Error: --method must be 'bytes4' or 'words'\n")
-  print_usage()
-  os.exit(2)
-end
-
--- Read all stdin
-local input = io.read("*a") or ""
-local used
-
-if method == "bytes4" then
-  -- Estimate: ~4 bytes ≈ 1 token (ceil).
-  local bytes = #input
-  used = math.ceil(bytes / 4)
-else
-  -- Very rough: 1 token per whitespace-separated word.
-  local count = 0
-  for _ in string.gmatch(input, "%S+") do
-    count = count + 1
+----------------------------------------------------------------------
+-- Utility: read from file
+----------------------------------------------------------------------
+local function read_all_file(filename)
+  local f, err = io.open(filename, "rb")
+  if not f then
+    io.stderr:write("Error: could not open file '", filename, "': ", tostring(err), "\n")
+    os.exit(1)
   end
-  used = count
+  local data = f:read("*a") or ""
+  f:close()
+  return data
 end
 
--- Report and exit
-local pct = (used / max_tokens) * 100
-io.write(string.format("%d / %d tokens used (%.1f%%) via %s\n", used, max_tokens, pct, method))
-if used >= max_tokens then
-  os.exit(1)
-else
-  os.exit(0)
+----------------------------------------------------------------------
+-- Approximate token estimation
+----------------------------------------------------------------------
+local function estimate_tokens(text)
+  local char_count = #text
+  if char_count == 0 then
+    return 0, 0
+  end
+  local approx_tokens = math.ceil(char_count / CHARS_PER_TOKEN)
+  if approx_tokens < 1 then
+    approx_tokens = 1
+  end
+  return approx_tokens, char_count
 end
+
+----------------------------------------------------------------------
+-- Main
+----------------------------------------------------------------------
+local function main()
+  -- Always greet on stderr
+  io.stderr:write("hey there\n")
+
+  local progname = tostring(arg[0] or "token_check.lua")
+  local first_arg = arg[1]
+
+  -- Check CLI options first
+  if first_arg == "-h" or first_arg == "--help" then
+    print_help(progname)
+    os.exit(0)
+  end
+
+  -- Determine input source: file (if given) or stdin
+  local input
+  if first_arg and first_arg ~= "-" then
+    -- Read from file
+    input = read_all_file(first_arg)
+  else
+    -- Read from stdin
+    input = read_all_stdin()
+  end
+
+  if #input == 0 then
+    io.stderr:write("No input read.\n")
+    io.stderr:write("Usage example (stdin):   cat file.txt | ", progname, "\n")
+    io.stderr:write("Usage example (file):    ", progname, " bigfile.txt\n")
+    io.stderr:write("Use -h or --help for more information.\n")
+    os.exit(1)
+  end
+
+  local tokens, chars = estimate_tokens(input)
+  local pct = (tokens / MAX_INPUT_TOKENS) * 100
+  local safe_threshold = math.floor(MAX_INPUT_TOKENS * SAFE_FRACTION)
+  local over_threshold = math.floor(MAX_INPUT_TOKENS * OVER_FRACTION)
+
+  io.write(string.format(
+    "Approximate tokens used: %d / %d (%.2f%% of input limit)\n",
+    tokens, MAX_INPUT_TOKENS, pct
+  ))
+  -- io.write(string.format(
+  --   "Character count: %d (using CHARS_PER_TOKEN = %g)\n",
+  --   chars, CHARS_PER_TOKEN
+  -- ))
+
+  local hint_line
+  local exit_code
+
+  if tokens <= safe_threshold then
+    -- Guaranteed within limit: "way-under" and always <= MAX_INPUT_TOKENS
+    hint_line = "Passing: way-under the limit."
+    exit_code = 0
+
+  elseif tokens <= MAX_INPUT_TOKENS then
+    -- Still within limit, but close: gray area below limit
+    hint_line = "Warning: possibly still okay (gray area near the limit)."
+    exit_code = 1
+
+  elseif tokens <= over_threshold then
+    -- Over the limit, but not massively: gray area above limit
+    hint_line = "Warning: possibly not okay anymore (slightly above the limit)."
+    exit_code = 1
+
+  else
+    -- Clearly above the limit: "way-over" and always > MAX_INPUT_TOKENS
+    hint_line = "Error: way-over the limit."
+    exit_code = 2
+  end
+
+  io.write(hint_line .. "\n")
+  os.exit(exit_code)
+end
+
+main()
