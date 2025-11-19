@@ -1938,6 +1938,9 @@ prompt continue key press (.sh .bash ;zsh): |
         printf "\n"
     }
 
+prompt continue pressing enter (.sh .bash ;zsh): |
+    read -rp "Press Enter to continue..."
+
 test if glob has any matches (.sh .bash): |
     if compgen -G test/*; then
         :
