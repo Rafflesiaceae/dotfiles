@@ -182,7 +182,7 @@ dbus monitor services (.cmd .dbus): sudo dbus-monitor --system "type='signal',se
 
 extract single file from tar (.cmd .tar): tar -zxf TAR_FILE EXTRACTED_FILE
 extract archive into directory (.cmd .tar): tar -zxf TAR_FILE -C DEST_DIRECTORY
-extract archive into directory as new root/strip (.cmd .tar): tar -zxf TAR_FILE --strip-components=1 -C DEST_DIRECTORY 
+extract archive into directory as new root/strip (.cmd .tar): tar -zxf TAR_FILE --strip-components=1 -C DEST_DIRECTORY
 create archive / recursive tar compression (.cmd .tar): tar -czvf backup.tar.gz folder
 list archive (.cmd .tar): tar -tvf archive.tar
 
@@ -1596,7 +1596,6 @@ enum (.json-schema): |
         "type": "string",
         "enum": ["one", "two", "three"]
     }
-
 # bash {{{1
 run a command in a one-shot tmux session and return (.cmd .tmux): |
     # ensure this script is run in a named tmux session
@@ -2179,6 +2178,15 @@ simple shell script (.systemd .service): |
 
     [Install]
     WantedBy=multi-user.target
+
+# CGPT {{{1
+Apply SPEC.rst (.cgtp .chatgpt): |
+    Make sure that the codebase covers what is mentioned in the SPEC.rst. (Apply what is specified in SPEC.rst to the codebase).
+
+General Footer (.cgtp .chatgpt): |
+    Also add a new file to the filetree named: wip-commit-message
+    Inside, write a git commit body - the title max being 50 characters (starting with CGPT: ) and the body description 640 characters at most (wrapped at 80 characters per line).
+    Concisely describe what the issue was that you tried to fix and how you attempt to fix it.
 
 # various {{{1
 All pixi platforms (.pixi): '"win-64", "linux-64", "osx-64", "osx-arm64"'
