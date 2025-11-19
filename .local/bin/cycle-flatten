@@ -141,18 +141,23 @@ EOF
             fi
         fi
 
-        if [[ "$edit" ]]; then
-            echo "TODO"
-            echo ""
-        fi
-
         if [[ "$gitws" ]] && [[ -e "${gitws}/chatgpt-query-additional" ]]; then
             echo ""
             cat "${gitws}/chatgpt-query-additional"
             echo ""
         fi
 
-        echo 'Add additional debug prints in case they are necessary to confirm the fixes - if possible only when $DEBUG env is set.'
+        echo "---"
+        echo ""
+
+        if [[ "$edit" ]]; then
+            echo "EDITME"
+            echo ""
+            # echo "---"
+            # echo ""
+        fi
+
+        echo "Add additional debug prints in case they are necessary to confirm the fixes - if possible only when \$DEBUG env is set."
         echo "Implement what is required to fix this and return a single fenced yaml code block with only the changed files and no extra text."
         echo ""
         echo "If files are not changed don't output them."
