@@ -21,6 +21,11 @@ while :; do
     -h | -\? | --help)
         usage 0
         ;;
+    -na | --noall)
+        nobuild=1
+        nocommit=1
+        notest=1
+        ;;
     -nb | --nobuild)
         nobuild=1
         ;;
