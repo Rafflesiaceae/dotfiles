@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-tmpdir=$(mktemp -d)
-cleanup_tmpdir() {
-    rm -rf "$tmpdir"
+{
+    tmpdir=$(mktemp -d)
+    cleanup_tmpdir() {
+        rm -rf "$tmpdir"
+    }
+    trap 'cleanup_tmpdir' EXIT INT
+
+    contentsf="${tmpdir}/contents.txt"
+
+    cb -o >"$contentsf"
+    cb -cf "$contentsf"
+
+    read -rp "Press Enter to remove temporary files..."
 }
-trap 'cleanup_tmpdir' EXIT INT
-
-contentsf="${tmpdir}/contents"
-
-cb -o > "$contentsf"
-cb -cf "$contentsf"
-
-read -rp "Press Enter to continue..."
