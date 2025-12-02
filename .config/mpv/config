@@ -18,6 +18,9 @@ screenshot-png-compression=5
 slang=en,eng
 alang=en,eng
 
+# no subtitles by default
+sid=no
+
 # loudnorm by default
 af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]
 
