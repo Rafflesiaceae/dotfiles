@@ -109,8 +109,8 @@ Synchronizes the directory that contains a `.syncfs` file (searched upwards from
 
 Subcommands:
   init  Create an example `.syncfs` file in the *current working directory* and open it in $EDITOR.
-  push  rsync local -> remote  (${SYNCFS_REMOTE}/${md5(realpath(syncdir))})
-  pull  rsync remote -> local
+  push  Mirror local -> remote (${SYNCFS_REMOTE}/${md5(realpath(syncdir))}), including deletions.
+  pull  Mirror remote -> local, including deletions.
 
 No subcommand: prints status (based on rsync dry-runs and timestamps):
 - Local changes to push
@@ -123,6 +123,7 @@ Environment:
 
 Notes:
   - Preserves perms and mtimes (-rlpt), not ownership. Excludes ".syncfs", respects per-directory ".gitignore" files (via rsync filter), and **always syncs the `.git` directory**.
+  - Uses --delete so that deletions propagate both ways: the destination is mirrored to the source (for push: remote mirrors local; for pull: local mirrors remote).
   - Local last-sync time is stored as POSIX seconds inside ".syncfs" (first line must be numeric).
   - Stable remote key: if your .syncfs contains a line like `id=YOUR_ID` (or `key=...`), that value is used to compute the remote path. Otherwise, the absolute path is canonicalized by replacing your HOME prefix with `~` (so `/home/alice/proj` and `/home/bob/proj` map to the same key `~/proj`).
   - Remote last-push time is stored in "${SYNCFS_REMOTE}/${md5(realpath(syncdir))}.timestamp" (internally computed from the stable key described above).
@@ -134,6 +135,8 @@ RSYNC_OPTS=(-rlpt --itemize-changes --out-format='%i %n%L' --exclude='.syncfs')
 # Honor Git ignore rules but always include the VCS metadata (.git).
 # The per-dir filter below treats any ".gitignore" as an rsync filter file (optional with '-' so missing files are fine).
 RSYNC_OPTS+=("--include=/.git" "--include=/.git/**" "--filter" ":- .gitignore")
+# Mirror semantics: propagate deletions both ways (but keep excluded files like .syncfs).
+RSYNC_OPTS+=("--delete")
 
 remote_base() { printf '%s' "${SYNCFS_REMOTE%/}"; }
 remote_path_for() {
@@ -185,7 +188,8 @@ dry_changes_exist() {
         return 2
         ;;
     esac
-    printf '%s\n' "$out" | grep -Eq '^[<>chd\.*]' && return 0 || return 1
+    # With --itemize-changes, normal changes start with [<>chd.*], deletions with "deleting ...".
+    printf '%s\n' "$out" | grep -Eq '^[<>chd\.*]|^deleting ' && return 0 || return 1
 }
 
 # Timestamp IO (POSIX seconds)
@@ -250,7 +254,7 @@ SYNCFS_MARKER
 do_push() {
     local syncdir="$1" remote now
     remote="$(remote_path_for "$syncdir")" || exit 1
-    echo "Pushing:"
+    echo "Pushing (mirror local -> remote, including deletions):"
     echo "  Local : $syncdir/"
     echo "  Remote: $remote/"
     rsync "${RSYNC_OPTS[@]}" "$syncdir/" "$remote/" || exit 1
@@ -266,7 +270,7 @@ do_pull() {
         echo "Nothing to pull: remote '$remote' does not exist yet."
         return 0
     fi
-    echo "Pulling:"
+    echo "Pulling (mirror remote -> local, including deletions):"
     echo "  Remote: $remote/"
     echo "  Local : $syncdir/"
     rsync "${RSYNC_OPTS[@]}" "$remote/" "$syncdir/" || exit 1
