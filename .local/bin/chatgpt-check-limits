@@ -99,8 +99,7 @@ end
 -- Main
 ----------------------------------------------------------------------
 local function main()
-  -- Always greet on stderr
-  io.stderr:write("hey there\n")
+  -- io.stderr:write("hey there\n")
 
   local progname = tostring(arg[0] or "token_check.lua")
   local first_arg = arg[1]
