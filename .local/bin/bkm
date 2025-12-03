@@ -21,7 +21,7 @@ for arg in "$@"; do
 
     parent=$(dirname "$target")
 
-    ( 
+    (
         mkdir -p "$parent"
         mv "$src" "$target"
     )
