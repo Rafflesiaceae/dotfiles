@@ -1596,6 +1596,70 @@ enum (.json-schema): |
         "type": "string",
         "enum": ["one", "two", "three"]
     }
+# kotlin {{{1
+anonymous blocks (.kotlin): |
+    run {
+
+    }
+
+foreach key/value in Map (.kotlin): |
+    for ((key, value) in map) {
+    }
+
+
+array/list map/dict - literal (.kotlin): |
+    data class Thing(val id: Int, val name: String)
+
+    // Immutable List
+    val things: List<Thing> = listOf(
+        Thing(1, "Alpha"),
+    )
+
+    // Immutable Map
+    val byKey: Map<String, Thing> = mapOf(
+        "t1" to Thing(1, "Alpha"),
+    )
+
+    // Mutable List
+    val mutableThings: MutableList<Thing> = mutableListOf(
+        Thing(1, "Alpha"),
+    )
+
+    // Mutable map you can update
+    val counts: MutableMap<Int, String> = mutableMapOf(
+        1 to "Alpha",
+    )
+
+json serialize (.kotlin): |
+    val mapper = ObjectMapper()
+    mapper.writeValueAsString(SOMETHING)
+    return mapper.createObjectNode().apply {
+        set<ArrayNode>("findings", findings)
+        set<ObjectNode>("summary", summary)
+    }
+
+json deserialize (.kotlin): |
+    import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper;
+
+    ObjectMapper mapper = jacksonObjectMapper();
+
+    String json = "{ \"name\": \"Alice\", \"age\": 30 }";
+    User user = mapper.readValue(json, User.class);
+
+read a file (.kotlin): |
+    val text: String = File("path/to/file.txt").readText()
+
+spreading in for each (.kotlin): |
+    for ((realpath, obj) in something.map{Path(it).toRealPath() to it}) {
+        // ...
+    }
+
+spreading in for each (.kotlin): |
+    mapOf(
+        "dt-users.json" to knownUsers,
+        "azure-all-iam-roles.json" to knownRoles,
+    )
+
 # bash {{{1
 run a command in a one-shot tmux session and return (.cmd .tmux): |
     # ensure this script is run in a named tmux session
