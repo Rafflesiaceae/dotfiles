@@ -330,7 +330,7 @@ pick_dir() {
 zle      -N  pick_dir{,}
 bindkey '^d' pick_dir
 # }}}
-# {{{ fzf - edit file <C-e>
+# {{{ fzf - edit file <C-x>
 edit_file() {
     vim "$(xclip -o)"
     zle .reset-prompt
