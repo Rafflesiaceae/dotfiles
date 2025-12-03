@@ -8,7 +8,7 @@ die() {
     exit 1
 }
 usage() {
-cat <<EOF
+    cat <<EOF
 Usage: termpopup [options/presets] [--] ...
 
 Options:
@@ -22,10 +22,10 @@ Options:
     -w,  --wait                Wait for command to exit (default)
 
 Presets:
-    -ft, --full-terminal, --fullterm   
+    -ft, --full-terminal, --fullterm
         Spawning a normal terminal, no popup'nes
 EOF
-    exit ${1:0}
+    exit "${1:0}"
 }
 usage_and_die() {
     printf '%s\n' "$1" >&2
@@ -41,36 +41,49 @@ title=
 wait=1
 while :; do
     case $1 in
-        -h|-\?|--help)   usage; exit;;
-        -cd|--cd|--change-dir)  
-            cd=$2
-            [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
-            shift || usage_and_die "--change-dir expects a followup path argument"
-            ;;
-        -ft|--full-terminal|--fullterm)   
-            no_escape=1
-            no_float=1
-            wait=1
-            ;;
-        -nc|--no-close)  no_close=1;;
-        -ne|--no-escape) no_escape=1;;
-        -nf|--no-float)  no_escape=1; no_float=1;;
-        -ns|--no-shell)  no_shell=1;;
-        -nw|--no-wait)   wait=;;
-        -t|--title)
-            title=$2
-            shift || usage_and_die "--title expects a followup title argument"
-            ;;
-        -w|--wait)       wait=1;;
-        --)
-            shift
-            break
-            ;;
-        -?*) 
-            usage_and_die "Unknown option: $1"
-            break
-            ;;
-        *) break ;;
+    -h | -\? | --help)
+        usage
+        exit
+        ;;
+    -cd | --cd | --change-dir)
+        cd=$2
+        if [[ -d "$cd" ]]; then
+            :
+        elif [[ -f "$cd" ]]; then
+            cd=$(dirname -- "$cd")
+        else
+            usage_and_die "passed path to --change-file is neither a directory nor a file"
+        fi
+        cd=$(realpath "$cd")
+        [[ -d "$cd" ]] || usage_and_die "--change-dir path is not a directory: '$cd'"
+        shift || usage_and_die "--change-dir expects a followup path argument"
+        ;;
+    -ft | --full-terminal | --fullterm)
+        no_escape=1
+        no_float=1
+        wait=1
+        ;;
+    -nc | --no-close) no_close=1 ;;
+    -ne | --no-escape) no_escape=1 ;;
+    -nf | --no-float)
+        no_escape=1
+        no_float=1
+        ;;
+    -ns | --no-shell) no_shell=1 ;;
+    -nw | --no-wait) wait= ;;
+    -t | --title)
+        title=$2
+        shift || usage_and_die "--title expects a followup title argument"
+        ;;
+    -w | --wait) wait=1 ;;
+    --)
+        shift
+        break
+        ;;
+    -?*)
+        usage_and_die "Unknown option: $1"
+        ;;
+    *) break ;;
     esac
 
     shift
@@ -100,12 +113,12 @@ fi
 
 if [[ ! $no_shell ]]; then
     if [[ $# -gt 0 ]]; then
-        args+=(-e "$SHELL" \
-            -i \
+        args+=(-e "$SHELL"
+            -i
             -c "$*")
     else
-        args+=(-e "$SHELL" \
-            -i )
+        args+=(-e "$SHELL"
+            -i)
     fi
 else
     args+=(-e "$*")
