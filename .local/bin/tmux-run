@@ -6,6 +6,13 @@ set -eo pipefail
 
 SESSION="multi-$(date +%s)"
 
+remain=
+case "$1" in
+    -r|--remain)
+        remain=1
+        ;;
+esac
+
 err=0
 
 cmds=()
@@ -40,7 +47,9 @@ tmux new-session -d -s "$SESSION" "${cmds[0]:-bash}"
         done
 
         tmux set-option -t "$SESSION" destroy-unattached on 2>/dev/null
-        # tmux set-option -t "$SESSION" remain-on-exit on
+        if [[ "$remain" ]]; then
+            tmux set-option -t "$SESSION" remain-on-exit on
+        fi
     ) &
     bg_pid=$!
 
