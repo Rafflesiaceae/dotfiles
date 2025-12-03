@@ -74,6 +74,13 @@ fi
 
 cdd() { cd "$(dirname "$1")"; }
 
+f() {
+    search=$1
+    shift
+    cmd="${1:-echo}"
+    find . -iregex ".*$search" -type f -exec "$cmd" '{}' \; 2> >(grep -v "Permission denied")
+}
+
 gcl() {
     if [[ "$#" -lt 1 ]]; then
         echo "pass an URL to clone" >&2

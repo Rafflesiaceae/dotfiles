@@ -1,26 +1,5 @@
 # functions
 function \$() { $*; }
-function f() { # colored find / searches current tree recursively
-    find . -iregex ".*$@" -printf '%P\0' 2> >(grep -v "Permission denied" ) | xargs -r0 ls --color=auto -1d
-    # declare -A lscolormap
-
-    # local lscolorsplits=("${(@s/:/)LS_COLORS}") # split LS_COLORS by ':'
-    # for foo in "${a[@]}"; do
-    #     lscolormap[]
-    # done
-
-
-    # while IFS=':' read -A args; do
-    #   echo "${args[1]}"
-    # done < "$LS_COLORS"
-
-    # export IFS=":"
-    # for word in "$LS_COLORS"; do
-    #   echo "1"
-    # done
-
-    # find . -iregex ".*$@" 2> >(grep -v "Permission denied" ) 1> >(while IFS='$\n' read -r line;  do; ls --color=auto -1d "$line"; done; )
-}
 
 function cdgit() {
     cd "$(git rev-parse --show-toplevel)"
@@ -338,6 +317,26 @@ pick_file() {
 }
 zle      -N  pick_file{,}
 bindkey '^F' pick_file
+# }}}
+# {{{ fzf - pick dir below current dir <C-d>
+pick_dir() {
+    local file=$(find . -type d -maxdepth 1 | sed -E 's#^(\./)+##' | fzf) || exit 1
+    LBUFFER+="$file"
+
+    __execute_precmds()
+
+    zle .reset-prompt
+}
+zle      -N  pick_dir{,}
+bindkey '^d' pick_dir
+# }}}
+# {{{ fzf - edit file <C-e>
+edit_file() {
+    vim "$(xclip -o)"
+    zle .reset-prompt
+}
+zle      -N  edit_file{,}
+bindkey '^x' edit_file
 # }}}
 # {{{ fzf - most recent file from home <Alt-h>
 most_recent_home() {
