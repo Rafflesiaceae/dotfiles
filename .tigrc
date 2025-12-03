@@ -66,7 +66,11 @@ bind diff R !git rebase --autostash -i %(commit)^
 bind main ! >git revert %(commit)
 
 bind generic C !git commit
+bind main v @sh -c "git show -s --format=%B %(commit) | cb"
+bind main c !?git checkout %(commit)
 bind main C >git commit
+bind refs c !?git checkout %(branch)
+
 # bind main A >git commit --amend
 bind main A >git-amend-to-particular-commit  %(commit)
 
@@ -76,9 +80,8 @@ bind generic u >git reset
 bind generic <F8> >git-debug-commitpush
 bind generic <F4> >git-debug-commitpush
 
-bind main c !?git checkout %(commit)
 bind main p ?sh -c "echo 'branch: %(branch)'; git push"
-bind main P ?git cherry-pick %(commit)
+bind main P ?git-split-into-remote-branch %(commit)
 bind generic T !@sh -c "git-stage-all-unstaged-changes"
 bind main  I !@sh -c "git-stage-all-unstaged-changes"
 bind stage I !@sh -c "git-stage-all-unstaged-changes"
@@ -88,9 +91,6 @@ bind stage U @!git stage %(file)
 
 bind refs 1 @?git tag -d %(tag)
 bind refs D !?git push %(remote) --delete %(branch)
-bind refs C !?git checkout -b %(tag) %(tag)
-# bind refs c !?git checkout -b %(tag) %(tag)
-bind refs c !?git checkout %(branch)
 
 bind generic S     ?git format-patch -1 -N %(commit)
 #bind generic <C-P> ?git format-patch -1 -N %(commit)
@@ -103,6 +103,7 @@ bind generic <C-C> +@sh -c "echo -n \"%(commit)\" | xclip -selection c; echo \"c
 bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)\""
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
 bind generic <C-T> !@sh -c "termpopup --no-escape --no-float -- git-edit-date \"%(commit)\""
+
 
 bind generic <C-s> !@?git stash
 
