@@ -88,20 +88,6 @@ find_syncdir() {
     done
 }
 
-open_in_editor() {
-    # Try VISUAL, then EDITOR, then common fallbacks. Do not fail hard if none are available.
-    local f="$1" ed
-    ed="${VISUAL:-${EDITOR:-}}"
-    if [ -n "$ed" ]; then "$ed" "$f" && return 0; fi
-    for e in nano vi vim code micro nvim; do
-        if command -v "$e" >/dev/null 2>&1; then
-            "$e" "$f"
-            return $?
-        fi
-    done
-    echo "Created '$f'. Set \$EDITOR or \$VISUAL to open it automatically." >&2
-}
-
 usage() {
     cat <<'EOF'
 Usage: syncfs [init|push|pull] [-h|--help]
@@ -248,7 +234,6 @@ SYNCFS_MARKER
         chmod 0644 "$f" 2>/dev/null || true
         echo "Created example $f"
     fi
-    open_in_editor "$f"
 }
 
 do_push() {
