@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sel="${1:-clipboard}"  # use "primary" for PRIMARY selection
+
+command -v xclip   >/dev/null || { echo "error: xclip not found" >&2; exit 127; }
+command -v pandoc  >/dev/null || { echo "error: pandoc not found" >&2; exit 127; }
+
+targets="$(xclip -selection "$sel" -t TARGETS -o 2>/dev/null | tr '\0' '\n')"
+html_target="$(printf '%s\n' "$targets" | awk 'BEGIN{IGNORECASE=1} /^text\/html/ {print; exit}')"
+
+if [[ -z "${html_target:-}" ]]; then
+  echo "error: clipboard has no text/html target (selection: $sel)" >&2
+  echo "available targets:" >&2
+  printf '%s\n' "$targets" | sort -u >&2
+  exit 1
+fi
+
+lua_filter="$(mktemp)"
+trap 'rm -f "$lua_filter"' EXIT
+cat >"$lua_filter" <<'LUA'
+-- Hard guarantee: drop any remaining raw HTML that might slip through.
+function RawInline(el)
+  if (el.format or ""):match("html") then return {} end
+end
+function RawBlock(el)
+  if (el.format or ""):match("html") then return {} end
+end
+LUA
+
+xclip -selection "$sel" -t "$html_target" -o \
+| pandoc --from=html --to=gfm-raw_html --wrap=none --lua-filter="$lua_filter"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+in="${1:--}"
+
+if ! command -v pandoc >/dev/null; then
+  echo "error: pandoc not found" >&2
+  exit 127
+fi
+
+if [[ "$in" == "-" ]]; then
+  pandoc --from=rst --to=gfm --wrap=none
+else
+  pandoc --from=rst --to=gfm --wrap=none "$in"
+fi

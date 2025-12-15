@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -eo pipefail
+xclip -selection clipboard -t TARGETS -o | tr '\0' '\n' | sort -u
