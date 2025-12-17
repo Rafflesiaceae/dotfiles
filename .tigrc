@@ -8,9 +8,14 @@ set main-view = line-number:no,interval=4 \
 set line-graphics = utf-8
 set show-changes = yes
 set show-untracked = no
+# set ignore-space = no
+# set ignore-space-at-eol = no
+# set ws-error-highlight = all
 
 set tab-size = 4
 set ignore-case = true
+
+# set diff-options = --word-diff=plain --word-diff-regex=.
 
 # Colors
 color author green default
@@ -66,9 +71,15 @@ bind diff R !git rebase --autostash -i %(commit)^
 bind main ! >git revert %(commit)
 
 bind generic C !git commit
+# bind generic C @sh -c "git show -s --format=%B %(commit) | cb"
+#
+bind main <Esc>c @sh -c "git show -s --format=%B %(commit) | cb"
 bind main v @sh -c "git show -s --format=%B %(commit) | cb"
 bind main c !?git checkout %(commit)
 bind main C >git commit
+
+# bind refs C !?git checkout -b %(tag) %(tag)
+# bind refs c !?git checkout -b %(tag) %(tag)
 bind refs c !?git checkout %(branch)
 
 # bind main A >git commit --amend
@@ -78,10 +89,12 @@ bind generic a >git add -u
 bind generic u >git reset
 
 bind generic <F8> >git-debug-commitpush
-bind generic <F4> >git-debug-commitpush
+# bind generic <F4> >git-debug-commitpush
+bind generic <F1> !git rebase --root --autostash -i
 
 bind main p ?sh -c "echo 'branch: %(branch)'; git push"
 bind main P ?git-split-into-remote-branch %(commit)
+# bind main P ?git cherry-pick %(commit)
 bind generic T !@sh -c "git-stage-all-unstaged-changes"
 bind main  I !@sh -c "git-stage-all-unstaged-changes"
 bind stage I !@sh -c "git-stage-all-unstaged-changes"
