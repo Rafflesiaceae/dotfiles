@@ -1955,3 +1955,97 @@ augroup SetTxtIfNoFiletype
   autocmd BufRead,BufNewFile *
         \ if empty(&filetype) | setlocal filetype=txt | endif
 augroup END
+
+lua << JSONPOS
+-- ==========================
+-- JSON path + vim-airline
+-- ==========================
+
+-- Tree-sitter based JSON path
+local ts = vim.treesitter
+
+local function ts_node_text(node, bufnr)
+if not node then return "" end
+if ts.get_node_text then
+return ts.get_node_text(node, bufnr)
+else
+-- older Neovim
+return require("vim.treesitter.query").get_node_text(node, bufnr)
+end
+end
+
+function _G.JsonPath()
+-- Limit to JSON-ish buffers
+local ft = vim.bo.filetype
+if ft ~= "json" and ft ~= "jsonc" then
+return ""
+end
+
+local bufnr = vim.api.nvim_get_current_buf()
+
+-- Get Tree-sitter parser for this buffer
+local ok, parser = pcall(ts.get_parser, bufnr)
+if not ok or not parser then
+return ""
+end
+
+local tree = parser:parse()[1]
+if not tree then
+return ""
+end
+
+local root = tree:root()
+
+-- Cursor position (TS uses 0-based row)
+local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+row = row - 1
+
+local node = root:named_descendant_for_range(row, col, row, col)
+if not node then
+return ""
+end
+
+local parts = {}
+
+-- Walk up and collect keys from "pair" nodes
+while node do
+if node:type() == "pair" then
+  local key_node = node:field("key")[1]
+  if key_node then
+    local key = ts_node_text(key_node, bufnr)
+    -- strip surrounding quotes
+    key = key:gsub('^"(.*)"$', "%1")
+    table.insert(parts, 1, key) -- prepend (root → leaf)
+  end
+end
+node = node:parent()
+end
+
+if #parts == 0 then
+return ""
+end
+
+return "." .. table.concat(parts, ".")
+end
+
+-- ==========================
+-- vim-airline integration
+-- ==========================
+-- This puts the JSON path into the X section on the right side.
+-- If you already customize these sections, just adapt the line.
+
+vim.g["airline_section_x"] = "%{v:lua.JsonPath()}"
+JSONPOS
+
+" lua << CTRLSEARCHF
+" vim.keymap.set('n', '<C-f>', function()
+"   -- Get word under cursor
+"   local word = vim.fn.expand('<cword>')
+"   if word == nil or word == '' then
+"     return
+"   end
+
+"   -- Run :CtrlSF <word>
+"   vim.cmd('CtrlSF ' .. vim.fn.shellescape(word))
+" end, { noremap = true, silent = true })
+" CTRLSEARCHF
