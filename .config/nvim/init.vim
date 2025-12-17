@@ -530,7 +530,7 @@ au FileType fzf tunmap <buffer> <Esc>
 cnoremap <C-a> <Home>
 
 inoremap <C-q> <Esc>:q!<CR>
-inoremap <C-a> <Esc>:wq!<CR>
+" inoremap <C-a> <Esc>:wq!<CR>
 " nnoremap <C-a> :wq!<CR>
 
 vnoremap Y "+y<CR>
