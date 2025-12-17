@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Undo changes in files where the *only* difference vs HEAD
+# is an added or removed final newline.
+# Keeps all other changes intact.
+
+set -euo pipefail
+
+# Make sure we're in a git repo
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
+  echo "Not inside a git repository" >&2
+  exit 1
+}
+
+# Look at all files that differ from HEAD (staged or unstaged)
+git diff --name-only -z HEAD | while IFS= read -r -d '' path; do
+  # Skip if file is gone in the working tree
+  [[ -e "$path" ]] || continue
+
+  # Skip if file doesn't exist in HEAD (i.e. new file)
+  if ! git cat-file -e "HEAD:$path" 2>/dev/null; then
+    continue
+  fi
+
+  # Compare HEAD and working tree, but normalize away a single
+  # trailing newline at EOF in both versions.
+  #
+  # perl -pe 'chomp if eof' :
+  #   - processes line by line
+  #   - on the last line only, removes the trailing '\n'
+  #   - prints everything, so output is "file without guaranteed final LF"
+  if cmp -s \
+      <(git show "HEAD:$path" | perl -pe 'chomp if eof') \
+      <(perl -pe 'chomp if eof' -- "$path"); then
+
+    echo "Reverting trailing-newline-only change in: $path"
+
+    # Reset both index and working tree copy of the file back to HEAD.
+    # Try `git restore` first (newer git), fall back to `git checkout` (older git).
+    git restore --source=HEAD --staged --worktree -- "$path" 2>/dev/null || \
+      git checkout HEAD -- "$path"
+  fi
+done

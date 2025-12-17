@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Normalize content by removing ALL whitespace characters.
+# If two versions of a file are identical after this, then
+# the differences between them are purely whitespace changes
+# (spaces, tabs, newlines, etc.).
+normalize_whitespace() {
+  tr -d '[:space:]'
+}
+
+# Compare against HEAD by default
+ref="HEAD"
+
+# Get files that are modified (not added/deleted) vs HEAD
+mapfile -t files < <(git diff --name-only --diff-filter=M "$ref")
+
+if ((${#files[@]} == 0)); then
+  echo "No modified files vs $ref."
+  exit 0
+fi
+
+for f in "${files[@]}"; do
+  # Skip if not a regular file in the working tree
+  [[ -f "$f" ]] || continue
+
+  # Blob from HEAD
+  if ! git show "$ref:$f" >/dev/null 2>&1; then
+    # Shouldn't happen with --diff-filter=M, but be safe
+    continue
+  fi
+
+  old_hash=$(
+    git show "$ref:$f" \
+      | normalize_whitespace \
+      | git hash-object --stdin
+  )
+
+  new_hash=$(
+    normalize_whitespace < "$f" \
+      | git hash-object --stdin
+  )
+
+  if [[ "$old_hash" == "$new_hash" ]]; then
+    echo "Reverting whitespace-only changes in: $f"
+
+    # Reset both index and working tree for this file
+    if git restore --staged --worktree -- "$f" 2>/dev/null; then
+      :
+    else
+      # Fallback for older Git
+      git checkout -- "$f"
+      git reset "$ref" -- "$f" >/dev/null 2>&1 || true
+    fi
+  fi
+done

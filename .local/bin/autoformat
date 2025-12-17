@@ -1,0 +1,15 @@
+#!/bin/dash
+autoformat_path=$(find-upwards "autoformat.sh")
+if [ -n "$autoformat_path" ]; then
+    printf "+ %s %s\n" "$autoformat_path" "$*"
+    "$autoformat_path" "$@"
+elif find-upwards "Taskfile.yml" >/dev/null; then
+    printf "+ go-task autoformat %s\n" "$*"
+    go-task autoformat "$@"
+elif find-upwards "gradlew" >/dev/null; then
+    printf "+ ./gradlew spotlessApply %s\n" "$*"
+    ./gradlew spotlessApply "$@"
+else
+    printf "No way to autoformat found.\n" >&2
+    exit 1
+fi

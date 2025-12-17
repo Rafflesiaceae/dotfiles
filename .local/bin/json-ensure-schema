@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#
+# Usage:
+#   ensure-schema.sh <json-file> <schema-file>
+#
+# Ensures:
+#   - <json-file> is a JSON object
+#   - Its first key is "$schema" with a value that is a relative path
+#     (from the parent directory of <json-file>) pointing to <schema-file>.
+#
+# If not, it rewrites <json-file> so that:
+#   {
+#     "$schema": "<relative/path/to/schema>",
+#     ... rest of original object (without any old $schema field) ...
+#   }
+
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+  echo "Usage: $0 <json-file> <schema-file>" >&2
+  exit 1
+fi
+
+JSON_PATH=$1
+SCHEMA_PATH=$2
+
+# Ensure dependencies
+for cmd in jq realpath python3; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Error: required command '$cmd' not found in PATH" >&2
+    exit 1
+  fi
+done
+
+# Canonical absolute paths
+JSON_ABS=$(realpath "$JSON_PATH")
+SCHEMA_ABS=$(realpath "$SCHEMA_PATH")
+
+# Basic existence checks
+if [ ! -f "$JSON_ABS" ]; then
+  echo "Error: JSON file not found: $JSON_ABS" >&2
+  exit 1
+fi
+
+if [ ! -f "$SCHEMA_ABS" ]; then
+  echo "Error: schema file not found: $SCHEMA_ABS" >&2
+  exit 1
+fi
+
+JSON_DIR=$(dirname "$JSON_ABS")
+JSON_BASENAME=$(basename "$JSON_ABS")
+
+# Compute schema path relative to the JSON file's directory
+# Prefer realpath --relative-to if available, otherwise fall back to python
+if SCHEMA_REL=$(realpath --relative-to="$JSON_DIR" "$SCHEMA_ABS" 2>/dev/null); then
+  :
+else
+    exit 9
+  # Fallback using python3
+  SCHEMA_REL=$(python3 - <<EOF
+import os
+print(os.path.relpath(${SCHEMA_ABS@Q}, start=${JSON_DIR@Q}))
+EOF
+)
+fi
+
+# Ensure JSON root is an object
+if ! jq -e 'type == "object"' "$JSON_ABS" >/dev/null; then
+  echo "Error: JSON root is not an object in $JSON_ABS" >&2
+  exit 1
+fi
+
+# If the first field is already "$schema" with the correct value, do nothing
+if jq -e --arg schema "$SCHEMA_REL" '
+  type == "object"
+  and
+  (to_entries as $e
+   | ($e | length > 0)
+   and ($e[0].key == "$schema" and $e[0].value == $schema))
+' "$JSON_ABS" >/dev/null 2>&1; then
+  exit 0
+fi
+
+# Temporary file in same directory for atomic-ish replace
+TMP_FILE=$(mktemp "$JSON_DIR/.${JSON_BASENAME}.XXXXXX")
+
+# Rewrite JSON with $schema first, overriding any existing $schema
+# and preserving the rest of the object.
+jq --arg schema "$SCHEMA_REL" '
+  if type != "object" then
+    error("Root is not an object")
+  else
+    { "$schema": $schema } + (del(.["$schema"]))
+  end
+' "$JSON_ABS" > "$TMP_FILE"
+
+mv "$TMP_FILE" "$JSON_ABS"
