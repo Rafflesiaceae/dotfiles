@@ -1,2 +1,16 @@
-#!/bin/sh
-nvim -d "$@" || exit 1
+#!/usr/bin/env bash
+
+case "$1" in
+-m)
+    shift
+    arg0=$1
+    shift
+    args=("$@")
+    for arg in "${args[@]}" ; do
+        nvim -d "$arg0" "$arg"
+    done
+    ;;
+*)
+    nvim -d "$@" || exit 1
+    ;;
+esac
