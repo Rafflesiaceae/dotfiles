@@ -163,6 +163,7 @@ sources = {
     "./.local/bin/ffsmoltwo": "",
     "./.local/bin/file-changed": "",
     "./.local/bin/find-all-text-files": "",
+    "./.local/bin/find-biggest-code-files": "",
     "./.local/bin/find-cycle-flatten-root": "",
     "./.local/bin/find-upwards": "",
     "./.local/bin/flatten": "",

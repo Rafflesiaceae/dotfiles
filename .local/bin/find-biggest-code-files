@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#
+# Usage:
+#   find-biggest-code-files.sh             # list all code files, sorted by size
+#   find-biggest-code-files.sh 500kb       # only files >= 500 KB
+#   find-biggest-code-files.sh 2M          # only files >= 2 MB
+#
+# Supported units (case-insensitive): B, K, KB, KiB, M, MB, MiB, G, GB, GiB, T, TB, TiB, P, PB, PiB
+
+set -euo pipefail
+
+parse_size() {
+  local input="$1"
+  # Normalize to uppercase
+  input="$(printf '%s' "$input" | tr '[:lower:]' '[:upper:]')"
+
+  # Regex: number + optional unit
+  # Units: B, K, KB, KI, KIB, M, MB, MI, MIB, G, GB, GI, GIB, T, TB, TI, TIB, P, PB, PI, PIB
+  if [[ $input =~ ^([0-9]+)([KMGTP]I?B?|B)?$ ]]; then
+    local num="${BASH_REMATCH[1]}"
+    local unit="${BASH_REMATCH[2]:-}"
+    local mult
+
+    case "$unit" in
+      ""|"B")
+        mult=1
+        ;;
+      K|KB|KI|KIB)
+        mult=1024                     # 1 KiB
+        ;;
+      M|MB|MI|MIB)
+        mult=1048576                  # 1024^2
+        ;;
+      G|GB|GI|GIB)
+        mult=1073741824               # 1024^3
+        ;;
+      T|TB|TI|TIB)
+        mult=1099511627776            # 1024^4
+        ;;
+      P|PB|PI|PIB)
+        mult=1125899906842624         # 1024^5
+        ;;
+      *)
+        echo "Unsupported size unit in '$1'" >&2
+        return 1
+        ;;
+    esac
+
+    echo "$(( num * mult ))"
+  else
+    echo "Invalid size format: '$1'" >&2
+    echo "Examples: 500KB, 2M, 1GiB, 1024" >&2
+    return 1
+  fi
+}
+
+# Format bytes as a human-readable string like 245KB, 12MB, etc.
+format_size() {
+  local bytes=$1
+
+  if (( bytes < 1024 )); then
+    printf '%dB' "$bytes"
+  elif (( bytes < 1024 * 1024 )); then
+    local kb=$(( (bytes + 1023) / 1024 ))
+    printf '%dKB' "$kb"
+  elif (( bytes < 1024 * 1024 * 1024 )); then
+    local mb=$(( (bytes + 1024 * 1024 - 1) / (1024 * 1024) ))
+    printf '%dMB' "$mb"
+  elif (( bytes < 1024 * 1024 * 1024 * 1024 )); then
+    local gb=$(( (bytes + 1024 * 1024 * 1024 - 1) / (1024 * 1024 * 1024) ))
+    printf '%dGB' "$gb"
+  else
+    local tb=$(( (bytes + 1024 * 1024 * 1024 * 1024 - 1) / (1024 * 1024 * 1024 * 1024) ))
+    printf '%dTB' "$tb"
+  fi
+}
+
+# ------------------------------------------------------------
+# Optional minimum size argument
+# ------------------------------------------------------------
+min_size_bytes=0
+if [[ $# -ge 1 ]]; then
+  min_size_bytes="$(parse_size "$1")"
+fi
+
+# ------------------------------------------------------------
+# Common code file extensions
+# (add/remove as you like)
+# ------------------------------------------------------------
+code_exts=(
+  c h cpp cxx cc hpp hxx hh
+  py pyw
+  js jsx mjs ts tsx
+  go rs
+  java kt kts scala sc
+  cs
+  php phtml
+  rb
+  swift
+  m mm                # Obj-C / Objective-C++
+  sh bash zsh fish
+  lua
+  pl pm               # Perl
+  r
+  jl                  # Julia
+  hs lhs              # Haskell
+  clj cljs cljc       # Clojure
+  ex exs              # Elixir
+  erl hrl             # Erlang
+  ml mli              # OCaml
+  sql
+)
+
+# ------------------------------------------------------------
+# Build the find command: find . -type f \( -iname '*.c' -o ... \)
+# ------------------------------------------------------------
+find_args=( . -type f '(' )
+first=1
+for ext in "${code_exts[@]}"; do
+  if (( first )); then
+    first=0
+  else
+    find_args+=(-o)
+  fi
+  find_args+=( -iname "*.${ext}" )
+done
+find_args+=( ')' -printf '%s\t%P\0' )
+
+# ------------------------------------------------------------
+# Collect results, compute max path length (for alignment),
+# then print paths + aligned sizes, separated by a TAB.
+# ------------------------------------------------------------
+
+entries=()
+max_path_len=0
+
+# First pass: collect and filter
+while IFS=$'\t' read -r -d '' size relpath; do
+  if (( size >= min_size_bytes )); then
+    entries+=("$size"$'\t'"$relpath")
+    # track max path length (in characters)
+    (( ${#relpath} > max_path_len )) && max_path_len=${#relpath}
+  fi
+done < <(find "${find_args[@]}" | sort -z -n -r)
+
+# Second pass: print with aligned sizes
+for entry in "${entries[@]}"; do
+  size=${entry%%$'\t'*}
+  relpath=${entry#*$'\t'}
+
+  hr_size="$(format_size "$size")"
+
+  # Pad path to max_path_len with spaces, then a TAB, then the size.
+  # Because everything before the TAB is the same width on every line,
+  # the sizes visually align in one column.
+  printf '%-*s\t%s\n' "$max_path_len" "$relpath" "$hr_size"
+done
