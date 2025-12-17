@@ -71,7 +71,7 @@ geometry = "0x5-30-50"
 
 width = (0, 420)
 
-max_icon_size = 48
+max_icon_size = 36
 # min_icon_size = 12
 
 # The transparency of the window. range: [0; 100]
