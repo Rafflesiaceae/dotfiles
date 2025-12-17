@@ -1,22 +1,58 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-# readarray -t files < <(find . -type f)
-readarray -t files < <(find . -type f -exec grep -Iq . {} \; -print)
+set -x
+echo "gathering files..."
 
-# files=()
+# Create temp file and make sure we clean it up
+tmpfile="$(mktemp)"
+trap 'rm -f "$tmpfile"' EXIT
 
-# while read -r file; do
-#     {
-#         if file "$file" | grep -q "text"; then
-#             # echo "$file"
-#             files+=("$file")
-#             # vim-resave "$file"
-#         fi
-#         # [[ "$line" == *"$(basename "$0")" ]] && continue # skip this script itself
-#         # # all subprocesses here will inherit the command as stdin, not the tty, so we need to set it explicitly again
-#         # vimdiff "$PWD/$line" "/$line"
-#     } </dev/tty
-# done < <(find . -type f)
+# Fill temp file with the list of files
+find-all-text-files >"$tmpfile"
 
-vim-resave "${files[@]}"
+# Nothing to do?
+if ! [ -s "$tmpfile" ]; then
+    echo "no files found"
+    exit 0
+fi
+
+echo "resaving..."
+
+# FILELIST="$tmpfile" vim -Es <<'EOF'
+# set nomore
+# echom expand('%:p')
+# echo 'JKSAD'
+# echom 'oiquwe'
+# EOF
+
+# Pass the path via env var so Vim can read it
+FILELIST="$tmpfile" vim -Es <<'EOF'
+set nomore
+
+let fl = $FILELIST
+if empty(fl)
+  qall
+endif
+
+" Where to print progress lines (POSIX systems)
+let out = '/dev/stdout'
+
+" Read the file list (one filename per line)
+for f in readfile(fl)
+  if empty(f)
+    continue
+  endif
+
+  " Open file, let editorconfig/etc do its thing
+  execute 'edit' fnameescape(f)
+
+  " Write file (triggers BufWrite hooks, editorconfig, etc.)
+  silent! write
+
+  " Print absolute path of the file just written
+  call writefile([expand('%:p')], out, 'a')
+endfor
+
+qall
+EOF
