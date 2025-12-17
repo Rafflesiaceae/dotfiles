@@ -30,7 +30,13 @@ done
 
 # One headless Vim instance for all files
 # Preserves your original order: set noendofline -> write -> FixFileFormat
-vim --headless \
-    -c 'argdo set noendofline | silent! w | silent! FixFileFormat' \
-    -c 'qa' -- "$@"
+
+# vim --headless \
+#     -c 'argdo set noendofline | silent! w | silent! FixFileFormat' \
+#     -c 'qa' -- "$@"
+
+vim -es -c 'argdo if &modified | silent! w | endif' -c 'qa' -- "$@"
+
+# vim -es -c 'argdo if &modified | silent! w | endif' -c 'qa' -- "$@"
+
     # -c 'qa' -- "${eligible[@]}"
