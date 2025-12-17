@@ -18,7 +18,7 @@ else
     commit=$arg1
     branch=$(git log -1 --format=%s "$commit")
     branch="${branch#*: }" # strip potential 'prefix: '
-    branch=$(echo "$branch" | sed 's/[[:space:][:punct:]]/-/g' | tr '[:upper:]' '[:lower:]')
+    branch=$(echo "$branch" | sed 's/[[:space:][:punct:]]/-/g' | tr '[:upper:]' '[:lower:]' | sed 's/^-*//')
 fi
 
 has_changes=
@@ -26,7 +26,7 @@ if git-has-changes any; then
     has_changes=1
 fi
 
-default_branch=$(git-default-branch) || true
+default_branch=$(git-current-branch) || true
 default_branch=${default_branch:-master}
 
 remote="origin"
@@ -47,7 +47,7 @@ if [[ -n "$commit" ]]; then
     if [[ "$has_changes" ]]; then
         git stash pop
     fi
-else  # TODO - this doesn't make sense anymore
+else # TODO - this doesn't make sense anymore
     set -x
     git checkout -B "$branch"
     git rebase --autostash -i 'HEAD~30'
