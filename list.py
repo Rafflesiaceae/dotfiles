@@ -33,6 +33,7 @@ sources = {
     "./.config/nvim/lua/treesitter-nu.lua": "",
     "./.config/parcellite/parcelliterc": {"linux": ""},
     "./.config/ranger/commands.py": {"linux": ""},
+    "./.config/ranger/plugins/auto_title.py": "",
     "./.config/ranger/rc.conf": {"linux": ""},
     "./.config/ranger/rifle.conf": {"linux": ""},
     "./.config/ranger/scope.sh": {"linux": ""},
