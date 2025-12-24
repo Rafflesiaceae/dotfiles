@@ -32,7 +32,6 @@ sources = {
     "./.config/nvim/init.vim": "",
     "./.config/nvim/lua/treesitter-nu.lua": "",
     "./.config/parcellite/parcelliterc": {"linux": ""},
-    "./.config/ranger/plugins/auto_flat_jvm_projects.py": {"linux": ""},
     "./.config/ranger/commands.py": {"linux": ""},
     "./.config/ranger/rc.conf": {"linux": ""},
     "./.config/ranger/rifle.conf": {"linux": ""},
