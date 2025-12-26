@@ -225,6 +225,7 @@ convert audio to highest quality ogg (.cmd .ffmpeg): ffmpeg -i INP -c:a libvorbi
 normalize audio (.cmd .ffmpeg): ffmpeg -i INP -filter:a "loudnorm=I=-16:TP=-3:LRA=4" -c:v copy OUTP
 
 # c {{{1
+show/see/debug macro expansion (.c): gcc -E -P -dD -CC %
 struct literal / tuple (.c): (vec4_t){1.0, 0.0, 0.0, 1.0}
 set/print/determine gamemode(.c .etl): |
     #ifdef CGAMEDLL
