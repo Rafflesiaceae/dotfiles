@@ -424,6 +424,60 @@ edit_xsel_primary() {
 zle -N edit_xsel_primary
 bindkey '^[[14~' edit_xsel_primary # F4
 # }}}
+# {{{ set title
+# --- terminal title: idle/command, and show failure title if last exit != 0 ---
+
+# Customize this if you want:
+typeset -g ZSH_TITLE_IDLE=${ZSH_TITLE_IDLE:-zsh}
+typeset -g ZSH_TITLE_FAIL=${ZSH_TITLE_FAIL:-zsh}   # shown when last command exited non-zero
+typeset -g ZSH_TITLE_MAXLEN=${ZSH_TITLE_MAXLEN:-120}
+
+# Set terminal/window title (works for most xterm-compatible terminals, including in tmux/screen).
+__title_set() {
+  emulate -L zsh
+  local title="$1"
+
+  # keep it one line + reasonably short
+  title=${title//$'\n'/ }
+  title=${title//$'\r'/ }
+  title=${title//$'\t'/ }
+  (( ${#title} > ZSH_TITLE_MAXLEN )) && title="${title[1,ZSH_TITLE_MAXLEN-1]}…"
+
+  if [[ -n ${TMUX-} ]]; then
+    # tmux passthrough
+    print -n -- "\ePtmux;\e\e]0;${title}\a\e\\"
+  elif [[ $TERM == screen* || $TERM == tmux* ]]; then
+    # GNU screen passthrough
+    print -n -- "\eP\e]0;${title}\a\e\\"
+  else
+    # direct OSC (xterm et al.)
+    print -n -- "\e]0;${title}\a"
+  fi
+}
+
+__title_idle() {
+  local st=$?   # exit status of the last command (as seen by precmd)
+  emulate -L zsh
+  if (( st != 0 )); then
+    __title_set "🔴 ${ZSH_TITLE_FAIL}"
+  else
+    __title_set "🟢 ${ZSH_TITLE_IDLE}"
+  fi
+}
+
+__title_preexec() {
+  emulate -L zsh
+  local cmdline="$1"
+  __title_set "🟠 $cmdline"
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd  __title_idle     # runs when zsh is ready for input (after command finished)
+add-zsh-hook preexec __title_preexec  # runs right before executing a command
+
+# Set initial title on shell startup
+__title_idle
+# }}}
 
 ## autocompletion
 # basic autocomplete settings {{{
