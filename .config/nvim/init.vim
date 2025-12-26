@@ -1956,7 +1956,20 @@ augroup SetTxtIfNoFiletype
         \ if empty(&filetype) | setlocal filetype=txt | endif
 augroup END
 
-lua << JSONPOS
+" {{{ LUA_INIT
+lua << LUA_INIT
+-- {{{ AUTO TITLE
+vim.opt.title = true
+
+-- Prefix the title with an emoji, then show filename (+ modifiers)
+-- %t  = tail of file name
+-- %M  = [+] if modified
+-- %R  = [RO] if readonly
+-- %H  = [help] for help buffers
+-- vim.opt.titlestring = "✍%t%M%R%H"
+vim.opt.titlestring = "🔨 %t%M%R%H"
+-- }}} AUTO TITLE
+-- {{{ JSONPATH
 -- ==========================
 -- JSON path + vim-airline
 -- ==========================
@@ -2035,7 +2048,9 @@ end
 -- If you already customize these sections, just adapt the line.
 
 vim.g["airline_section_x"] = "%{v:lua.JsonPath()}"
-JSONPOS
+-- }}} JSON_PATH
+LUA_INIT
+" }}} LUA_INIT
 
 " lua << CTRLSEARCHF
 " vim.keymap.set('n', '<C-f>', function()
