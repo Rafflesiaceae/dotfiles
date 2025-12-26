@@ -959,7 +959,7 @@ EOF
 # }}}
         pixi) # {{{2
             icat "pixi.toml" <<'EOF'
-[project]
+[workspace]
 name = "projectname"
 authors = ["Projectname Team"]
 version = "0.0.0"
