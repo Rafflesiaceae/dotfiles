@@ -255,7 +255,15 @@ function TRAPUSR1() {
 
         # redisplay
         zle && zle reset-prompt
+        return 0
     fi
+
+    # fired by the 60s timer
+    emulate -L zsh
+    [[ -n ${__ZSH_TITLE_CMDLINE-} ]] || return 0
+    __title_set "🟠 ${__ZSH_TITLE_CMDLINE}"
+
+  return 0
 }
 TRAPUSR1
 function TRAPEXIT() {
@@ -458,7 +466,7 @@ __title_set() {
 __title_idle() {
   local st=$?   # exit status of the last command (as seen by precmd)
   emulate -L zsh
-  if (( st != 0 )); then
+  if (( st != 0 && st != 130 )); then
     __title_set "🔴 ${ZSH_TITLE_FAIL}"
   else
     __title_set "🟢 ${ZSH_TITLE_IDLE}"
@@ -468,7 +476,7 @@ __title_idle() {
 __title_preexec() {
   emulate -L zsh
   local cmdline="$1"
-  __title_set "🟠 $cmdline"
+  __title_set "🟡 $cmdline"
 }
 
 autoload -Uz add-zsh-hook
