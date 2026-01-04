@@ -120,7 +120,7 @@ EOF
             if build >/tmp/query-build 2>&1; then
                 printf "✓ " >/dev/tty
                 printf "Tests " >/dev/tty
-                if ! tests >/tmp/query-tests 2>&1; then
+                if ! IF_HAS_TESTS=1 tests >/tmp/query-tests 2>&1; then
                     printf "✘ " >/dev/tty
                     echo "Tests Failed:"
                     echo ""
