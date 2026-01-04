@@ -7,8 +7,9 @@ set -eo pipefail
 checkout_history=()
 while read -r line; do
     if [[ "$line" =~ ^checkout:\ moving\ from\ ([^\ ]+)\ to\ ([^\ ]+)$ ]]; then
+        from="${BASH_REMATCH[1]}"
         to="${BASH_REMATCH[2]}"
-        checkout_history+=("$to")
+        checkout_history+=("$from" "$to")
     fi
 done < <(git reflog --since="7 day ago" --format=%gs)
 
