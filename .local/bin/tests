@@ -7,6 +7,10 @@ elif find-upwards "Taskfile.yml" >/dev/null; then
     printf "+ go-task test %s\n" "$*"
     go-task test "$@"
 else
-    printf "No way to test found.\n" >&2
-    exit 1
+    if [ "$IF_HAS_TESTS" = 1 ]; then
+        :
+    else
+        printf "No way to test found.\n" >&2
+        exit 1
+    fi
 fi
