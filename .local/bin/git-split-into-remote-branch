@@ -26,8 +26,8 @@ if git-has-changes any; then
     has_changes=1
 fi
 
-default_branch=$(git-current-branch) || true
-default_branch=${default_branch:-master}
+default_branch=$(git-remote-branch) || true
+default_branch=${ORIGIN_BRANCH:-${default_branch:-master}}
 
 remote="origin"
 if git-has-remote "upstream"; then
