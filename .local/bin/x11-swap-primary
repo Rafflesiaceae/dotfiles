@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Cycles the XRandR "primary" output among ACTIVE outputs.
+# Active = connected AND currently has a mode/position (e.g. 1920x1080+0+0).
+#
+# Usage:
+#   xrandr-cycle-primary.sh          # next
+#   xrandr-cycle-primary.sh --prev   # previous
+#   xrandr-cycle-primary.sh --dry-run
+
+direction="next"
+dry_run=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prev) direction="prev"; shift ;;
+    --dry-run) dry_run=1; shift ;;
+    -h|--help)
+      cat <<'EOF'
+Usage:
+  xrandr-cycle-primary.sh          # cycle to next active output
+  xrandr-cycle-primary.sh --prev   # cycle to previous active output
+  xrandr-cycle-primary.sh --dry-run
+EOF
+      exit 0
+      ;;
+    *) echo "Unknown arg: $1" >&2; exit 2 ;;
+  esac
+done
+
+# Active outputs: connected and currently in use (has WxH+X+Y)
+mapfile -t outs < <(
+  xrandr --query | awk '$2=="connected" && $0 ~ /[0-9]+x[0-9]+\+/ {print $1}'
+)
+
+if (( ${#outs[@]} < 2 )); then
+  echo "Need at least 2 active outputs. Active: ${outs[*]:-<none>}" >&2
+  exit 1
+fi
+
+# Current primary (may be empty if none set)
+cur="$(
+  xrandr --query | awk '$2=="connected" && $3=="primary" {print $1; exit}'
+)"
+[[ -z "$cur" ]] && cur="${outs[0]}"
+
+# Find index of current primary within active outputs
+idx=0
+for i in "${!outs[@]}"; do
+  if [[ "${outs[$i]}" == "$cur" ]]; then
+    idx="$i"
+    break
+  fi
+done
+
+n="${#outs[@]}"
+if [[ "$direction" == "next" ]]; then
+  next_idx=$(( (idx + 1) % n ))
+else
+  next_idx=$(( (idx - 1 + n) % n ))
+fi
+
+new="${outs[$next_idx]}"
+
+echo "Current primary: $cur"
+echo "New primary:     $new"
+
+if (( dry_run == 1 )); then
+  echo "[dry-run] xrandr --output \"$new\" --primary"
+  exit 0
+fi
+
+xrandr --output "$new" --primary

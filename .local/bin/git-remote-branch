@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+if [[ -e ".git-default-remote-branch" ]]; then
+    cat .git-default-remote-branch
+else
+    git-current-branch
+fi

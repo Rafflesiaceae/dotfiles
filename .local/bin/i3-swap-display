@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+i3-ws-cycle-output.py
+Cycle the currently focused i3 workspace through all active outputs.
+
+Usage:
+  i3-ws-cycle-output.py        # next output
+  i3-ws-cycle-output.py -r     # previous output
+
+Notes:
+- Outputs are ordered by screen position (rect.x then rect.y), so it feels left→right (then top→bottom).
+- Requires: i3-msg
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from typing import Any, List, Tuple
+
+
+def run_i3_msg(args: List[str]) -> str:
+    try:
+        cp = subprocess.run(
+            ["i3-msg", *args],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return cp.stdout
+    except FileNotFoundError:
+        print("error: i3-msg not found (are you running i3?)", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print("error: i3-msg failed:", file=sys.stderr)
+        if e.stderr:
+            print(e.stderr.strip(), file=sys.stderr)
+        sys.exit(e.returncode)
+
+
+def get_outputs_ordered() -> List[str]:
+    data = json.loads(run_i3_msg(["-t", "get_outputs"]))
+    outs: List[Tuple[int, int, str]] = []
+    for o in data:
+        if o.get("active"):
+            rect = o.get("rect") or {}
+            outs.append((int(rect.get("x", 0)), int(rect.get("y", 0)), str(o["name"])))
+    outs.sort(key=lambda t: (t[0], t[1]))  # x then y
+    return [name for _, _, name in outs]
+
+
+def get_focused_workspace() -> Tuple[str, str]:
+    data = json.loads(run_i3_msg(["-t", "get_workspaces"]))
+    for w in data:
+        if w.get("focused"):
+            return str(w["name"]), str(w["output"])
+    raise RuntimeError("could not determine focused workspace")
+
+
+def move_workspace_to_output(ws_name: str, out_name: str) -> None:
+    # Move currently focused workspace to output, then ensure focus stays on same workspace.
+    cmd = f'move workspace to output {out_name}; workspace "{ws_name}"'
+    run_i3_msg([cmd])
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(add_help=True)
+    ap.add_argument("-r", "--reverse", action="store_true", help="cycle to previous output")
+    ns = ap.parse_args()
+
+    outputs = get_outputs_ordered()
+    if len(outputs) < 2:
+        return 0  # nothing to cycle
+
+    ws_name, ws_out = get_focused_workspace()
+
+    try:
+        cur_idx = outputs.index(ws_out)
+    except ValueError:
+        return 0  # focused workspace output not in active list; do nothing
+
+    n = len(outputs)
+    step = -1 if ns.reverse else 1
+    next_idx = (cur_idx + step) % n
+    next_out = outputs[next_idx]
+
+    move_workspace_to_output(ws_name, next_out)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(130)
+    except Exception as e:
+        print(f"error: {e}", file=sys.stderr)
+        raise SystemExit(1)
