@@ -1030,8 +1030,8 @@ tasks:
 EOF
             ;;
     # }}}
-        tests) # {{{2
-            xicat "test.sh" <<'EOF'
+        test|tests) # {{{2
+            xicat "tests.sh" <<'EOF'
 #!/usr/bin/env bash
 set -eo pipefail
 
@@ -1048,10 +1048,11 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
   pull_request:
-    branches: [master]
+    branches: [master main]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:  # enable running manually
 
 # cancel previous unfinished/running jobs in each separate branch
 concurrency:
