@@ -4,12 +4,20 @@ set -eo pipefail
 path=$1
 shift
 
-fname="${path%.*}"
-
 args=(
     --standalone
     --css=markdown.css
     --toc
 )
 
-pandoc "$path" "${args[@]}" -o "${fname}.html"
+case "$1" in
+-s)
+    shift
+    fname="${path%.*}"
+    args+=(
+        -o "${fname}.html"
+    )
+    ;;
+esac
+
+pandoc "$path" "${args[@]}"
