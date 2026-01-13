@@ -1483,7 +1483,6 @@ sh subprocess (.js .ts .deno): |
 write to file (.js .ts .node): fs.writeFileSync(PATH, STRING)
 change dir (.js .ts .node): process.chdir(NEW_DIR);
 print to stderr (.js .ts .node): console.error(MSG);
-print to stderr (.js .ts .node): console.error(MSG);
 sh subprocess capture stdout no check / flexible/complex (.js .ts .node): |
     const childProcess = require("child_process");
 
@@ -1655,7 +1654,7 @@ spreading in for each (.kotlin): |
         // ...
     }
 
-spreading in for each (.kotlin): |
+map syntax (.kotlin): |
     mapOf(
         "dt-users.json" to knownUsers,
         "azure-all-iam-roles.json" to knownRoles,
@@ -2285,7 +2284,6 @@ hex encode clipboard into bash variable (.run .bash):
         done
         printf "foo=\$(printf \"%s\")\n" "$result"
 
-vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.c .vim .various): // [RUN] bear -- gcc $(pkg-config --cflags --libs gtk+-3.0) "%" -o "%.out"
 vim run compile (.cpp .vim .various): // [RUN] bear -- clang++ $(pkg-config --cflags --libs libpcrecpp jsoncpp) "%" -o "%.out"
 
