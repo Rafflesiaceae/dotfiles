@@ -52,4 +52,20 @@
     <patterns>*</patterns>
     <directories />
   </action>
+  <action>
+    <icon>edit-copy</icon>
+    <name>Copy Path</name>
+    <submenu></submenu>
+    <unique-id>1767382406144549-1</unique-id>
+    <command>cb -s &apos;%f&apos;</command>
+    <description>Copy Path to Clipboard</description>
+    <range>*</range>
+    <patterns>*</patterns>
+    <directories/>
+    <audio-files/>
+    <image-files/>
+    <other-files/>
+    <text-files/>
+    <video-files/>
+  </action>
 </actions>
