@@ -61,6 +61,7 @@ sources = {
     "./.githooks/prepare-commit-msg-gerrit-auto-change-id": "",
     # {{{
     "./.local/bin/#": "",
+    "./.local/bin/0x0": "",
     "./.local/bin/add-breakpoint": {"linux": ""},
     "./.local/bin/agt": "",
     "./.local/bin/agt-all-branches": "",
