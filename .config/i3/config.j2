@@ -214,6 +214,8 @@ bar {
     status_command »i3.statuscmd or 'i3status'«
     {% if not i3.show_systray %}
     tray_output none
+    {% else %}
+    tray_output primary
     {% endif %}
 
     font pango:Consolas 12
