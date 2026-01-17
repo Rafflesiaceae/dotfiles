@@ -182,6 +182,11 @@ let g:ycm_language_server =
   \     'filetypes': [ 'json' ],
   \     'capabilities': { 'textDocument': { 'completion': { 'completionItem': { 'snippetSupport': v:true } } } },
   \   },
+  \   {
+  \     'name': 'jenkins',
+  \     'cmdline': [ 'java', '-jar', $HOME.'/workspace/jenkins-lsp/target/jenkins-lsp-1.0.0-all.jar', '--stdio' ],
+  \     'filetypes': ['jenkins', 'groovy'],
+  \   },
   \ ]
   " \   {
   " \     'name': 'groovy',
