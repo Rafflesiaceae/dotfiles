@@ -3,12 +3,13 @@
 
 floating_modifier »i3.floating_modifier|default("Mod3")«
 
-force_focus_wrapping yes
 # https://i3wm.org/docs/userguide.html#_focus_wrapping
+force_focus_wrapping yes
 
 show_marks yes
 
-tiling_drag off # https://github.com/i3/i3/issues/5155
+# https://github.com/i3/i3/issues/5155
+tiling_drag off
 
 # {{{ bindsym
 {# we just repeat this whole bindsym block for each mod_key in `mod_keys` #}
@@ -233,6 +234,8 @@ bar {
 
 # {{{ for_window
 
+for_window [class=".*"] title_window_icon yes
+
 for_window [title=".*-floating-.*"] floating enable
 for_window [title=".*-floatpath$"] floating enable; move position 50 200; resize set 500 600
 for_window [title="^floating$"] floating enable
@@ -253,6 +256,7 @@ for_window [title="zenity"] floating enable
 
 for_window [title="^Appointment — .*$"] floating enable
 
+# zoom
 for_window [class="^zoom$" title="^Zoom - Free Account$"] floating disable
 for_window [class="^zoom$" title="^Zoom Meeting$"] floating disable
 for_window [class="^zoom$" title="^Zoom$"] floating disable
