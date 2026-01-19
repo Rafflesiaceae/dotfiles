@@ -5,7 +5,7 @@ import ranger.api
 
 HOOK_INIT_OLD = ranger.api.hook_init
 
-EMOJI = "📁"  # change to whatever you want, e.g. "🦝"
+EMOJI = "🗳️"  # change to whatever you want, e.g. "🦝"
 
 
 def _fmt_path(p: str) -> str:
