@@ -14,6 +14,12 @@ ssh automatic multiplexing / automatic / no warnings (.cmd .ssh): |
 ssh fetch file / show full path for scp (.cmd .ssh .inssh): 'sshfp() { printf "%q\n" "${USER}@${HOSTNAME}:$(realpath "$1")"; }; sshfp '
 
 # cmd {{{1
+run cmds in parallel via tmux-run (.cmd .sh .bash): |
+    tmux-run 8<<EOF
+    echo A && sleep 2
+    echo B && sleep 3
+    EOF
+
 assert/verify hash/sha256 of file (.cmd .sh): |
     [ "$(sha256sum FILE | awk '{print $1}')" != "$EXPECTED_HASH" ]
 
