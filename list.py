@@ -130,6 +130,7 @@ sources = {
     "./.local/bin/container-clean": "",
     "./.local/bin/container-run": "",
     "./.local/bin/container-stop-all": "",
+    "./.local/bin/convert-html-to-md": "",
     "./.local/bin/convert-md-to-html": "",
     "./.local/bin/convert-md-to-rst": "",
     "./.local/bin/convert-rst-to-md": "",
