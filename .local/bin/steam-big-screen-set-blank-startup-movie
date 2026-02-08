@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Detect Steam base (native + flatpak common paths)
+for base in \
+    "$HOME/.local/share/Steam" \
+    "$HOME/.steam/root" \
+    "$HOME/.steam/steam" \
+    "$HOME/.var/app/com.valvesoftware.Steam/data/Steam"; do
+    if [[ -d "$base/config" ]]; then
+        steam_base="$base"
+        break
+    fi
+done
+: "${steam_base:?Could not find Steam base dir}"
+
+override_dir="$steam_base/config/uioverrides/movies"
+override_file="$override_dir/bigpicture_startup.webm"
+mkdir -p "$override_dir"
+
+# 1 second, 1280x720, 30fps, silent audio track
+ffmpeg -hide_banner -loglevel error -y \
+    -f lavfi -i "color=c=black:s=1280x720:r=30:d=1" \
+    -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" \
+    -shortest \
+    -c:v libvpx-vp9 -b:v 0 -crf 45 -g 30 \
+    -c:a libopus -b:a 12k \
+    "$override_file"
+
+echo "Installed: $override_file"
+echo "Now fully restart Steam (and reconnect Steam Link)."
