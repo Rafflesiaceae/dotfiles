@@ -359,7 +359,6 @@ sources = {
     "./.local/bin/update-numdots": "",
     "./.local/bin/update-ycm": "",
     "./.local/bin/vim-pipe": "",
-    "./.local/bin/vim-resave": "",
     "./.local/bin/vim-resave-all-text-files-below": "",
     "./.local/bin/vimdiff-first-with-rest": "",
     "./.local/bin/vimdirdiff": {"linux": ""},

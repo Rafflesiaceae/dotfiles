@@ -1,58 +1,49 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
-set -x
 echo "gathering files..."
 
-# Create temp file and make sure we clean it up
 tmpfile="$(mktemp)"
-trap 'rm -f "$tmpfile"' EXIT
+vimscr="$(mktemp)"
+trap 'rm -f "$tmpfile" "$vimscr"' EXIT
 
-# Fill temp file with the list of files
 find-all-text-files >"$tmpfile"
 
-# Nothing to do?
 if ! [ -s "$tmpfile" ]; then
-    echo "no files found"
-    exit 0
+  echo "no files found"
+  exit 0
 fi
 
 echo "resaving..."
 
-# FILELIST="$tmpfile" vim -Es <<'EOF'
-# set nomore
-# echom expand('%:p')
-# echo 'JKSAD'
-# echom 'oiquwe'
-# EOF
-
-# Pass the path via env var so Vim can read it
-FILELIST="$tmpfile" vim -Es <<'EOF'
+cat >"$vimscr" <<'VIM'
 set nomore
+set noswapfile
+set shortmess+=I
 
-let fl = $FILELIST
+let fl = getenv('FILELIST')
 if empty(fl)
-  qall
+  call writefile(['ERROR: FILELIST env var is empty'], '/dev/fd/2', 'a')
+  qa!
 endif
 
-" Where to print progress lines (POSIX systems)
-let out = '/dev/stdout'
-
-" Read the file list (one filename per line)
 for f in readfile(fl)
-  if empty(f)
-    continue
-  endif
+  if empty(f) | continue | endif
+  try
+    execute 'edit' fnameescape(f)
 
-  " Open file, let editorconfig/etc do its thing
-  execute 'edit' fnameescape(f)
+    " Force a write even if nothing appears changed
+    let &l:modified = 1
+    write!
 
-  " Write file (triggers BufWrite hooks, editorconfig, etc.)
-  silent! write
-
-  " Print absolute path of the file just written
-  call writefile([expand('%:p')], out, 'a')
+    " progress
+    call writefile([expand('%:p')], '/dev/fd/1', 'a')
+  catch
+    call writefile(['ERROR ' . f . ': ' . v:exception], '/dev/fd/2', 'a')
+  endtry
 endfor
 
-qall
-EOF
+qa!
+VIM
+
+FILELIST="$tmpfile" nvim --headless -S "$vimscr"
