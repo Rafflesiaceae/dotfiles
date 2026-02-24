@@ -1,22 +1,41 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
-if [[ $# -gt 1 ]]; then
-    url="$1"
-    shift
+url="${1:-}"
+branch="${2:-}"
 
-    branch="$1"
-    shift || true
-else 
-    url=$(cb)
+if [[ -z "$url" ]]; then
+  url="$(cb 2>/dev/null || true)"
 fi
 
+# Trim whitespace/newlines and trailing slash
+url="$(printf '%s' "$url" | tr -d '\r\n' | sed -e 's/[[:space:]]*$//' -e 's#/*$##')"
 
-if [[ -n "$branch" ]]; then
-    git remote update
-    git co upstream/master
-    git co -B "$branch"
+if [[ -z "$url" ]]; then
+  echo "usage: $0 <github PR url> [branch]" >&2
+  exit 2
 fi
 
 patch_url="${url}.patch"
-curl --silent --fail --retry 3 -L "$patch_url" | git am -
+
+if [[ -n "$branch" ]]; then
+  git fetch --all --prune
+
+  # Pick a sensible base: upstream/HEAD -> origin/HEAD -> origin/main -> origin/master
+  base_ref="$(
+    git symbolic-ref -q --short refs/remotes/upstream/HEAD 2>/dev/null \
+    || git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null \
+    || (git show-ref --verify --quiet refs/remotes/origin/main  && echo origin/main) \
+    || (git show-ref --verify --quiet refs/remotes/origin/master && echo origin/master) \
+    || echo ""
+  )"
+
+  if [[ -z "$base_ref" ]]; then
+    echo "error: couldn't determine a base ref (no upstream/origin HEAD)." >&2
+    exit 1
+  fi
+
+  git switch -C "$branch" "$base_ref"
+fi
+
+curl --silent --fail --retry 3 -L "$patch_url" | git am -3 -
