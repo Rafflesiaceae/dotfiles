@@ -453,6 +453,18 @@ dependencies:
 EOF
         ;;
 # }}}
+        autoformat) # {{{2
+            xicat "autoformat.sh" <<'EOF'
+#!/usr/bin/env bash
+set -eo pipefail
+
+# cd to parent dir of current script
+cd "$(dirname "${BASH_SOURCE[0]}")"
+
+set -x
+EOF
+        ;;
+# }}}
         build) # {{{2
             xicat "build.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -1079,9 +1091,10 @@ jobs:
         shell: bash
         run: ./pre-build.sh
 
-      - uses: prefix-dev/setup-pixi@v0.8.3
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
         with:
-          pixi-version: v0.41.4
+          pixi-version: v0.62.2
           cache: true
 
       - name: Run build

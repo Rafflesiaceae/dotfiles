@@ -6,17 +6,43 @@ die() {
     exit "${2-1}"
 }
 
-file=$1
-shift || die "pass me a file"
-dir=${1-$PWD}
+# Usage:
+#   find-upwards foo.sh bar.sh [-- DIR]
+#   find-upwards foo.sh bar.sh DIR
+#
+# Behavior:
+#   Walk upwards starting at DIR (default: $PWD).
+#   In each directory, check files in the given order.
+#   Return the first match found and exit 0. If none found up to /, exit 1.
 
-dir="$(realpath "$dir")"
-while [[ "$dir" != "/" ]] ; do
-    path="$dir/$file"
-    if [[ -e "$path" ]]; then
-        echo "$path"
-        exit 0
-    fi
-    dir=$(dirname "$dir")
+[[ $# -ge 1 ]] || die "pass me one or more filenames"
+
+start_dir="$PWD"
+
+# Optional start directory:
+# - If the user passes "-- DIR", use DIR.
+# - Else if the last arg is an existing directory, treat it as start dir.
+if [[ $# -ge 3 && "${*: -2:1}" == "--" ]]; then
+    start_dir="${*: -1}"
+    set -- "${@:1:$#-2}"
+elif [[ -d "${*: -1}" && $# -ge 2 ]]; then
+    start_dir="${*: -1}"
+    set -- "${@:1:$#-1}"
+fi
+
+# Remaining args are files to search for, in priority order.
+files=("$@")
+dir="$(realpath "$start_dir")"
+
+while [[ "$dir" != "/" ]]; do
+    for file in "${files[@]}"; do
+        path="$dir/$file"
+        if [[ -e "$path" ]]; then
+            echo "$path"
+            exit 0
+        fi
+    done
+    dir="$(dirname "$dir")"
 done
+
 exit 1
