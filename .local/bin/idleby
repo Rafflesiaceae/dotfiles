@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# click-until-mouse-moves.sh
+#
+# X11-only (xdotool needs X11)
+# Behavior:
+#   - remembers mouse position at start
+#   - clicks left mouse button every 2 seconds
+#   - exits once the mouse is >= 10 px away from the start position (Euclidean distance)
+#
+# deps: xdotool
+
+set -euo pipefail
+
+THRESH_PX=20
+INTERVAL_S=2
+
+
+if ! command -v xdotool >/dev/null 2>&1; then
+  echo "error: xdotool not found in PATH" >&2
+  notify-send --urgency=CRITICAL idleby-error
+  exit 1
+fi
+
+notify-send --urgency=LOW idleby-start
+
+# Read initial mouse position
+eval "$(xdotool getmouselocation --shell)"
+start_x=$X
+start_y=$Y
+
+thresh2=$((THRESH_PX * THRESH_PX))
+
+while :; do
+  # Check current position vs start
+  eval "$(xdotool getmouselocation --shell)"
+  cur_x=$X
+  cur_y=$Y
+
+  dx=$((cur_x - start_x))
+  dy=$((cur_y - start_y))
+  dist2=$((dx*dx + dy*dy))
+
+  if (( dist2 >= thresh2 )); then
+    notify-send --urgency=LOW idleby-stop
+    exit 0
+  fi
+
+  # Click left mouse button
+  xdotool click 1
+
+  sleep "$INTERVAL_S"
+done
+
+notify-send --urgency=LOW idleby-stop
