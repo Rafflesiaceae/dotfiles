@@ -1700,6 +1700,8 @@ back/stacktrace an error (.bash): |
         local line="${BASH_LINENO[0]}"
         echo "  ↑ from ${bash_source_realpath}:${line} → $(sed "${line}q;d" "$bash_source_realpath")"
     }; set -o errtrace; trap 'trace_err' ERR
+extract variables/tuples (.bash): |
+    read -r path max <<< "$line"
 duplicate array (.bash): 'duplicate=("${original[@]}")'
 join array (.bash):
     contents=$(IFS=$'\n'; echo "${ARRAY[*]}")
