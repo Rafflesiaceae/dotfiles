@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+die() {
+    # shellcheck disable=SC2059
+    printf "$@" >&2
+    printf "\n" >&2
+    exit "${exit_code:-1}"
+}
+
+default_args=(
+
+)
+
+gradlew_name="gradlew"
+
+set -x
+gradlew=$(find-upwards "./${gradlew_name}") || gradlew=gradle
+# TODO : support settings.*kts necessary tasks (wrong WD)
+# cd "$(dirname "$gradlew")"
+"$gradlew" "${default_args[@]}" "$@"

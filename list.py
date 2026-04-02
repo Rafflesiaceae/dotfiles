@@ -252,6 +252,7 @@ sources = {
     "./.local/bin/gitsta": "",
     "./.local/bin/gitsup": "",
     "./.local/bin/gitup": "",
+    "./.local/bin/gr": "",
     "./.local/bin/grr": "",
     "./.local/bin/gru": "",
     "./.local/bin/hex-to-decimal": "",
