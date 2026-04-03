@@ -143,6 +143,7 @@ sources = {
     "./.local/bin/dbus-list-all-services": "",
     "./.local/bin/dcot": "",
     "./.local/bin/debug-caller": {"linux": ""},
+    "./.local/bin/disk-usage": "",
     "./.local/bin/dl-if-not-already": "",
     "./.local/bin/docker-compose-open-volume": "",
     "./.local/bin/docker-run": "",
