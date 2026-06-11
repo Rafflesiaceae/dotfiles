@@ -511,7 +511,7 @@ WEOF
 EOF
         ;;
         agents) # {{{2
-            xicat "AGENTS.md" <<'EOF'
+            icat "AGENTS.md" <<'EOF'
 - After code changes autoformat via running
   `./autoformat.sh`.
 
