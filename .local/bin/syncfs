@@ -344,6 +344,10 @@ Behavior notes:
   - Git-ignore support is implemented by asking Git for ignored paths and passing
     those exact paths to rsync. This handles recursive .gitignore files, negation,
     .git/info/exclude, and core.excludesFile the same way Git does.
+  - If syncdir is not itself inside a Git worktree, syncfs searches for .git
+    directories nested within syncdir and queries each repo independently. Paths
+    are prefixed with their relative location under syncdir before being passed
+    to rsync.
   - For pull, the local checkout's Git ignore rules are used as the policy for
     what should not be pulled into the local tree.
 ]])
@@ -574,42 +578,85 @@ local function make_git_exclude_file(cfg, syncdir)
   if not cfg.gitignore then return nil end
   need(cfg.git, "needed unless --no-gitignore is used")
 
+  -- Build a list of {root, prefix} pairs: each git repo root to query, plus
+  -- the path prefix (relative to syncdir) to prepend to its reported paths.
+  local repos = {}
+
   local out, rc = run_capture({cfg.git, "-C", syncdir, "rev-parse", "--is-inside-work-tree"})
-  if rc ~= 0 or trim_newline(out) ~= "true" then
-    die("Git-ignore support requires %s to be inside a Git worktree; use --no-gitignore to disable", syncdir)
+  if rc == 0 and trim_newline(out) == "true" then
+    -- syncdir is inside a git worktree; query from syncdir directly.
+    repos[#repos + 1] = {root = syncdir, prefix = ""}
+  else
+    -- syncdir is not inside any git worktree; discover repos nested within it.
+    local find_out, find_rc = run_capture({"find", syncdir, "-name", ".git", "-type", "d", "-prune", "-print"})
+    if find_rc == 0 then
+      for line in find_out:gmatch("[^\n]+") do
+        local dotgit = trim_newline(line)
+        if dotgit ~= "" then
+          local repo_root = dirname(dotgit)
+          local prefix = ""
+          if repo_root ~= syncdir then
+            if starts_with(repo_root, syncdir .. "/") then
+              prefix = repo_root:sub(#syncdir + 2) .. "/"
+            else
+              warn("git repo %s is not under syncdir %s, skipping", repo_root, syncdir)
+              repo_root = nil
+            end
+          end
+          if repo_root then
+            repos[#repos + 1] = {root = repo_root, prefix = prefix}
+          end
+        end
+      end
+    end
+    if #repos == 0 then
+      if not cfg.quiet then
+        io.stderr:write("syncfs: no Git repos found under ", syncdir, "; skipping Git-ignore excludes\n")
+      end
+      return nil
+    end
+    if cfg.verbose > 0 and not cfg.quiet then
+      io.stderr:write("syncfs: found ", tostring(#repos), " Git repo(s) under ", syncdir, "\n")
+    end
   end
 
-  local args = {cfg.git, "-C", syncdir, "ls-files", "-z", "--ignored", "--exclude-standard", "--directory"}
-  if cfg.gitignore_mode == "git" then
-    args[#args + 1] = "--others"
-  elseif cfg.gitignore_mode == "match" then
-    args[#args + 1] = "--cached"
-    args[#args + 1] = "--others"
-  end
-  args[#args + 1] = "--"
-  args[#args + 1] = "."
+  -- Collect ignored paths from every repo, relative to syncdir.
+  local all_paths = {}
+  for _, repo in ipairs(repos) do
+    local args = {cfg.git, "-C", repo.root, "ls-files", "-z", "--ignored", "--exclude-standard", "--directory"}
+    if cfg.gitignore_mode == "git" then
+      args[#args + 1] = "--others"
+    elseif cfg.gitignore_mode == "match" then
+      args[#args + 1] = "--cached"
+      args[#args + 1] = "--others"
+    end
+    args[#args + 1] = "--"
+    args[#args + 1] = "."
 
-  out, rc = run_capture(args)
-  if rc ~= 0 then
-    die("failed to ask Git for ignored paths: %s", out)
+    local repo_out, repo_rc = run_capture(args)
+    if repo_rc ~= 0 then
+      warn("failed to ask Git for ignored paths in %s: %s", repo.root, repo_out)
+    else
+      for _, p in ipairs(split0(repo_out)) do
+        all_paths[#all_paths + 1] = repo.prefix .. p
+      end
+    end
   end
 
-  local paths = split0(out)
-  if #paths == 0 then
+  if #all_paths == 0 then
     return nil
   end
 
   local tmp = make_temp("syncfs-gitignore")
   local f, err = io.open(tmp, "wb")
   if not f then die("cannot write temporary rsync exclude file: %s", err or "unknown error") end
-  for _, p in ipairs(paths) do
-    -- Git outputs paths relative to syncdir here. Anchor them at the rsync source root.
+  for _, p in ipairs(all_paths) do
     f:write(rsync_escape_pattern(p), "\0")
   end
   f:close()
 
   if cfg.verbose > 0 and not cfg.quiet then
-    io.stderr:write("syncfs: generated ", tostring(#paths), " Git-ignore rsync excludes\n")
+    io.stderr:write("syncfs: generated ", tostring(#all_paths), " Git-ignore rsync excludes\n")
   end
   return tmp
 end
