@@ -1,332 +1,864 @@
-#!/usr/bin/env bash
-# syncfs: push/pull a directory (marked by .syncfs) to/from a fixed remote using rsync.
-# Remote dir     = ${SYNCFS_REMOTE}/${md5sum(realpath(syncdir))}
-# Remote stamp   = ${SYNCFS_REMOTE}/${md5sum(realpath(syncdir))}.timestamp
-# Local stamp    = <syncdir>/.syncfs   (stores POSIX seconds; file also acts as the marker)
-set -u
+#!/usr/bin/env luajit
+-- syncfs.lua: push/pull a directory marked by .syncfs to/from a fixed rsync remote.
+--
+-- Remote dir   = ${SYNCFS_REMOTE}/${md5(stable_sync_key)}
+-- Remote stamp = ${SYNCFS_REMOTE}/${md5(stable_sync_key)}.timestamp
+-- Local stamp  = <syncdir>/.syncfs, first numeric line stores POSIX seconds.
+--
+-- Git ignore handling:
+--   By default this script asks Git for the ignored path set and feeds those
+--   exact paths to rsync via a generated --exclude-from file. This avoids
+--   rsync's .gitignore-like filter syntax, which is not identical to Git's.
+--
+-- Requirements: luajit, rsync, git (unless --no-gitignore), realpath/readlink/python3,
+--               md5sum or md5.
 
-# ------------ helpers ------------
-die() {
-    echo "Error: $*" >&2
-    exit 1
-}
-need() { command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"; }
+local VERSION = "2.0.0-luajit"
 
-resolve_realpath() {
-    local p="$1"
-    if command -v realpath >/dev/null 2>&1; then
-        realpath "$p"
-    elif readlink -f . >/dev/null 2>&1; then
-        readlink -f "$p"
-    elif command -v python3 >/dev/null 2>&1; then
-        python3 - "$p" <<'PY'
-import os,sys
-print(os.path.realpath(sys.argv[1]))
-PY
-    else die "cannot resolve realpath; install coreutils realpath or provide python3"; fi
-}
+local tmp_files = {}
 
-md5_of_string() {
-    if command -v md5sum >/dev/null 2>&1; then
-        printf '%s' "$1" | md5sum | awk '{print $1}'
-    elif command -v md5 >/dev/null 2>&1; then
-        printf '%s' "$1" | md5 -q
-    else die "need md5sum or md5"; fi
-}
+local function cleanup()
+  for _, p in ipairs(tmp_files) do
+    os.remove(p)
+  end
+end
 
-# --- Stable sync key helpers ---
-# 1) If .syncfs contains a line like `id=...` or `key=...`, we use that as the sync key.
-# 2) Otherwise, we canonicalize the absolute path by replacing the user's home prefix
-#    with a stable token `~` so different usernames yield the same key (e.g.
-#    /home/alice/work/p -> ~/work/p and /home/bob/work/p -> ~/work/p).
-canonicalize_for_hash() {
-    local p home
-    p="$(resolve_realpath "$1")" || exit 1
-    home="${HOME:-}"
-    if [ -n "$home" ]; then
-        home="${home%/}"
-        case "$p" in
-        "$home"/*) p="~${p#"$home"}" ;;
-        esac
-    fi
-    printf '%s' "$p"
-}
+local function die(fmt, ...)
+  cleanup()
+  local msg = select("#", ...) > 0 and string.format(fmt, ...) or tostring(fmt)
+  io.stderr:write("syncfs: error: ", msg, "\n")
+  os.exit(1)
+end
 
-sync_id_from_marker() {
-    local f="$1/.syncfs"
-    if [ -f "$f" ]; then
-        awk 'BEGIN{IGNORECASE=1}
-             /^[ 	]*#/ {next}
-             /^[ 	]*(id|key)[ 	]*[:=][ 	]*/ {
-                 sub(/^[ 	]*(id|key)[ 	]*[:=][ 	]*/, "", $0)
-                 gsub(/^[ 	]+|[ 	]+$/, "", $0)
-                 print $0
-                 exit
-             }' "$f"
-    fi
-}
+local function warn(fmt, ...)
+  local msg = select("#", ...) > 0 and string.format(fmt, ...) or tostring(fmt)
+  io.stderr:write("syncfs: warning: ", msg, "\n")
+end
 
-hash_key_for_syncdir() {
-    local dir="$1" id
-    id="$(sync_id_from_marker "$dir")"
-    if [ -n "${id:-}" ]; then
-        printf '%s' "$id"
+local function shquote(s)
+  s = tostring(s or "")
+  if s == "" then return "''" end
+  return "'" .. s:gsub("'", "'\\''") .. "'"
+end
+
+local function join_argv(argv)
+  local out = {}
+  for i = 1, #argv do
+    out[#out + 1] = shquote(argv[i])
+  end
+  return table.concat(out, " ")
+end
+
+local function run_capture(argv, opts)
+  opts = opts or {}
+  local marker = "__SYNCFS_EXIT_" .. tostring(os.time()) .. "_" .. tostring(math.random(1000000, 9999999)) .. "__"
+  local cmd = join_argv(argv)
+  if opts.cwd then
+    cmd = "cd " .. shquote(opts.cwd) .. " && " .. cmd
+  end
+  cmd = cmd .. " 2>&1; printf '\\n" .. marker .. "=%s' \"$?\""
+
+  local h = io.popen(cmd, "r")
+  if not h then
+    return "", 127
+  end
+  local out = h:read("*a") or ""
+  h:close()
+
+  local pat = "\n" .. marker:gsub("([^%w])", "%%%1") .. "=(%d+)$"
+  local rc = out:match(pat)
+  if not rc then
+    return out, 127
+  end
+  out = out:gsub(pat, "")
+  return out, tonumber(rc)
+end
+
+local function run_passthrough(argv, opts)
+  local out, rc = run_capture(argv, opts)
+  if out ~= "" then
+    io.write(out)
+    if out:sub(-1) ~= "\n" then io.write("\n") end
+  end
+  return rc
+end
+
+local function command_exists(cmd)
+  if cmd:find("/", 1, true) then
+    local _, rc = run_capture({"test", "-x", cmd})
+    return rc == 0
+  end
+  local _, rc = run_capture({"sh", "-c", "command -v " .. shquote(cmd) .. " >/dev/null 2>&1"})
+  return rc == 0
+end
+
+local function need(cmd, what)
+  if not command_exists(cmd) then
+    die("required command not found: %s%s", cmd, what and (" (" .. what .. ")") or "")
+  end
+end
+
+local function trim_newline(s)
+  return (s:gsub("[\r\n]+$", ""))
+end
+
+local function path_exists(path)
+  local _, rc = run_capture({"test", "-e", path})
+  return rc == 0
+end
+
+local function is_dir(path)
+  local _, rc = run_capture({"test", "-d", path})
+  return rc == 0
+end
+
+local function is_file(path)
+  local _, rc = run_capture({"test", "-f", path})
+  return rc == 0
+end
+
+local function pwd()
+  local out, rc = run_capture({"pwd", "-P"})
+  if rc ~= 0 then die("cannot determine current directory: %s", out) end
+  return trim_newline(out)
+end
+
+local function dirname(path)
+  path = tostring(path)
+  path = path:gsub("/+$", "")
+  if path == "" then return "/" end   -- input was "/" or "///"
+  local d = path:match("^(.*)/[^/]+$")
+  if not d then return "." end        -- no slash: relative path with no parent
+  if d == "" then return "/" end      -- slash only at start: parent is root
+  return d
+end
+
+local function resolve_realpath(path)
+  local out, rc
+  if command_exists("realpath") then
+    out, rc = run_capture({"realpath", path})
+    if rc == 0 then return trim_newline(out) end
+  end
+  if command_exists("readlink") then
+    out, rc = run_capture({"readlink", "-f", path})
+    if rc == 0 then return trim_newline(out) end
+  end
+  if command_exists("python3") then
+    out, rc = run_capture({"python3", "-c", "import os,sys; print(os.path.realpath(sys.argv[1]))", path})
+    if rc == 0 then return trim_newline(out) end
+  end
+  die("cannot resolve realpath for %s; install coreutils realpath, readlink -f, or python3", path)
+end
+
+local function make_temp(prefix)
+  prefix = prefix or "syncfs"
+  local base = os.getenv("TMPDIR") or "/tmp"
+  local out, rc = run_capture({"mktemp", base .. "/" .. prefix .. ".XXXXXX"})
+  if rc ~= 0 then die("mktemp failed: %s", out) end
+  local p = trim_newline(out)
+  tmp_files[#tmp_files + 1] = p
+  return p
+end
+
+local function read_all(path)
+  local f = io.open(path, "rb")
+  if not f then return nil end
+  local s = f:read("*a")
+  f:close()
+  return s
+end
+
+local function write_all(path, data)
+  local f, err = io.open(path, "wb")
+  if not f then die("cannot write %s: %s", path, err or "unknown error") end
+  f:write(data)
+  f:close()
+end
+
+local function copy_file(src, dst)
+  local data = read_all(src)
+  if data == nil then return false end
+  local f = io.open(dst, "wb")
+  if not f then return false end
+  f:write(data)
+  f:close()
+  return true
+end
+
+local function split0(s)
+  local out = {}
+  local start = 1
+  while true do
+    local i = s:find("\0", start, true)
+    if not i then break end
+    local item = s:sub(start, i - 1)
+    if item ~= "" then out[#out + 1] = item end
+    start = i + 1
+  end
+  return out
+end
+
+local function md5_of_string(s)
+  local tmp = make_temp("syncfs-md5")
+  write_all(tmp, s)
+
+  if command_exists("md5sum") then
+    local out, rc = run_capture({"md5sum", tmp})
+    if rc == 0 then
+      local h = out:match("^([0-9a-fA-F]+)")
+      if h then return h:lower() end
+    end
+    die("md5sum failed: %s", out)
+  elseif command_exists("md5") then
+    local out, rc = run_capture({"md5", "-q", tmp})
+    if rc == 0 then
+      local h = trim_newline(out):match("^([0-9a-fA-F]+)$")
+      if h then return h:lower() end
+    end
+    die("md5 -q failed: %s", out)
+  end
+
+  die("need md5sum or md5")
+end
+
+local function starts_with(s, prefix)
+  return s:sub(1, #prefix) == prefix
+end
+
+local function sync_id_from_marker(dir)
+  local path = dir .. "/.syncfs"
+  local data = read_all(path)
+  if not data then return nil end
+
+  for line in (data .. "\n"):gmatch("([^\n]*)\n") do
+    line = line:gsub("\r$", "")
+    if line == "" then
+      -- keep scanning; empty lines are allowed
     else
-        canonicalize_for_hash "$dir"
-    fi
-}
+      local stripped = line:gsub("^%s+", ""):gsub("%s+$", "")
+      if stripped:sub(1, 1) ~= "#" then
+        local v = stripped:match("^[Ii][Dd]%s*[:=]%s*(.-)%s*$") or stripped:match("^[Kk][Ee][Yy]%s*[:=]%s*(.-)%s*$")
+        if v and v ~= "" then return v end
+      end
+    end
+  end
+  return nil
+end
 
-find_syncdir() {
-    local dir="$PWD"
-    while :; do
-        if [ -e "$dir/.syncfs" ]; then
-            printf '%s\n' "$dir"
-            return 0
-        fi
-        [ "$dir" = "/" ] && return 1
-        dir="$(dirname "$dir")"
-    done
-}
+local function canonicalize_for_hash(dir)
+  local p = resolve_realpath(dir)
+  local home = os.getenv("HOME")
+  if home and home ~= "" then
+    home = home:gsub("/+$", "")
+    if p == home then
+      p = "~"
+    elseif starts_with(p, home .. "/") then
+      p = "~" .. p:sub(#home + 1)
+    end
+  end
+  return p
+end
 
-usage() {
-    cat <<'EOF'
-Usage: syncfs [init|push|pull] [-h|--help]
-Synchronizes the directory that contains a `.syncfs` file (searched upwards from the current directory).
+local function hash_key_for_syncdir(dir)
+  return sync_id_from_marker(dir) or canonicalize_for_hash(dir)
+end
 
-Subcommands:
-  init  Create an example `.syncfs` file in the *current working directory* and open it in $EDITOR.
-  push  Mirror local -> remote (${SYNCFS_REMOTE}/${md5(realpath(syncdir))}), including deletions.
-  pull  Mirror remote -> local, including deletions.
+local function find_syncdir(start_dir)
+  local dir = resolve_realpath(start_dir or pwd())
+  while true do
+    local f = io.open(dir .. "/.syncfs", "r")
+    if f then
+      f:close()
+      return dir
+    end
+    if dir == "/" then
+      return nil
+    end
+    dir = dirname(dir)
+  end
+end
 
-No subcommand: prints status (based on rsync dry-runs and timestamps):
-- Local changes to push
-- Remote changes to pull (including when someone else pushed since your last local sync)
-- Both directions
-- Up to date
+local function usage()
+  io.write([[
+syncfs ]] .. VERSION .. [[
+
+Usage:
+  syncfs [options] [status]
+  syncfs [options] init [--id ID] [--edit]
+  syncfs [options] push
+  syncfs [options] pull
+  syncfs [options] key
+  syncfs -h | --help
+
+Synchronizes the directory containing a .syncfs marker, searched upward from
+PWD or from --chdir. The remote directory is:
+
+  ${SYNCFS_REMOTE}/${md5(stable-sync-key)}
+
+Commands:
+  status        Show whether local changes, remote changes, both, or none exist.
+                This is the default when no command is given.
+  init          Create a .syncfs marker in the selected directory.
+  push          Mirror local -> remote with rsync.
+  pull          Mirror remote -> local with rsync.
+  key           Print the stable key, hash, remote path, and timestamp path.
+  help          Show this help.
+
+Global options:
+  -C, --chdir DIR              Search/create from DIR instead of the current dir.
+  -r, --remote SPEC            Override SYNCFS_REMOTE for this invocation.
+  -n, --dry-run                For push/pull, show rsync changes but do not copy.
+      --no-delete              Do not propagate deletions. Default is mirror mode.
+      --rsync PATH             rsync executable. Default: rsync.
+      --git PATH               git executable. Default: git.
+  -q, --quiet                  Reduce non-error output.
+  -v, --verbose                Print extra diagnostic details.
+      --version                Print version.
+  -h, --help                   Show help.
+
+Git ignore options:
+      --no-gitignore           Disable Git-ignore based excludes entirely.
+      --gitignore              Enable Git-ignore based excludes. This is default.
+      --gitignore-mode MODE    MODE is one of:
+                                  git    Ignore exactly what Git treats as ignored
+                                         for this worktree. Tracked files are kept.
+                                         This is default and uses:
+                                         git ls-files --others --ignored --exclude-standard
+                                  match  Exclude tracked + untracked paths that
+                                         match ignore rules, using:
+                                         git ls-files --cached --others --ignored --exclude-standard
+
+Init options:
+      --id ID                  Add id=ID to the new .syncfs marker. This makes the
+                               remote key independent of the local absolute path.
+      --edit                   Open the marker in $EDITOR after creating it.
 
 Environment:
-  SYNCFS_REMOTE   Required for push/pull/status. Base remote for rsync, e.g. "user@host:/var/syncfs" or a local path.
+  SYNCFS_REMOTE                Required for status/push/pull/key unless --remote is used.
+                               Examples: user@host:/var/syncfs or /mnt/syncfs
 
-Notes:
-  - Preserves perms and mtimes (-rlpt), not ownership. Excludes ".syncfs", respects per-directory ".gitignore" files (via rsync filter), and **always syncs the `.git` directory**.
-  - Uses --delete so that deletions propagate both ways: the destination is mirrored to the source (for push: remote mirrors local; for pull: local mirrors remote).
-  - Local last-sync time is stored as POSIX seconds inside ".syncfs" (first line must be numeric).
-  - Stable remote key: if your .syncfs contains a line like `id=YOUR_ID` (or `key=...`), that value is used to compute the remote path. Otherwise, the absolute path is canonicalized by replacing your HOME prefix with `~` (so `/home/alice/proj` and `/home/bob/proj` map to the same key `~/proj`).
-  - Remote last-push time is stored in "${SYNCFS_REMOTE}/${md5(realpath(syncdir))}.timestamp" (internally computed from the stable key described above).
-EOF
-}
+Behavior notes:
+  - rsync options default to: -rlpt --itemize-changes --out-format='%i %n%L'.
+  - .syncfs is always excluded.
+  - .git is always included, so repository metadata is synced.
+  - Git-ignore support is implemented by asking Git for ignored paths and passing
+    those exact paths to rsync. This handles recursive .gitignore files, negation,
+    .git/info/exclude, and core.excludesFile the same way Git does.
+  - For pull, the local checkout's Git ignore rules are used as the policy for
+    what should not be pulled into the local tree.
+]])
+end
 
-# rsync options: recursive, symlinks, perms (exec bits), times; itemize changes; exclude marker
-RSYNC_OPTS=(-rlpt --itemize-changes --out-format='%i %n%L' --exclude='.syncfs')
-# Honor Git ignore rules but always include the VCS metadata (.git).
-# The per-dir filter below treats any ".gitignore" as an rsync filter file (optional with '-' so missing files are fine).
-RSYNC_OPTS+=("--include=/.git" "--include=/.git/**" "--filter" ":- .gitignore")
-# Mirror semantics: propagate deletions both ways (but keep excluded files like .syncfs).
-RSYNC_OPTS+=("--delete")
+local function parse_args(argv)
+  local cfg = {
+    command = nil,
+    positionals = {},
+    start_dir = nil,
+    remote = os.getenv("SYNCFS_REMOTE"),
+    rsync = "rsync",
+    git = "git",
+    gitignore = true,
+    gitignore_mode = "git",
+    delete = true,
+    dry_run = false,
+    quiet = false,
+    verbose = 0,
+    init_id = nil,
+    init_edit = false,
+  }
 
-remote_base() { printf '%s' "${SYNCFS_REMOTE%/}"; }
-remote_path_for() {
-    [ -n "${SYNCFS_REMOTE-}" ] || die "SYNCFS_REMOTE is not set"
-    local key hash
-    key="$(hash_key_for_syncdir "$1")" || exit 1
-    hash="$(md5_of_string "$key")" || exit 1
-    printf '%s/%s' "$(remote_base)" "$hash"
-}
-remote_ts_path_for() {
-    local key hash
-    key="$(hash_key_for_syncdir "$1")" || exit 1
-    hash="$(md5_of_string "$key")" || exit 1
-    printf '%s/%s.timestamp' "$(remote_base)" "$hash"
-}
+  local i = 1
+  while i <= #argv do
+    local a = argv[i]
 
-# Remote existence probes
-remote_dir_exists() {
-    local p="$1"
-    case "$p" in
-    /* | ./* | ../*) [ -d "$p" ] ;;
-    *) rsync --list-only "$p/" >/dev/null 2>&1 ;;
-    esac
-}
-remote_file_fetch() { # $1 remote-file, $2 local-dest; returns 0 on success
-    local src="$1" dst="$2"
-    case "$src" in
-    /* | ./* | ../*) [ -f "$src" ] && cp -f "$src" "$dst" 2>/dev/null ;;
-    *) rsync "$src" "$dst" >/dev/null 2>&1 ;;
-    esac
-}
+    local function need_value(name)
+      i = i + 1
+      if i > #argv then die("%s requires a value", name) end
+      return argv[i]
+    end
 
-ensure_remote_base_exists() {
-    local base
-    base="$(remote_base)"
-    if ! remote_dir_exists "$base"; then
-        die "SYNCFS_REMOTE base not found or unreachable: $base"
-    fi
-}
-
-# Dry-run that tolerates rsync 23/24 (common with GVFS/remote FS)
-# 0 => has changes, 1 => no changes, 2 => fatal error
-dry_changes_exist() {
-    local src="$1" dst="$2" out rc
-    out="$(rsync -n "${RSYNC_OPTS[@]}" "$src" "$dst" 2>&1)"
-    rc=$?
-    case "$rc" in 0 | 23 | 24) ;; *)
-        echo "$out" >&2
-        return 2
-        ;;
-    esac
-    # With --itemize-changes, normal changes start with [<>chd.*], deletions with "deleting ...".
-    printf '%s\n' "$out" | grep -Eq '^[<>chd\.*]|^deleting ' && return 0 || return 1
-}
-
-# Timestamp IO (POSIX seconds)
-get_local_ts() {
-    local f="$1/.syncfs" v
-    if [ -f "$f" ]; then
-        v="$(head -n1 "$f" | grep -Eo '^[0-9]{1,}$' || true)"
-        [ -n "$v" ] && printf '%s' "$v" && return 0
-    fi
-    printf '0'
-}
-set_local_ts() {
-    local d="$1" ts="$2"
-    printf '%s\n' "$ts" >"$d/.syncfs" || die "cannot write $d/.syncfs"
-}
-get_remote_ts() {
-    local syncdir="$1" rf tmp v
-    rf="$(remote_ts_path_for "$syncdir")"
-    tmp="$(mktemp)"
-    trap 'rm -f "$tmp"' RETURN
-    if remote_file_fetch "$rf" "$tmp"; then
-        v="$(head -n1 "$tmp" | grep -Eo '^[0-9]{1,}$' || true)"
-        [ -n "$v" ] && printf '%s' "$v" && return 0
-    fi
-    printf '0'
-}
-set_remote_ts() {
-    local syncdir="$1" ts="$2" rf tmp
-    rf="$(remote_ts_path_for "$syncdir")"
-    tmp="$(mktemp)"
-    printf '%s\n' "$ts" >"$tmp"
-    case "$rf" in
-    /* | ./* | ../*) cp -f "$tmp" "$rf" ;;
-    *) rsync "$tmp" "$rf" ;;
-    esac || die "failed to write remote timestamp: $rf"
-    rm -f "$tmp"
-}
-
-# ------------ subcommands ------------
-
-do_init() {
-    local dir
-    dir="$PWD"
-    local f
-    f="$dir/.syncfs"
-    if [ -e "$f" ]; then
-        echo "'.syncfs' already exists here: $f"
+    if a == "-h" or a == "--help" then
+      cfg.command = "help"
+    elseif a == "--version" then
+      cfg.command = "version"
+    elseif a == "-C" or a == "--chdir" then
+      cfg.start_dir = need_value(a)
+    elseif starts_with(a, "--chdir=") then
+      cfg.start_dir = a:sub(9)
+    elseif a == "-r" or a == "--remote" then
+      cfg.remote = need_value(a)
+    elseif starts_with(a, "--remote=") then
+      cfg.remote = a:sub(10)
+    elseif a == "-n" or a == "--dry-run" then
+      cfg.dry_run = true
+    elseif a == "--no-delete" then
+      cfg.delete = false
+    elseif a == "--rsync" then
+      cfg.rsync = need_value(a)
+    elseif starts_with(a, "--rsync=") then
+      cfg.rsync = a:sub(9)
+    elseif a == "--git" then
+      cfg.git = need_value(a)
+    elseif starts_with(a, "--git=") then
+      cfg.git = a:sub(7)
+    elseif a == "--no-gitignore" then
+      cfg.gitignore = false
+    elseif a == "--gitignore" then
+      cfg.gitignore = true
+    elseif a == "--gitignore-mode" then
+      cfg.gitignore_mode = need_value(a)
+    elseif starts_with(a, "--gitignore-mode=") then
+      cfg.gitignore_mode = a:sub(18)
+    elseif a == "--id" then
+      cfg.init_id = need_value(a)
+    elseif starts_with(a, "--id=") then
+      cfg.init_id = a:sub(6)
+    elseif a == "--edit" then
+      cfg.init_edit = true
+    elseif a == "-q" or a == "--quiet" then
+      cfg.quiet = true
+    elseif a == "-v" or a == "--verbose" then
+      cfg.verbose = cfg.verbose + 1
+    elseif a == "--" then
+      i = i + 1
+      while i <= #argv do
+        cfg.positionals[#cfg.positionals + 1] = argv[i]
+        i = i + 1
+      end
+      break
+    elseif starts_with(a, "-") then
+      die("unknown option: %s", a)
     else
-        cat >"$f" <<'SYNCFS_MARKER'
-0
-# syncfs marker for the directory.
-# The first line is the last-sync timestamp in POSIX seconds.
-# Leave it as 0 initially; it will be updated on push/pull.
-# You may add notes below this line; they are ignored.
-SYNCFS_MARKER
-        chmod 0644 "$f" 2>/dev/null || true
-        echo "Created example $f"
-    fi
-}
+      if cfg.command == nil then
+        cfg.command = a
+      else
+        cfg.positionals[#cfg.positionals + 1] = a
+      end
+    end
+    i = i + 1
+  end
 
-do_push() {
-    local syncdir="$1" remote now
-    remote="$(remote_path_for "$syncdir")" || exit 1
-    echo "Pushing (mirror local -> remote, including deletions):"
-    echo "  Local : $syncdir/"
-    echo "  Remote: $remote/"
-    rsync "${RSYNC_OPTS[@]}" "$syncdir/" "$remote/" || exit 1
-    now="$(date +%s)"
-    set_remote_ts "$syncdir" "$now"
-    set_local_ts "$syncdir" "$now"
-}
+  if not cfg.command then cfg.command = "status" end
+  if cfg.command == "" then cfg.command = "status" end
+  if cfg.command == "help" then return cfg end
+  if cfg.command == "version" then return cfg end
 
-do_pull() {
-    local syncdir="$1" remote now
-    remote="$(remote_path_for "$syncdir")" || exit 1
-    if ! remote_dir_exists "$remote"; then
-        echo "Nothing to pull: remote '$remote' does not exist yet."
-        return 0
-    fi
-    echo "Pulling (mirror remote -> local, including deletions):"
-    echo "  Remote: $remote/"
-    echo "  Local : $syncdir/"
-    rsync "${RSYNC_OPTS[@]}" "$remote/" "$syncdir/" || exit 1
-    now="$(date +%s)"
-    set_local_ts "$syncdir" "$now"
-}
+  local valid = { init = true, push = true, pull = true, status = true, key = true }
+  if not valid[cfg.command] then
+    die("unknown command: %s (try --help)", cfg.command)
+  end
+  if #cfg.positionals > 0 then
+    die("unexpected argument for %s: %s", cfg.command, cfg.positionals[1])
+  end
+  if cfg.gitignore_mode ~= "git" and cfg.gitignore_mode ~= "match" then
+    die("--gitignore-mode must be 'git' or 'match'")
+  end
+  return cfg
+end
 
-status_both_dirs() {
-    local syncdir="$1" remote push_has=0 pull_has=0 remote_newer=0
-    remote="$(remote_path_for "$syncdir")" || exit 1
-    # rsync-based detection
-    if dry_changes_exist "$syncdir/" "$remote/"; then
-        push_has=1
-    elif [ $? -ne 1 ]; then
-        die "rsync dry-run (push) failed; is the remote reachable?"
-    fi
-    if remote_dir_exists "$remote"; then
-        if dry_changes_exist "$remote/" "$syncdir/"; then
-            pull_has=1
-        elif [ $? -ne 1 ]; then
-            die "rsync dry-run (pull) failed; is the remote reachable?"
-        fi
-    fi
-    # timestamp-based detection
-    local lts rts
-    lts="$(get_local_ts "$syncdir")"
-    rts="$(get_remote_ts "$syncdir")"
-    if [ "$rts" -gt "$lts" ]; then
-        remote_newer=1
-    fi
-    # Decision logic
-    if [ "$push_has" -eq 1 ] && { [ "$pull_has" -eq 1 ] || [ "$remote_newer" -eq 1 ]; }; then
-        echo "There are changes in BOTH directions: you can 'push' and 'pull'."
-        [ "$remote_newer" -eq 1 ] && echo "(Remote has newer changes since your last local sync.)"
-    elif [ "$push_has" -eq 1 ]; then
-        echo "There are LOCAL changes to push."
-    elif [ "$pull_has" -eq 1 ] || [ "$remote_newer" -eq 1 ]; then
-        echo "There are REMOTE changes to pull."
-        [ "$remote_newer" -eq 1 ] && echo "(Someone else likely pushed after your last local sync.)"
-    else
-        echo "Up to date. Nothing to push or pull."
-    fi
-}
+local function remote_base(cfg)
+  if not cfg.remote or cfg.remote == "" then
+    die("SYNCFS_REMOTE is not set; use --remote SPEC or export SYNCFS_REMOTE")
+  end
+  return cfg.remote:gsub("/+$", "")
+end
 
-# ------------ main ------------
-case "${1-}" in
--h | --help)
-    usage
-    exit 0
-    ;;
-init)
-    do_init
-    exit 0
-    ;;
-esac
+local function is_local_remote_path(p)
+  return starts_with(p, "/") or starts_with(p, "./") or starts_with(p, "../")
+end
 
-# For push/pull/status we need rsync/awk, a syncdir, and SYNCFS_REMOTE
-need rsync
-need awk
-syncdir="$(find_syncdir)" || die "no .syncfs found from $PWD upwards"
-[ -d "$syncdir" ] || die "syncdir does not exist: $syncdir"
-: "${SYNCFS_REMOTE:?SYNCFS_REMOTE environment variable must be set}"
-ensure_remote_base_exists
+local function remote_path_for(cfg, syncdir)
+  local key = hash_key_for_syncdir(syncdir)
+  local hash = md5_of_string(key)
+  return remote_base(cfg) .. "/" .. hash, key, hash
+end
 
-case "${1-}" in
-push) do_push "$syncdir" ;;
-pull) do_pull "$syncdir" ;;
-"") status_both_dirs "$syncdir" ;;
-*)
-    echo "Unknown subcommand: $1" >&2
-    usage >&2
-    exit 2
-    ;;
-esac
+local function remote_ts_path_for(cfg, syncdir)
+  local path, key, hash = remote_path_for(cfg, syncdir)
+  return path .. ".timestamp", key, hash
+end
+
+local function remote_dir_exists(cfg, p)
+  if is_local_remote_path(p) then
+    return is_dir(p)
+  end
+  local _, rc = run_capture({cfg.rsync, "--list-only", p .. "/"})
+  return rc == 0
+end
+
+local function remote_file_fetch(cfg, src, dst)
+  if is_local_remote_path(src) then
+    if is_file(src) then
+      return copy_file(src, dst)
+    end
+    return false
+  end
+  local _, rc = run_capture({cfg.rsync, src, dst})
+  return rc == 0
+end
+
+local function ensure_remote_base_exists(cfg)
+  local base = remote_base(cfg)
+  if not remote_dir_exists(cfg, base) then
+    die("SYNCFS_REMOTE base not found or unreachable: %s", base)
+  end
+end
+
+local function get_local_ts(syncdir)
+  local data = read_all(syncdir .. "/.syncfs")
+  if not data then return 0 end
+  local first = data:match("^([^\r\n]*)") or ""
+  local v = first:match("^(%d+)$")
+  return tonumber(v) or 0
+end
+
+local function set_local_ts(syncdir, ts)
+  local path = syncdir .. "/.syncfs"
+  local data = read_all(path) or ""
+  local rest = ""
+  if data ~= "" then
+    local first_end = data:find("\n", 1, true)
+    if first_end then
+      rest = data:sub(first_end + 1)
+    end
+  end
+  write_all(path, tostring(ts) .. "\n" .. rest)
+end
+
+local function get_remote_ts(cfg, syncdir)
+  local rf = remote_ts_path_for(cfg, syncdir)
+  local tmp = make_temp("syncfs-rts")
+  if remote_file_fetch(cfg, rf, tmp) then
+    local data = read_all(tmp) or ""
+    local first = data:match("^([^\r\n]*)") or ""
+    local v = first:match("^(%d+)$")
+    if v then return tonumber(v) or 0 end
+  end
+  return 0
+end
+
+local function set_remote_ts(cfg, syncdir, ts)
+  local rf = remote_ts_path_for(cfg, syncdir)
+  local tmp = make_temp("syncfs-set-rts")
+  write_all(tmp, tostring(ts) .. "\n")
+
+  if is_local_remote_path(rf) then
+    if not copy_file(tmp, rf) then
+      die("failed to write remote timestamp: %s", rf)
+    end
+  else
+    local out, rc = run_capture({cfg.rsync, tmp, rf})
+    if rc ~= 0 then
+      die("failed to write remote timestamp %s: %s", rf, out)
+    end
+  end
+end
+
+local function rsync_escape_pattern(path)
+  path = path:gsub("^%./", "")
+  local isdir = path:sub(-1) == "/"
+  if isdir then path = path:sub(1, -2) end
+
+  path = path:gsub("\\", "\\\\")
+  path = path:gsub("%*", "\\*")
+  path = path:gsub("%?", "\\?")
+  path = path:gsub("%[", "\\[")
+
+  if isdir then
+    return "/" .. path .. "/***"
+  end
+  return "/" .. path
+end
+
+local function make_git_exclude_file(cfg, syncdir)
+  if not cfg.gitignore then return nil end
+  need(cfg.git, "needed unless --no-gitignore is used")
+
+  local out, rc = run_capture({cfg.git, "-C", syncdir, "rev-parse", "--is-inside-work-tree"})
+  if rc ~= 0 or trim_newline(out) ~= "true" then
+    die("Git-ignore support requires %s to be inside a Git worktree; use --no-gitignore to disable", syncdir)
+  end
+
+  local args = {cfg.git, "-C", syncdir, "ls-files", "-z", "--ignored", "--exclude-standard", "--directory"}
+  if cfg.gitignore_mode == "git" then
+    args[#args + 1] = "--others"
+  elseif cfg.gitignore_mode == "match" then
+    args[#args + 1] = "--cached"
+    args[#args + 1] = "--others"
+  end
+  args[#args + 1] = "--"
+  args[#args + 1] = "."
+
+  out, rc = run_capture(args)
+  if rc ~= 0 then
+    die("failed to ask Git for ignored paths: %s", out)
+  end
+
+  local paths = split0(out)
+  if #paths == 0 then
+    return nil
+  end
+
+  local tmp = make_temp("syncfs-gitignore")
+  local f, err = io.open(tmp, "wb")
+  if not f then die("cannot write temporary rsync exclude file: %s", err or "unknown error") end
+  for _, p in ipairs(paths) do
+    -- Git outputs paths relative to syncdir here. Anchor them at the rsync source root.
+    f:write(rsync_escape_pattern(p), "\0")
+  end
+  f:close()
+
+  if cfg.verbose > 0 and not cfg.quiet then
+    io.stderr:write("syncfs: generated ", tostring(#paths), " Git-ignore rsync excludes\n")
+  end
+  return tmp
+end
+
+local function build_rsync_args(cfg, syncdir, dry)
+  local args = {
+    cfg.rsync,
+    "-rlpt",
+    "--itemize-changes",
+    "--out-format=%i %n%L",
+    "--exclude=.syncfs",
+    "--include=/.git",
+    "--include=/.git/**",
+  }
+
+  local ex = make_git_exclude_file(cfg, syncdir)
+  if ex then
+    args[#args + 1] = "--from0"
+    args[#args + 1] = "--exclude-from=" .. ex
+  end
+
+  if cfg.delete then
+    args[#args + 1] = "--delete"
+  end
+  if dry then
+    args[#args + 1] = "-n"
+  end
+  return args
+end
+
+local function dry_changes_exist(cfg, syncdir, src, dst)
+  local args = build_rsync_args(cfg, syncdir, true)
+  args[#args + 1] = src
+  args[#args + 1] = dst
+
+  local out, rc = run_capture(args)
+  if rc ~= 0 and rc ~= 23 and rc ~= 24 then
+    return nil, out, rc
+  end
+
+  for line in out:gmatch("[^\r\n]+") do
+    if line:match("^[<>chd%.%*]") or line:match("^deleting ") then
+      return true, out, rc
+    end
+  end
+  return false, out, rc
+end
+
+local function rsync_copy(cfg, syncdir, src, dst, dry)
+  local args = build_rsync_args(cfg, syncdir, dry)
+  args[#args + 1] = src
+  args[#args + 1] = dst
+  local out, rc = run_capture(args)
+  if out ~= "" and not cfg.quiet then
+    io.write(out)
+    if out:sub(-1) ~= "\n" then io.write("\n") end
+  end
+  return rc, out
+end
+
+local function now_posix()
+  return tonumber(os.time()) or 0
+end
+
+local function do_init(cfg)
+  local dir = resolve_realpath(cfg.start_dir or pwd())
+  if not is_dir(dir) then die("not a directory: %s", dir) end
+
+  local f = dir .. "/.syncfs"
+  if path_exists(f) then
+    if not cfg.quiet then io.write(".syncfs already exists: ", f, "\n") end
+  else
+    local body = {
+      "0",
+      "# syncfs marker for this directory.",
+      "# The first line is the last-sync timestamp in POSIX seconds.",
+      "# Leave it as 0 initially; syncfs updates it after successful push/pull.",
+      "# Add id=YOUR_STABLE_ID below if you want the remote key to be independent",
+      "# of the local absolute path.",
+    }
+    if cfg.init_id then
+      body[#body + 1] = "id=" .. cfg.init_id
+    end
+    write_all(f, table.concat(body, "\n") .. "\n")
+    run_capture({"chmod", "0644", f})
+    if not cfg.quiet then io.write("Created ", f, "\n") end
+  end
+
+  if cfg.init_edit then
+    local editor = os.getenv("EDITOR") or "vi"
+    local rc = os.execute(shquote(editor) .. " " .. shquote(f))
+    if type(rc) == "number" and rc ~= 0 then
+      warn("editor exited with status %s", tostring(rc))
+    end
+  end
+end
+
+local function require_syncdir(cfg)
+  local syncdir = find_syncdir(cfg.start_dir or pwd())
+  if not syncdir then
+    die("no .syncfs found from %s upwards", cfg.start_dir or pwd())
+  end
+  if not is_dir(syncdir) then
+    die("syncdir does not exist: %s", syncdir)
+  end
+  return syncdir
+end
+
+local function print_header(cfg, title, a_label, a, b_label, b)
+  if cfg.quiet then return end
+  io.write(title, "\n")
+  io.write("  ", a_label, ": ", a, "\n")
+  io.write("  ", b_label, ": ", b, "\n")
+end
+
+local function do_push(cfg, syncdir)
+  local remote = remote_path_for(cfg, syncdir)
+  print_header(cfg,
+    cfg.dry_run and "Dry-run push (local -> remote):" or "Pushing (mirror local -> remote, including deletions):",
+    "Local ", syncdir .. "/",
+    "Remote", remote .. "/")
+
+  local rc, out = rsync_copy(cfg, syncdir, syncdir .. "/", remote .. "/", cfg.dry_run)
+  if rc ~= 0 then die("rsync push failed with exit code %d: %s", rc, out) end
+
+  if not cfg.dry_run then
+    local ts = now_posix()
+    set_remote_ts(cfg, syncdir, ts)
+    set_local_ts(syncdir, ts)
+  end
+end
+
+local function do_pull(cfg, syncdir)
+  local remote = remote_path_for(cfg, syncdir)
+  if not remote_dir_exists(cfg, remote) then
+    if not cfg.quiet then io.write("Nothing to pull: remote does not exist yet: ", remote, "\n") end
+    return
+  end
+
+  print_header(cfg,
+    cfg.dry_run and "Dry-run pull (remote -> local):" or "Pulling (mirror remote -> local, including deletions):",
+    "Remote", remote .. "/",
+    "Local ", syncdir .. "/")
+
+  local rc, out = rsync_copy(cfg, syncdir, remote .. "/", syncdir .. "/", cfg.dry_run)
+  if rc ~= 0 then die("rsync pull failed with exit code %d: %s", rc, out) end
+
+  if not cfg.dry_run then
+    set_local_ts(syncdir, now_posix())
+  end
+end
+
+local function do_status(cfg, syncdir)
+  local remote = remote_path_for(cfg, syncdir)
+  local push_has = false
+  local pull_has = false
+  local remote_newer = false
+
+  local has, out, rc = dry_changes_exist(cfg, syncdir, syncdir .. "/", remote .. "/")
+  if has == nil then
+    die("rsync dry-run push failed; is the remote reachable? exit=%s output=%s", tostring(rc), out)
+  end
+  push_has = has
+
+  if remote_dir_exists(cfg, remote) then
+    has, out, rc = dry_changes_exist(cfg, syncdir, remote .. "/", syncdir .. "/")
+    if has == nil then
+      die("rsync dry-run pull failed; is the remote reachable? exit=%s output=%s", tostring(rc), out)
+    end
+    pull_has = has
+  end
+
+  local lts = get_local_ts(syncdir)
+  local rts = get_remote_ts(cfg, syncdir)
+  if rts > lts then remote_newer = true end
+
+  if cfg.verbose > 0 and not cfg.quiet then
+    local key, hash
+    _, key, hash = remote_path_for(cfg, syncdir)
+    io.stderr:write("syncfs: syncdir=", syncdir, "\n")
+    io.stderr:write("syncfs: key=", key, "\n")
+    io.stderr:write("syncfs: hash=", hash, "\n")
+    io.stderr:write("syncfs: local_ts=", tostring(lts), " remote_ts=", tostring(rts), "\n")
+  end
+
+  if push_has and (pull_has or remote_newer) then
+    io.write("There are changes in BOTH directions: you can push and pull.\n")
+    if remote_newer then io.write("Remote has newer changes since your last local sync.\n") end
+  elseif push_has then
+    io.write("There are LOCAL changes to push.\n")
+  elseif pull_has or remote_newer then
+    io.write("There are REMOTE changes to pull.\n")
+    if remote_newer then io.write("Someone else likely pushed after your last local sync.\n") end
+  else
+    io.write("Up to date. Nothing to push or pull.\n")
+  end
+end
+
+local function do_key(cfg, syncdir)
+  local remote, key, hash = remote_path_for(cfg, syncdir)
+  local rts = remote_ts_path_for(cfg, syncdir)
+  io.write("syncdir:      ", syncdir, "\n")
+  io.write("stable key:   ", key, "\n")
+  io.write("md5:          ", hash, "\n")
+  io.write("remote:       ", remote, "\n")
+  io.write("remote stamp: ", rts, "\n")
+end
+
+local function main()
+  math.randomseed(os.time() + tonumber(tostring({}):match("0x(%x+)") or "0", 16))
+
+  local argv = {}
+  local i = 1
+  while arg[i] do
+    argv[#argv + 1] = arg[i]
+    i = i + 1
+  end
+
+  local cfg = parse_args(argv)
+
+  if cfg.command == "help" then
+    usage()
+    cleanup()
+    return
+  elseif cfg.command == "version" then
+    io.write(VERSION, "\n")
+    cleanup()
+    return
+  elseif cfg.command == "init" then
+    do_init(cfg)
+    cleanup()
+    return
+  end
+
+  local syncdir = require_syncdir(cfg)
+  need(cfg.rsync)
+  ensure_remote_base_exists(cfg)
+
+  if cfg.command == "status" then
+    do_status(cfg, syncdir)
+  elseif cfg.command == "push" then
+    do_push(cfg, syncdir)
+  elseif cfg.command == "pull" then
+    do_pull(cfg, syncdir)
+  elseif cfg.command == "key" then
+    do_key(cfg, syncdir)
+  end
+
+  cleanup()
+end
+
+main()
