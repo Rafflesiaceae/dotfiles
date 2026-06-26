@@ -67,14 +67,15 @@ printf "\nautomating rebase...\n" >/dev/tty
 # assemble commit short-ids
 commits=()
 for longarg in "${commits_raw[@]}"; do
-    arg=${longarg,,}   # lowercase
+    short=$(git rev-parse --short "$longarg") || die "cannot resolve commit: $longarg"
+    arg=${short,,}   # normalized to git's abbreviated SHA so it matches the rebase todo
     commits+=("$arg")
     commit_message=$(git rev-list --format=%s --max-count=1 "$longarg" | sed '1d')
     printf "\t%s %s (%s)\n" "$gitcommand" "$arg" "$commit_message" >/dev/tty
 done
 
 # replace the command for the given commits
-commits_re=$(echo "${commits[*]}" | sed 's/\ /|/') # join commits with '|'
+commits_re=$(echo "${commits[*]}" | sed 's/\ /|/g') # join commits with '|'
 sed -ri "s/^pick (${commits_re}) (.*)/${gitcommand} \1 \2/" "$comfile"
 
 if [[ $editor ]]; then
