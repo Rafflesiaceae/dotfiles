@@ -385,6 +385,7 @@ sources = {
     "./.local/bin/xprofile": {"linux": ""},
     "./.local/bin/xra": "",
     "./.local/bin/xrandr-reset": "",
+    "./.local/bin/xrandr-set-active-display-as-primary": "",
     "./.local/bin/xsleep": "",
     "./.local/bin/zoom-share-bar-hide": "",
     "./.local/bin_override/gimp": {"linux": ""},

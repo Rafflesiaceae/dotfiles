@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+output="$(
+    i3-msg -t get_workspaces |
+        jq -r '.[] | select(.focused == true) | .output'
+)"
+
+if [[ -z "$output" || "$output" == "null" ]]; then
+    echo "Could not determine the currently focused output." >&2
+    exit 1
+fi
+
+if ! xrandr --query | grep -q "^${output} connected"; then
+    echo "Output '$output' is not connected." >&2
+    exit 1
+fi
+
+xrandr --output "$output" --primary
+
+echo "Set '$output' as the primary display."
