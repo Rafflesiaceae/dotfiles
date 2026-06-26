@@ -40,9 +40,13 @@ rg_moresearches=()
 
 no_editor=
 search_phrase=
-for arg in "$@"; do
-    case $arg in
-        -h|-\?|--help)
+
+if [[ "$#" -eq 0 ]]; then
+    search_phrase=$(cb)
+else
+    for arg in "$@"; do
+        case $arg in
+        -h | -\? | --help)
             usage
             exit
             ;;
@@ -57,7 +61,7 @@ for arg in "$@"; do
             ;;
         -)
             shift
-            rg_moresearches+=("$(printf "%q" "$1")")  # escape it
+            rg_moresearches+=("$(printf "%q" "$1")") # escape it
             ;;
         *)
             if [[ ! $search_phrase ]]; then
@@ -70,9 +74,10 @@ for arg in "$@"; do
                 rg_preargs+=("$1") # escape it
             fi
             ;;
-    esac
-    shift
-done
+        esac
+        shift
+    done
+fi
 
 toplevel=$(git rev-parse --show-toplevel 0>&2 2>/dev/null || true)
 if [[ -n "$toplevel" ]]; then
@@ -91,7 +96,6 @@ rg "$search_phrase" "${rg_preargs[@]}" "${rg_moresearches[@]}" --no-ignore --lin
 if [[ $? -eq 1 ]]; then
     die "no matches"
 fi
-
 
 if [[ "$(stat --printf="%s" /tmp/agt)" == 0 ]]; then
     die "> Pattern not found: ${search_phrase}"
