@@ -20,7 +20,7 @@ set ignore-case = true
 # Colors
 color author green default
 color cursor black yellow
-color cursor-blur black yellow
+# color cursor-blur black yellow
 color date yellow default
 color graph-commit green default
 color main-head magenta default
@@ -75,12 +75,12 @@ bind generic C !git commit
 #
 bind main <Esc>c @sh -c "git show -s --format=%B %(commit) | cb"
 bind main v @sh -c "git show -s --format=%B %(commit) | cb"
-bind main c !?git checkout %(commit)
+bind main c !?<git checkout %(commit)
 bind main C >git commit
 
 # bind refs C !?git checkout -b %(tag) %(tag)
 # bind refs c !?git checkout -b %(tag) %(tag)
-bind refs c !?git checkout %(branch)
+bind refs c !?<git checkout %(branch)
 
 # bind main A >git commit --amend
 bind main A >git-amend-to-particular-commit  %(commit)
