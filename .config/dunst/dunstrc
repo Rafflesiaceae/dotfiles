@@ -1,12 +1,19 @@
 [global]
 always_run_script = true  # run scripts even when notifications are suppressed
 
+# Enable URL detection in body text
+url_detect = yes
+url_open_command = chromium
+
 # font = Consolas 11
 font = Sans 11
 
 mouse_left_click = do_action, close_current
 mouse_middle_click = close_all
 mouse_right_click = close_current
+
+# Show on the display the mouse is on
+follow = keyboard
 
 # allow a small subset of html markup:
 # <b>bold</b>
@@ -39,8 +46,9 @@ sort = no                   # Sort messages by urgency
 word_wrap = yes             # split notifications into multiple lines if they don't fit into geometry.
 padding = 6                 # padding between text and separator
 horizontal_padding = 6      # horizontal padding
-dmenu = /usr/bin/rofi       # dmenu path
-browser = /usr/bin/chromium # browser for opening urls in context menu
+# dmenu = /usr/bin/rofi       # dmenu path
+dmenu = /usr/bin/rofi -dmenu -i -p "dunst"
+# browser = /usr/bin/chromium # browser for opening urls in context menu
 
 # The frequency with wich text that is longer than the notification
 # window allows bounces back and forth.
