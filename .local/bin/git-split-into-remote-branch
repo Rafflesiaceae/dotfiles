@@ -44,6 +44,7 @@ if [[ -n "$commit" ]]; then
     git cherry-pick "$commit"
     git push --set-upstream origin "$branch"
     git-go-back co 1
+    git-drop "$commit"
     if [[ "$has_changes" ]]; then
         git stash pop
     fi
