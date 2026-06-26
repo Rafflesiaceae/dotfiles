@@ -1,15 +1,347 @@
-#!/usr/bin/env bash
-set -eo pipefail
+#!/usr/bin/env luajit
+local ffi = require("ffi")
 
-base="$(pwd -P)"
+ffi.cdef[[
+char *getcwd(char *buf, size_t size);
+]]
 
-rg --files -0 |
-  xargs -0 -P "$(nproc)" -n 200 -- file --mime-type -- |
-  awk -F: -v base="$base" '
-    $2 ~ /^[[:space:]]*text\// || $2 ~ /application\/x-empty/ {
-      p=$1
-      sub(/^[[:space:]]+/, "", p)
-      if (p ~ /^\//) print p
-      else print base "/" p
-    }
-  '
+local function getcwd()
+  local size = 4096
+  local buf = ffi.new("char[?]", size)
+  if ffi.C.getcwd(buf, size) == nil then
+    error("getcwd failed")
+  end
+  return ffi.string(buf)
+end
+
+local function has_prefix(s, prefix)
+  return s:sub(1, #prefix) == prefix
+end
+
+local function read_prefix(path, max_bytes)
+  local f, err = io.open(path, "rb")
+  if not f then
+    return nil, err
+  end
+
+  local data = f:read(max_bytes)
+  f:close()
+
+  if data == nil then
+    return nil, "failed to read file"
+  end
+  return data
+end
+
+local function is_likely_utf16le(data)
+  if #data < 2 then
+    return true
+  end
+
+  local zeros_odd = 0
+  local zeros_even = 0
+  local pairs = 0
+  local limit = #data - (#data % 2)
+
+  for i = 1, limit, 2 do
+    local b1 = data:byte(i)
+    local b2 = data:byte(i + 1)
+    pairs = pairs + 1
+    if b1 == 0 then zeros_odd = zeros_odd + 1 end
+    if b2 == 0 then zeros_even = zeros_even + 1 end
+  end
+
+  if pairs == 0 then
+    return true
+  end
+
+  return zeros_even > zeros_odd
+end
+
+local function is_likely_utf16be(data)
+  if #data < 2 then
+    return true
+  end
+
+  local zeros_odd = 0
+  local zeros_even = 0
+  local pairs = 0
+  local limit = #data - (#data % 2)
+
+  for i = 1, limit, 2 do
+    local b1 = data:byte(i)
+    local b2 = data:byte(i + 1)
+    pairs = pairs + 1
+    if b1 == 0 then zeros_odd = zeros_odd + 1 end
+    if b2 == 0 then zeros_even = zeros_even + 1 end
+  end
+
+  if pairs == 0 then
+    return true
+  end
+
+  return zeros_odd > zeros_even
+end
+
+local function is_likely_utf32le(data)
+  local limit = #data - (#data % 4)
+  if limit == 0 then
+    return true
+  end
+
+  local groups = 0
+  local zero_tail = 0
+
+  for i = 1, limit, 4 do
+    local b1 = data:byte(i)
+    local b2 = data:byte(i + 1)
+    local b3 = data:byte(i + 2)
+    local b4 = data:byte(i + 3)
+    groups = groups + 1
+    if b2 == 0 and b3 == 0 and b4 == 0 and b1 ~= 0 then
+      zero_tail = zero_tail + 1
+    end
+  end
+
+  return groups == 0 or zero_tail > groups * 0.5
+end
+
+local function is_likely_utf32be(data)
+  local limit = #data - (#data % 4)
+  if limit == 0 then
+    return true
+  end
+
+  local groups = 0
+  local zero_head = 0
+
+  for i = 1, limit, 4 do
+    local b1 = data:byte(i)
+    local b2 = data:byte(i + 1)
+    local b3 = data:byte(i + 2)
+    local b4 = data:byte(i + 3)
+    groups = groups + 1
+    if b1 == 0 and b2 == 0 and b3 == 0 and b4 ~= 0 then
+      zero_head = zero_head + 1
+    end
+  end
+
+  return groups == 0 or zero_head > groups * 0.5
+end
+
+local function is_valid_utf8(data)
+  local i = 1
+  local n = #data
+
+  while i <= n do
+    local b1 = data:byte(i)
+
+    if b1 <= 0x7F then
+      i = i + 1
+
+    elseif b1 >= 0xC2 and b1 <= 0xDF then
+      if i + 1 > n then return false end
+      local b2 = data:byte(i + 1)
+      if b2 < 0x80 or b2 > 0xBF then return false end
+      i = i + 2
+
+    elseif b1 == 0xE0 then
+      if i + 2 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      if b2 < 0xA0 or b2 > 0xBF or b3 < 0x80 or b3 > 0xBF then return false end
+      i = i + 3
+
+    elseif b1 >= 0xE1 and b1 <= 0xEC then
+      if i + 2 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      if b2 < 0x80 or b2 > 0xBF or b3 < 0x80 or b3 > 0xBF then return false end
+      i = i + 3
+
+    elseif b1 == 0xED then
+      if i + 2 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      if b2 < 0x80 or b2 > 0x9F or b3 < 0x80 or b3 > 0xBF then return false end
+      i = i + 3
+
+    elseif b1 >= 0xEE and b1 <= 0xEF then
+      if i + 2 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      if b2 < 0x80 or b2 > 0xBF or b3 < 0x80 or b3 > 0xBF then return false end
+      i = i + 3
+
+    elseif b1 == 0xF0 then
+      if i + 3 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      local b4 = data:byte(i + 3)
+      if b2 < 0x90 or b2 > 0xBF or
+         b3 < 0x80 or b3 > 0xBF or
+         b4 < 0x80 or b4 > 0xBF then
+        return false
+      end
+      i = i + 4
+
+    elseif b1 >= 0xF1 and b1 <= 0xF3 then
+      if i + 3 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      local b4 = data:byte(i + 3)
+      if b2 < 0x80 or b2 > 0xBF or
+         b3 < 0x80 or b3 > 0xBF or
+         b4 < 0x80 or b4 > 0xBF then
+        return false
+      end
+      i = i + 4
+
+    elseif b1 == 0xF4 then
+      if i + 3 > n then return false end
+      local b2 = data:byte(i + 1)
+      local b3 = data:byte(i + 2)
+      local b4 = data:byte(i + 3)
+      if b2 < 0x80 or b2 > 0x8F or
+         b3 < 0x80 or b3 > 0xBF or
+         b4 < 0x80 or b4 > 0xBF then
+        return false
+      end
+      i = i + 4
+
+    else
+      return false
+    end
+  end
+
+  return true
+end
+
+local function is_probably_text_bytes(data)
+  if data == "" then
+    return true
+  end
+
+  if has_prefix(data, "\239\187\191") then
+    return is_valid_utf8(data:sub(4))
+  end
+  if has_prefix(data, "\255\254\000\000") then
+    return is_likely_utf32le(data:sub(5))
+  end
+  if has_prefix(data, "\000\000\254\255") then
+    return is_likely_utf32be(data:sub(5))
+  end
+  if has_prefix(data, "\255\254") then
+    return is_likely_utf16le(data:sub(3))
+  end
+  if has_prefix(data, "\254\255") then
+    return is_likely_utf16be(data:sub(3))
+  end
+
+  if data:find("\000", 1, true) then
+    return false
+  end
+
+  local bad = 0
+  local total = #data
+
+  for i = 1, total do
+    local b = data:byte(i)
+    local ok =
+      b == 9  or
+      b == 10 or
+      b == 12 or
+      b == 13 or
+      (b >= 32 and b <= 126) or
+      b >= 128
+
+    if not ok then
+      bad = bad + 1
+    end
+  end
+
+  if total > 0 and bad / total > 0.01 then
+    return false
+  end
+
+  if data:find("[\128-\255]") then
+    return is_valid_utf8(data)
+  end
+
+  return true
+end
+
+local function is_text_file(path)
+  local max_bytes = 65536
+  local data, err = read_prefix(path, max_bytes)
+  if not data then
+    return false, err
+  end
+  return is_probably_text_bytes(data)
+end
+
+local function process_relpath(base, rel)
+  if rel == "" then
+    return
+  end
+
+  local abs = base .. "/" .. rel
+  local ok = is_text_file(abs)
+  if ok then
+    io.write(abs, "\n")
+  end
+end
+
+local function stream_rg_paths(base)
+  local cmd = "rg --files -uu -0"
+  local p, err = io.popen(cmd, "r")
+  if not p then
+    io.stderr:write("failed to run rg: ", tostring(err), "\n")
+    os.exit(1)
+  end
+
+  local buf = ""
+  while true do
+    local chunk = p:read(65536)
+    if not chunk then
+      break
+    end
+
+    buf = buf .. chunk
+
+    while true do
+      local i = buf:find("\0", 1, true)
+      if not i then
+        break
+      end
+
+      local rel = buf:sub(1, i - 1)
+      buf = buf:sub(i + 1)
+      process_relpath(base, rel)
+    end
+  end
+
+  if buf ~= "" then
+    process_relpath(base, buf)
+  end
+
+  local ok, why, code = p:close()
+  if ok == nil or ok == false then
+    io.stderr:write("rg failed")
+    if why ~= nil then
+      io.stderr:write(": ", tostring(why))
+    end
+    if code ~= nil then
+      io.stderr:write(" (", tostring(code), ")")
+    end
+    io.stderr:write("\n")
+    os.exit(1)
+  end
+end
+
+local function main()
+  local base = getcwd()
+  stream_rg_paths(base)
+end
+
+main()
