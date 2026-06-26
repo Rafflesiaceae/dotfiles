@@ -85,6 +85,7 @@ sync/mirror a directory (.cmd .rsync): rsync -aHAX --delete SOURCE/ DESTINATION/
 
 xargs for each line (.cmd .xargs): xargs -rL 1
 xargs for each line w args (.cmd .xargs): xargs -I '{}' echo "{}"
+xargs for each find (.cmd .find .xargs): find . -name '*.json' -type f -print0 | xargs -0 -I '{}' echo "{}"
 
 get current branch (.git .cmd): |
     current_branch_full=$(git symbolic-ref HEAD)
