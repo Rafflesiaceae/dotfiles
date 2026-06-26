@@ -11,7 +11,7 @@ fname="${fnamewext%.*}"
 # notify-send qwe "$fext"
 case "$fext" in
     tf)
-        terraformt fmt "$path"
+        terraform fmt "$path"
         ;;
     hcl)
         terragrunt hclfmt --file "$path"
