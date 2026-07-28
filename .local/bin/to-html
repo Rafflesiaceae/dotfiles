@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+tmpfile=$(mktemp "tmp.tohtml.XXXXXX.html")
+trap 'rm -f "$tmpfile"' EXIT INT
+
+html=$(cb | python3 -c "
+import sys, re, html
+text = sys.stdin.read()
+escaped = html.escape(text)
+linked = re.sub(r'(https?://\S+)', r'<a href=\"\1\">\1</a>', escaped)
+print(linked, end='')
+")
+
+cat > "$tmpfile" <<EOF
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font-family: monospace; white-space: pre; font-size: 14px; margin: 1em; }
+  a { color: #0066cc; }
+</style>
+</head>
+<body>${html}</body>
+</html>
+EOF
+
+chromium "$tmpfile"
+
+sleep 1
+# read -rp "Press Enter to continue..."

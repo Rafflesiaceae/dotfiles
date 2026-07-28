@@ -353,6 +353,7 @@ sources = {
     "./.local/bin/thuncb": "",
     "./.local/bin/tmux-oneshot": "",
     "./.local/bin/tmux-run": "",
+    "./.local/bin/to-html": "",
     "./.local/bin/togglekb": "",
     "./.local/bin/track-execs": "",
     "./.local/bin/tskl": "",
