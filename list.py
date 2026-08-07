@@ -315,7 +315,6 @@ sources = {
     "./.local/bin/ranger-pick": "",
     "./.local/bin/rcb": "",
     "./.local/bin/re2sed": "",
-    "./.local/bin/reconnman": {"linux": ""},
     "./.local/bin/record-screen": "",
     "./.local/bin/refresh-keyboard": {"linux": ""},
     "./.local/bin/refresh-keyring": "",
