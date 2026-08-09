@@ -214,6 +214,8 @@ list processes / tasks (.win .cmd): tasklist
 kill a process by name (.win .cmd): taskkill /F /IM firefox.exe
 kill a process by pid (.win .cmd): taskkill /F /PID 0000
 
+kill a process by name (.linux .cmd): pkill -x -9 process_name
+
 add new user (.linux .cmd):  useradd -m USERNAME
 add new group (.linux .cmd): groupadd GROUP
 add user to group (.linux .cmd): usermod -aG GROUP USER
