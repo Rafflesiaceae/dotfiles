@@ -36,7 +36,7 @@ if g:is_wsl
     endfunction
     autocmd BufWritePre * call Dos2Unix()
 else
-	set ttimeoutlen=0
+    set ttimeoutlen=0
 endif
 
 let mapleader = ","
@@ -271,7 +271,7 @@ let g:airline#extensions#tagbar#flags = 'f'
 " let g:airline#extensions#tagbar#enabled = 0
 
 if !exists('g:airline_symbols')
-   let g:airline_symbols = {}
+    let g:airline_symbols = {}
 endif
 
 "" unicode symbols
@@ -390,8 +390,8 @@ augroup END
 " }}}
 " {{{ Automatically close quickfix
 aug QFClose
-  au!
-  au WinEnter * if winnr('$') == 1 && getbufvar(winbufnr(winnr()), "&buftype") == "quickfix"|q|endif
+    au!
+    au WinEnter * if winnr('$') == 1 && getbufvar(winbufnr(winnr()), "&buftype") == "quickfix"|q|endif
 aug END
 " }}}
 " {{{ Set default size for QF
@@ -535,8 +535,10 @@ au FileType fzf tunmap <buffer> <Esc>
 cnoremap <C-a> <Home>
 
 inoremap <C-q> <Esc>:q!<CR>
+
+" <C-a> is INCREASE!!!
 " inoremap <C-a> <Esc>:wq!<CR>
-" nnoremap <C-a> :wq!<CR>
+" noremap <C-a> :wq!<CR>
 
 vnoremap Y "+y<CR>
 vnoremap <C-c> "+y<CR>
@@ -1103,10 +1105,10 @@ function! s:AddEndingNewline(line)
 endfunction
 
 function! s:SynStack()
-  if !exists("*synstack")
-    return
-  endif
-  echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
+    if !exists("*synstack")
+        return
+    endif
+    echo map(synstack(line('.'), col('.')), 'synIDattr(v:val, "name")')
 endfunc
 com! SynStack call s:SynStack()
 
@@ -1129,9 +1131,9 @@ function! ClipboardPasteInline()
 endfunction
 
 function! SourceIfExists(file)
-  if filereadable(expand(a:file))
-    exe 'source' a:file
-  endif
+    if filereadable(expand(a:file))
+        exe 'source' a:file
+    endif
 endfunction
 
 command! -nargs=1 ChangeLang
@@ -1151,9 +1153,9 @@ command! -bar -range=% Reverse <line1>,<line2>g/^/m<line1>-1|nohl
 function! ToggleLastChar(char)
     let line = getline(".")
     if line[len(line)-1] == a:char
-       call setline( ".", strpart(line, 0, len(line)-1) )
+        call setline( ".", strpart(line, 0, len(line)-1) )
     else
-       call setline( ".", line . a:char )
+        call setline( ".", line . a:char )
     endif
 endfunction
 nmap <leader>, :call ToggleLastChar(",")<CR>
@@ -1172,11 +1174,11 @@ com! -range Escape call s:Escape(<line1>,<line2>)
 
 "" show changes between current buffer and last saved version
 function! s:DiffWithSaved()
-  let filetype=&ft
-  diffthis
-  vnew | r # | normal! 1Gdd
-  diffthis
-  exe "setlocal bt=nofile bh=wipe nobl noswf ro ft=" . filetype
+    let filetype=&ft
+    diffthis
+    vnew | r # | normal! 1Gdd
+    diffthis
+    exe "setlocal bt=nofile bh=wipe nobl noswf ro ft=" . filetype
 endfunction
 com! DiffSaved call s:DiffWithSaved()
 
@@ -1391,32 +1393,32 @@ com! Split call s:Split()
 
 " {{{ Autoversion
 function! s:RunAutoversion()
-  if &modified
-    echoerr "Please save or discard changes before running :Autoversion."
-    return
-  endif
+    if &modified
+        echoerr "Please save or discard changes before running :Autoversion."
+        return
+    endif
 
-  let l:filename = expand('%:p')
-  if empty(l:filename)
-    echoerr "No file path detected."
-    return
-  endif
+    let l:filename = expand('%:p')
+    if empty(l:filename)
+        echoerr "No file path detected."
+        return
+    endif
 
-  let l:cmd = 'autoversion ' . shellescape(l:filename)
+    let l:cmd = 'autoversion ' . shellescape(l:filename)
 
-  " Set up an autocmd to reload the buffer after AsyncRun finishes
-  augroup AutoversionReload
-    autocmd!
-    autocmd User AsyncRunStop ++once call s:ReloadCurrentBuffer()
-  augroup END
+    " Set up an autocmd to reload the buffer after AsyncRun finishes
+    augroup AutoversionReload
+        autocmd!
+        autocmd User AsyncRunStop ++once call s:ReloadCurrentBuffer()
+    augroup END
 
-  execute ":AsyncRun -raw " . l:cmd
+    execute ":AsyncRun -raw " . l:cmd
 endfunction
 
 function! s:ReloadCurrentBuffer()
-  " Reload the buffer silently (discarding unsaved changes if any — safe since we prevent running when modified)
-  silent! edit!
-  echo "Buffer reloaded after autoversion."
+" Reload the buffer silently (discarding unsaved changes if any — safe since we prevent running when modified)
+silent! edit!
+echo "Buffer reloaded after autoversion."
 endfunction
 
 command! Autoversion call <SID>RunAutoversion()
@@ -1426,16 +1428,16 @@ command! Autoversion call <SID>RunAutoversion()
 let g:auto_reload_enabled = 0
 
 function! ToggleAutoReload()
-    if g:auto_reload_enabled
-        echo "AutoReload already enabled (can't disable atm., just restart)"
-    else
-        let g:auto_reload_enabled = 1
-        augroup AutoReload
-            autocmd!
-            autocmd FocusGained,BufEnter * checktime
-        augroup END
-        echo "AutoReload enabled"
-    endif
+if g:auto_reload_enabled
+    echo "AutoReload already enabled (can't disable atm., just restart)"
+else
+    let g:auto_reload_enabled = 1
+    augroup AutoReload
+        autocmd!
+        autocmd FocusGained,BufEnter * checktime
+    augroup END
+    echo "AutoReload enabled"
+endif
 endfunction
 
 command! AutoReload call ToggleAutoReload()
@@ -1445,104 +1447,104 @@ command! AutoReload call ToggleAutoReload()
 " requires:
 "     skywind3000/asyncrun.vim
 func s:vuildSaveAndRun(cmd)
-    if @% != ""
-        execute ":w"
-    else
-        execute ":w! /tmp/vuild.tmp"
-    endif
+if @% != ""
+    execute ":w"
+else
+    execute ":w! /tmp/vuild.tmp"
+endif
 
-    execute ":AsyncRun -raw ".a:cmd
+execute ":AsyncRun -raw ".a:cmd
 endf
 
 " Search for build.sh in parent directories
 func s:vuildFindBuildScript()
-    let l:dir = expand('%:p:h')
-    while 1
-        let l:build_script = l:dir . '/build.sh'
-        if filereadable(l:build_script)
-            return l:build_script
-        endif
-        let l:parent = fnamemodify(l:dir, ':h')
-        if l:parent ==# l:dir
-            break
-        endif
-        let l:dir = l:parent
-    endwhile
-    return ''
+let l:dir = expand('%:p:h')
+while 1
+    let l:build_script = l:dir . '/build.sh'
+    if filereadable(l:build_script)
+        return l:build_script
+    endif
+    let l:parent = fnamemodify(l:dir, ':h')
+    if l:parent ==# l:dir
+        break
+    endif
+    let l:dir = l:parent
+endwhile
+return ''
 endf
 
 func! s:vuildRun()
-    " stop already potential running process
-    if g:asyncrun_status == "running"
-        execute ":AsyncStop!"
-        " for it to quit
-        while g:asyncrun_status == "running"
-            sleep 200m
-        endwhile
-    endif 
-
-    " RUN lines always take priority
-    let i = 0
-    while i < 22
-        let line=getline(i)
-        let induceResult=matchlist(line, '^\A\+\[RUN\]\s*\(.*\)') " regex: start-of-string, one-and-more-non-alphabetic-chars,[RUN],any-whitespaces,group-0-any
-        if !empty(induceResult)
-            let cmd = get(induceResult, 1)
-            call s:vuildSaveAndRun(cmd)
-            return 0
-        endif
-
-        let i += 1
+" stop already potential running process
+if g:asyncrun_status == "running"
+    execute ":AsyncStop!"
+    " for it to quit
+    while g:asyncrun_status == "running"
+        sleep 200m
     endwhile
+endif 
 
-    " if not explicitly set RUN was found, run build.sh if present in parent directories
-    let l:build_script = s:vuildFindBuildScript()
-    if l:build_script != ''
-        call s:vuildSaveAndRun(fnameescape(l:build_script))
+" RUN lines always take priority
+let i = 0
+while i < 22
+    let line=getline(i)
+    let induceResult=matchlist(line, '^\A\+\[RUN\]\s*\(.*\)') " regex: start-of-string, one-and-more-non-alphabetic-chars,[RUN],any-whitespaces,group-0-any
+    if !empty(induceResult)
+        let cmd = get(induceResult, 1)
+        call s:vuildSaveAndRun(cmd)
         return 0
     endif
 
-    " if no explicitly set RUN was found, run something depending on syntax
-    let filetype = &filetype
-    if filetype == "nim"
-        call s:vuildSaveAndRun("nim c -r %")
-    elseif filetype == "c"
-        call s:vuildSaveAndRun("gcc -o /tmp/tmp_out_gcc % && /tmp/tmp_out_gcc")
-    elseif filetype == "cpp"
-        call s:vuildSaveAndRun("g++ -o /tmp/tmp_out_g++ % && /tmp/tmp_out_g++")
-    elseif filetype == "python"
-        call s:vuildSaveAndRun("python %")
-    elseif filetype == "lua"
-        call s:vuildSaveAndRun("lua %")
-    elseif filetype == "html"
-        call s:vuildSaveAndRun("chromium %")
-    elseif filetype == "kotlin"
-        call s:vuildSaveAndRun("run-kotlin %")
-        " call s:vuildSaveAndRun("kotrun %")
-    elseif filetype == "go"
-        " check if file ends with `_test`
-        if expand("%:r") =~ "_test" 
-            let l:currentTag = tagbar#currenttag('[%s] ','')[1:-5]
-            execute 'cd' fnameescape(expand("%:p:h"))
-            call s:vuildSaveAndRun("go test -run ".fnameescape(expand("%:p")))
-        else
-            call s:vuildSaveAndRun("go run %")
-        endif
-    elseif filetype == "elixir"
-        call s:vuildSaveAndRun("elixir %")
-    elseif filetype == "groovy"
-        call s:vuildSaveAndRun("groovy %")
-    elseif filetype == "perl"
-        call s:vuildSaveAndRun("perl %")
-    elseif filetype == "javascript"
-        call s:vuildSaveAndRun("node %")
-    elseif filetype =~ "yaml.*"
-        call s:vuildSaveAndRun("yq -oj -P . '%'")
-    elseif filetype == "json"
-        call s:vuildSaveAndRun("jq . '%'")
+    let i += 1
+endwhile
+
+" if not explicitly set RUN was found, run build.sh if present in parent directories
+let l:build_script = s:vuildFindBuildScript()
+if l:build_script != ''
+    call s:vuildSaveAndRun(fnameescape(l:build_script))
+    return 0
+endif
+
+" if no explicitly set RUN was found, run something depending on syntax
+let filetype = &filetype
+if filetype == "nim"
+    call s:vuildSaveAndRun("nim c -r %")
+elseif filetype == "c"
+    call s:vuildSaveAndRun("gcc -o /tmp/tmp_out_gcc % && /tmp/tmp_out_gcc")
+elseif filetype == "cpp"
+    call s:vuildSaveAndRun("g++ -o /tmp/tmp_out_g++ % && /tmp/tmp_out_g++")
+elseif filetype == "python"
+    call s:vuildSaveAndRun("python %")
+elseif filetype == "lua"
+    call s:vuildSaveAndRun("lua %")
+elseif filetype == "html"
+    call s:vuildSaveAndRun("chromium %")
+elseif filetype == "kotlin"
+    call s:vuildSaveAndRun("run-kotlin %")
+    " call s:vuildSaveAndRun("kotrun %")
+elseif filetype == "go"
+    " check if file ends with `_test`
+    if expand("%:r") =~ "_test" 
+        let l:currentTag = tagbar#currenttag('[%s] ','')[1:-5]
+        execute 'cd' fnameescape(expand("%:p:h"))
+        call s:vuildSaveAndRun("go test -run ".fnameescape(expand("%:p")))
     else
-        call s:vuildSaveAndRun("./%")
+        call s:vuildSaveAndRun("go run %")
     endif
+elseif filetype == "elixir"
+    call s:vuildSaveAndRun("elixir %")
+elseif filetype == "groovy"
+    call s:vuildSaveAndRun("groovy %")
+elseif filetype == "perl"
+    call s:vuildSaveAndRun("perl %")
+elseif filetype == "javascript"
+    call s:vuildSaveAndRun("node %")
+elseif filetype =~ "yaml.*"
+    call s:vuildSaveAndRun("yq -oj -P . '%'")
+elseif filetype == "json"
+    call s:vuildSaveAndRun("jq . '%'")
+else
+    call s:vuildSaveAndRun("./%")
+endif
 endf
 
 com! Run
@@ -1756,16 +1758,16 @@ autocmd BufRead,BufNewFile PKGBUILD set filetype=sh
 " }}}
 " {{{ Helm Syntax 
 function HelmSyntax()
-  set filetype=yaml
-  unlet b:current_syntax
-  syn include @yamlGoTextTmpl syntax/gotexttmpl.vim
-  let b:current_syntax = "yaml"
-  syn region goTextTmpl start=/{{/ end=/}}/ contains=@gotplLiteral,gotplControl,gotplFunctions,gotplVariable,goTplIdentifier containedin=ALLBUT,goTextTmpl keepend
-  hi def link goTextTmpl PreProc
+    set filetype=yaml
+    unlet b:current_syntax
+    syn include @yamlGoTextTmpl syntax/gotexttmpl.vim
+    let b:current_syntax = "yaml"
+    syn region goTextTmpl start=/{{/ end=/}}/ contains=@gotplLiteral,gotplControl,gotplFunctions,gotplVariable,goTplIdentifier containedin=ALLBUT,goTextTmpl keepend
+    hi def link goTextTmpl PreProc
 endfunction
 augroup helm_syntax
-  autocmd!
-  autocmd BufRead,BufNewFile */templates/*.yaml,*/templates/*.tpl call HelmSyntax()
+    autocmd!
+    autocmd BufRead,BufNewFile */templates/*.yaml,*/templates/*.tpl call HelmSyntax()
 augroup END
 " }}}
 
@@ -1884,23 +1886,23 @@ endfunction
 " {{{ Pop current buffer to new vim instance
 " Resolve realpath of current buffer, echo via system(), then close buffer
 function! EchoRealpathCloseBuf() abort
-  let l:path = expand('%:p')
-  if empty(l:path)
-    echoerr 'Current buffer has no file path.'
-    return
-  endif
+let l:path = expand('%:p')
+if empty(l:path)
+echoerr 'Current buffer has no file path.'
+return
+endif
 
-  " Canonicalize (absolute, simplified, resolve symlinks)
-  let l:realpath = fnamemodify(simplify(resolve(l:path)), ':p')
+" Canonicalize (absolute, simplified, resolve symlinks)
+let l:realpath = fnamemodify(simplify(resolve(l:path)), ':p')
 
-  " Make a system() call to echo it, and show the result in Vim's messages
-  " let l:out = system('termpopup -ft -- vim ' . shellescape(l:realpath))
+" Make a system() call to echo it, and show the result in Vim's messages
+" let l:out = system('termpopup -ft -- vim ' . shellescape(l:realpath))
 
-  silent exec '!termpopup -ft -- vim ' . shellescape(l:realpath) . ' &'
-  " echom trim(l:out)
+silent exec '!termpopup -ft -- vim ' . shellescape(l:realpath) . ' &'
+" echom trim(l:out)
 
-  " Close the current buffer (no bang to avoid data loss)
-  bdelete
+" Close the current buffer (no bang to avoid data loss)
+bdelete
 endfunction
 
 " <Plug> mapping for flexibility
