@@ -7,8 +7,8 @@ elif find-upwards "Taskfile.yml" >/dev/null; then
     printf "+ go-task autoformat %s\n" "$*"
     go-task autoformat "$@"
 elif find-upwards "gradlew" >/dev/null; then
-    printf "+ ./gradlew spotlessApply %s\n" "$*"
-    ./gradlew spotlessApply "$@"
+    printf "+ gradlew spotlessApply %s\n" "$*"
+    grw spotlessApply "$@"
 else
     printf "No way to autoformat found.\n" >&2
     exit 1
