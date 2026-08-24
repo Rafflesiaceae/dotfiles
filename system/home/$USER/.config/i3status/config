@@ -27,6 +27,8 @@ order += "battery 0"
 order += "load"
 order += "tztime local"
 
+order += "read_file separator"
+
 read_file i3status_additional {
     format = "%content"
     format_bad = ""
@@ -114,6 +116,10 @@ disk "/" {
 
 read_file uptime {
         path = "/proc/uptime"
+}
+
+read_file separator {
+        path = "/tmp/.i3status.additional.separator"
 }
 
 # vim: set ft=conf:
