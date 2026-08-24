@@ -12,7 +12,7 @@ tick) # "main"
         result=()
 
         # show count of running docker containers
-        if command -v docker &>/dev/null; then
+        if command -v docker &>/dev/null && [[ "$(realpath docker)" != "$(realpath podman)" ]]; then
             docker_containers=""
             docker_containers=$(docker ps --format table | tail -n +2 | wc -l || true)
             if [[ "$docker_containers" -gt 0 ]]; then
@@ -46,6 +46,16 @@ tick) # "main"
             fi
         fi
 
+        # llm-usage
+        if command -v llm-usage &>/dev/null; then
+            claude_usage=$(llm-usage)
+            textcolor='#FDFDFD'
+            if [[ "$claude_usage" -gt 80 ]]; then
+                textcolor='#FD0000'
+            fi
+            result+=("$(printf "✴️<span foreground='%s'>%s%%</span>" "$textcolor" "$claude_usage")")
+        fi
+
         echo "${result[@]}"
 
         ## printf "🏃<span foreground='#FD0000'>%s</span>" "error"
@@ -56,19 +66,25 @@ tick) # "main"
 
     out=$(print_contents)
     if [[ -n "$out" ]]; then
-        printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
+        # printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
+        printf "<span foreground='#B3B3B3'>"
         printf "%s" "$out"
-        printf "</span>)</span> \n"
+        printf "</span> <span foreground='#B3B3B3'>|</span>"
+        # printf "</span>)</span> \n"
     fi
     ;;
 *) # daemon
     pipetmpf=/tmp/.i3status.additional.tmp
     pipef=/tmp/.i3status.additional
+    separatorf=/tmp/.i3status.additional.separator
     cleanup() {
         printf "" >"$pipef"
     }
     trap 'cleanup' EXIT INT
     while :; do
+        if [[ ! -e "$separatorf" ]]; then
+            printf "<span foreground='#B3B3B3'>|</span>" > "$separatorf"
+        fi
         ("$0" tick || echo "???") >"$pipetmpf"
         mv "$pipetmpf" "$pipef" || true
         sleep 10
