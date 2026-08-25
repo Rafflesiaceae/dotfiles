@@ -11,6 +11,11 @@ tick) # "main"
     print_contents() {
         result=()
 
+        # local custom ones
+        if command -v i3status-additional-local &>/dev/null; then
+            result+=("$(i3status-additional-local)")
+        fi
+
         # show count of running docker containers
         if command -v docker &>/dev/null && [[ "$(realpath docker)" != "$(realpath podman)" ]]; then
             docker_containers=""
@@ -46,6 +51,15 @@ tick) # "main"
             fi
         fi
 
+        # inform about possible Ubuntu upgrade (5+ days)
+        if [[ -e /var/log/apt/history.log ]]; then
+            last_full_system_upgrade="$(zcat -f /var/log/apt/history.log* | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1 | xargs -I{} date --date="{}" +%s || true)"
+            days_since=$((($(date +%s) - last_full_system_upgrade) / 86400))
+            if [ -n "$last_full_system_upgrade" ] && [ "$days_since" -ge 5 ]; then
+                result+=("$(printf "<span foreground='#FDA202'>%s</span>" "Update Ubuntu")")
+            fi
+        fi
+
         # llm-usage
         if command -v llm-usage &>/dev/null; then
             claude_usage=$(llm-usage)
@@ -69,7 +83,8 @@ tick) # "main"
         # printf "<span foreground='white'>(<span foreground='#B3B3B3'>"
         printf "<span foreground='#B3B3B3'>"
         printf "%s" "$out"
-        printf "</span> <span foreground='#B3B3B3'>|</span>"
+        printf "</span>"
+        # printf "</span> <span foreground='#B3B3B3'>|</span>"
         # printf "</span>)</span> \n"
     fi
     ;;
