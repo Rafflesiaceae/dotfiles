@@ -634,12 +634,18 @@ autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys(
 
 autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 
+autocmd FileType nu lua vim.treesitter.start()
+autocmd FileType rst lua vim.treesitter.start()
+autocmd FileType rst lua vim.treesitter.start()
+
 " BASH
 autocmd BufNewFile   *.sh 0r ~/.vim/templates/sh
 autocmd BufWritePre  *.sh call s:AddExecutablebitPre()
 autocmd BufWritePost *.sh call s:AddExecutablebitPost()
 
 autocmd FileType sh setlocal expandtab shiftwidth=4 tabstop=4 softtabstop=4
+
+autocmd FileType mail setlocal textwidth=71
 
 " detect filetype sh
 function! DetectShFiletype()
