@@ -108,7 +108,7 @@ memory {
 
 disk "/" {
     low_threshold          = 10
-    format_below_threshold = "Disk: %percentage_avail avail"
+    format_below_threshold = "Disk: %percentage_avail"
     threshold_type         = percentage_avail
 
     format = ""
