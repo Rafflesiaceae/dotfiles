@@ -102,7 +102,7 @@ if [[ -z "$upstream" ]]; then
   exit 0
 fi
     echo "+ gitup"
-    gitup || true
+    gitup
 }
 # echo "+ git remote update"
 # git remote update
@@ -114,4 +114,4 @@ _determine_upstream_branch "$1"
 # upstream_commit=$(git rev-parse HEAD)
 upstream_commit=$(git rev-parse "${upstream_branch}")
 # git co "${current_branch}"
-git rebase "$upstream_commit"
+git rebase --autostash "$upstream_commit"
