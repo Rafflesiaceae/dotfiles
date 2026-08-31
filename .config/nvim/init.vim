@@ -558,7 +558,8 @@ noremap <leader>gt :OpenTig<CR>
 noremap <leader>! :OpenTig<CR>
 noremap <leader>" :OpenTig expand("%:p")<CR>
 noremap <leader>C :OpenTerminal<CR>
-noremap <leader>T :OpenTerminal<CR>
+" noremap <leader>T :OpenTerminal<CR>
+nnoremap <leader>T <Cmd>call jobstart(['thunar', expand('%:p')], {'detach': v:true})<CR>
 noremap <leader>P G:call search('^\([ -1234567890]\)\{3}raf', 'W')<CR>
 noremap <leader>gc :Git commit<CR>
 noremap <leader>gd :Gdiff<CR>
@@ -1731,7 +1732,7 @@ Plug 'wsdjeg/vim-fetch'
 Plug 'will133/vim-dirdiff'
 Plug 'AndrewRadev/linediff.vim'
 
-Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'}
+Plug 'nvim-treesitter/nvim-treesitter', {'branch': 'main', 'do': ':TSUpdate'}
 Plug 'LhKipp/nvim-nu'
 
 call SourceIfExists("~/.config/nvim/local_custom_imports")
@@ -1875,7 +1876,7 @@ highlight WinSeparator ctermfg=19 ctermbg=18
 
 " {{{ Setup NU Treesitter
 " HACK : List of filetypes to skip tresitter-nu
-let g:treesitter_nu_skip_filetypes = ['python', 'bash']
+let g:treesitter_nu_skip_filetypes = ['bash']
 
 augroup NotCertainFiletypes
     autocmd!
