@@ -300,6 +300,7 @@ sources = {
     "./.local/bin/num-set-desc": {"linux": ""},
     "./.local/bin/numdots-update": "",
     "./.local/bin/open-file-in-current-revision": "",
+    "./.local/bin/pacman-disk-usage": "",
     "./.local/bin/parcellite-history": "",
     "./.local/bin/patch-create": "",
     "./.local/bin/pdfify": "",

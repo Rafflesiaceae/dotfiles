@@ -1,0 +1,156 @@
+#!/usr/bin/env nu
+
+# List installed pacman packages and estimate the disk space consumed by each.
+#
+# Defaults to allocated disk usage using GNU stat's block count. Use --apparent
+# to sum apparent file sizes instead.
+
+def format-bytes [bytes: int] {
+    let units = [B KiB MiB GiB TiB PiB]
+    mut value = ($bytes | into float)
+    mut unit_index = 0
+
+    while $value >= 1024 and $unit_index < (($units | length) - 1) {
+        $value = ($value / 1024)
+        $unit_index = ($unit_index + 1)
+    }
+
+    if $unit_index == 0 {
+        $"($bytes) B"
+    } else {
+        $"($value | math round --precision 2) ($units | get $unit_index)"
+    }
+}
+
+def main [
+    --include-dirs (-d) # Count pacman-owned directory entries as well as files.
+    --apparent (-a) # Sum apparent file sizes instead of allocated disk blocks.
+    --json (-j) # Emit one JSON object containing totals and package rows.
+    --limit (-n): int = 0 # Show only the largest N packages; 0 means all.
+] {
+    if (which pacman | is-empty) {
+        error make {msg: "pacman was not found in PATH"}
+    }
+
+    if (which stat | is-empty) {
+        error make {msg: "GNU stat was not found in PATH"}
+    }
+
+    if (which xargs | is-empty) {
+        error make {msg: "xargs was not found in PATH"}
+    }
+
+    for command in [awk cut sort mktemp] {
+        if (which $command | is-empty) {
+            error make {msg: $"($command) was not found in PATH"}
+        }
+    }
+
+    let package_file = (^mktemp --tmpdir pacman-disk-usage.packages.XXXXXX | str trim)
+    let ownership_file = (^mktemp --tmpdir pacman-disk-usage.ownership.XXXXXX | str trim)
+    let paths_file = (^mktemp --tmpdir pacman-disk-usage.paths.XXXXXX | str trim)
+    let stat_file = (^mktemp --tmpdir pacman-disk-usage.stat.XXXXXX | str trim)
+
+    ^pacman -Q
+    | ^awk '{ pkg=$1; sub(/^[^ ]+ /, ""); print pkg "\t" $0 }'
+    | save --force $package_file
+
+    ^pacman -Ql
+    | ^awk '{ pkg=$1; sub(/^[^ ]+ /, ""); if (length($0) > 0) print pkg "\t" $0 }'
+    | save --force $ownership_file
+
+    ^cut -f 2 $ownership_file
+    | ^sort -u
+    | save --force $paths_file
+
+    let stat_result = (
+        open --raw $paths_file
+        | ^xargs -r -d (char newline) stat --format $"%n(char tab)%F(char tab)%b(char tab)%s(char tab)%d(char tab)%i" --
+        | complete
+    )
+
+    $stat_result.stdout | save --force $stat_file
+
+    let include_dirs_int = if $include_dirs { "1" } else { "0" }
+    let apparent_int = if $apparent { "1" } else { "0" }
+    let rows = (
+        ^awk -v include_dirs=($include_dirs_int) -v apparent=($apparent_int) '
+            BEGIN { FS = OFS = "\t" }
+
+            ARGIND == 1 {
+                package_count++
+                package_order[package_count] = $1
+                versions[$1] = $2
+                next
+            }
+
+            ARGIND == 2 {
+                bytes = 0
+                if ($2 != "directory" || include_dirs) {
+                    bytes = apparent ? $4 : ($3 * 512)
+                }
+
+                path_bytes[$1] = bytes
+                path_identity[$1] = $5 ":" $6
+                next
+            }
+
+            ARGIND == 3 {
+                package = $1
+                path = $2
+                path_count[package]++
+
+                if (path in path_bytes) {
+                    identity = package SUBSEP path_identity[path]
+                    if (!(identity in seen)) {
+                        totals[package] += path_bytes[path]
+                        seen[identity] = 1
+                    }
+                }
+
+                next
+            }
+
+            END {
+                for (i = 1; i <= package_count; i++) {
+                    package = package_order[i]
+                    print package, versions[package], path_count[package] + 0, totals[package] + 0
+                }
+            }
+        ' $package_file $stat_file $ownership_file
+        | lines
+        | parse "{package}\t{version}\t{paths}\t{bytes}"
+        | update paths {|row| $row.paths | into int }
+        | update bytes {|row| $row.bytes | into int }
+        | insert human {|row| format-bytes $row.bytes}
+        | sort-by bytes --reverse
+    )
+
+    rm $package_file
+    rm $ownership_file
+    rm $paths_file
+    rm $stat_file
+
+    let total_bytes = if ($rows | is-empty) { 0 } else { $rows.bytes | math sum }
+    let visible_rows = if $limit > 0 { $rows | first $limit } else { $rows }
+
+    if $json {
+        {
+            total_bytes: $total_bytes
+            total_human: (format-bytes $total_bytes)
+            package_count: ($rows | length)
+            measured: (if $apparent { "apparent_size" } else { "allocated_blocks" })
+            include_dirs: $include_dirs
+            packages: $visible_rows
+        } | to json
+    } else {
+        print $"Total package disk usage: (format-bytes $total_bytes) across ($rows | length) packages"
+        print $"Measured: (if $apparent { 'apparent file size' } else { 'allocated filesystem blocks' })"
+        if not $include_dirs {
+            print "Directory entries are excluded; pass --include-dirs to count them."
+        }
+        print ""
+
+        $visible_rows
+    }
+}
