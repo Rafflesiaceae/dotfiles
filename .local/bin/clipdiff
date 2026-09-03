@@ -1,10 +1,20 @@
 #!/bin/bash
 set -eo pipefail
 
-if [[ "$1" == "-d" || "$1" == "-f" ]]; then
-    nvim -d "$(parcellite-history 0)" "$(parcellite-history 1)"
+if command -v copyq >/dev/null 2>&1 && copyq count >/dev/null 2>&1; then
+    clipboard_history() {
+        copyq read "$1"
+    }
 else
-    parcellite-history 0 > /tmp/clipdiff_0
-    parcellite-history 1 > /tmp/clipdiff_1
+    clipboard_history() {
+        parcellite-history "$1"
+    }
+fi
+
+if [[ "$1" == "-d" || "$1" == "-f" ]]; then
+    nvim -d "$(clipboard_history 0)" "$(clipboard_history 1)"
+else
+    clipboard_history 0 > /tmp/clipdiff_0
+    clipboard_history 1 > /tmp/clipdiff_1
     nvim -d /tmp/clipdiff_0 /tmp/clipdiff_1
 fi
