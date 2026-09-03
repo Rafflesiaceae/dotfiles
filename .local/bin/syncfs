@@ -13,7 +13,7 @@
 -- Requirements: luajit, rsync, git (unless --no-gitignore), realpath/readlink/python3,
 --               md5sum or md5.
 
-local VERSION = "2.0.0-luajit"
+local VERSION = "2.0.1-luajit"
 
 local tmp_files = {}
 
@@ -338,7 +338,10 @@ Environment:
                                Examples: user@host:/var/syncfs or /mnt/syncfs
 
 Behavior notes:
-  - rsync options default to: -rlpt --itemize-changes --out-format='%i %n%L'.
+  - rsync options default to: -r --links --perms --times --itemize-changes
+    --out-format='%i %n%L'. Symlinks are preserved as symlinks; rsync
+    stores relative symlink targets verbatim, so links like ../foo remain ../foo
+    in both push and pull directions.
   - .syncfs is always excluded.
   - .git is always included, so repository metadata is synced.
   - Git-ignore support is implemented by asking Git for ignored paths and passing
@@ -664,7 +667,14 @@ end
 local function build_rsync_args(cfg, syncdir, dry)
   local args = {
     cfg.rsync,
-    "-rlpt",
+    -- Be explicit instead of using -rlpt: --links is the important bit for
+    -- relative symlinks. It preserves the link object and its target text
+    -- exactly; it does not dereference the target during push or pull.
+    "-r",
+    "--links",
+    "--perms",
+    "--times",
+    "--omit-link-times",
     "--itemize-changes",
     "--out-format=%i %n%L",
     "--exclude=.syncfs",
