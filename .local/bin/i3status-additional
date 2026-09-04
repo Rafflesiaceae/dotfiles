@@ -17,7 +17,7 @@ tick) # "main"
         fi
 
         # show count of running docker containers
-        if command -v docker &>/dev/null && [[ "$(realpath docker)" != "$(realpath podman)" ]]; then
+        if command -v docker &>/dev/null && [[ "$(realpath "$(which docker)")" != "$(realpath "$(which podman)")" ]]; then
             docker_containers=""
             docker_containers=$(docker ps --format table | tail -n +2 | wc -l || true)
             if [[ "$docker_containers" -gt 0 ]]; then
@@ -64,8 +64,10 @@ tick) # "main"
         if command -v llm-usage &>/dev/null; then
             claude_usage=$(llm-usage)
             textcolor='#FDFDFD'
-            if [[ "$claude_usage" -gt 80 ]]; then
+            if [[ "$claude_usage" -gt 90 ]]; then
                 textcolor='#FD0000'
+            elif [[ "$claude_usage" -gt 80 ]]; then
+                textcolor='#FDA202'
             fi
             result+=("$(printf "✴️<span foreground='%s'>%s%%</span>" "$textcolor" "$claude_usage")")
         fi
