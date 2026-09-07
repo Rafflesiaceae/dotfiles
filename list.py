@@ -391,6 +391,7 @@ sources = {
     "./.local/bin/xrandr-reset": "",
     "./.local/bin/xrandr-set-active-display-as-primary": "",
     "./.local/bin/xsleep": "",
+    "./.local/bin/yt-dlp-auto": "",
     "./.local/bin/zoom-share-bar-hide": "",
     "./.local/bin_override/gimp": {"linux": ""},
     "./.local/bin_override/vimdiff": {"linux": ""},

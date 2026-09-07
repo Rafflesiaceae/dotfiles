@@ -1,0 +1,98 @@
+#!/bin/sh
+
+queue_file=${XDG_CACHE_HOME:-"$HOME/.cache"}/yt-dlp-auto
+queue_dir=${queue_file%/*}
+
+usage()
+{
+	cat <<EOF
+Usage: ${0##*/} [OPTION]
+
+Periodically download URLs from $queue_file into the current directory.
+
+  -e, --edit  open the queue file with \$EDITOR, then exit
+  -h, --help  show this help, then exit
+EOF
+}
+
+case ${1-} in
+	'')
+		[ "$#" -eq 0 ] || {
+			usage >&2
+			exit 2
+		}
+		mode=run
+		;;
+	-e|--edit)
+		[ "$#" -eq 1 ] || {
+			usage >&2
+			exit 2
+		}
+		mode=edit
+		;;
+	-h|--help)
+		[ "$#" -eq 1 ] || {
+			usage >&2
+			exit 2
+		}
+		usage
+		exit 0
+		;;
+	*)
+		printf '%s: unknown option: %s\n' "${0##*/}" "$1" >&2
+		usage >&2
+		exit 2
+		;;
+esac
+
+mkdir -p "$queue_dir" || exit 1
+touch "$queue_file" || exit 1
+
+if [ "$mode" = edit ]; then
+	if [ -z "${EDITOR:-}" ]; then
+		printf '%s\n' 'yt-dlp-auto: EDITOR is not set' >&2
+		exit 1
+	fi
+	exec "$EDITOR" "$queue_file"
+fi
+
+if ! command -v yt-dlp >/dev/null 2>&1; then
+	printf '%s\n' 'yt-dlp-auto: yt-dlp was not found in PATH' >&2
+	exit 127
+fi
+
+remove_first_line()
+{
+	tmp_file=$(mktemp "$queue_file.tmp.XXXXXX") || return 1
+
+	if ! sed '1d' "$queue_file" >"$tmp_file"; then
+		rm -f "$tmp_file"
+		return 1
+	fi
+
+	if ! mv "$tmp_file" "$queue_file"; then
+		rm -f "$tmp_file"
+		return 1
+	fi
+}
+
+while :; do
+	url=
+	if IFS= read -r url <"$queue_file" || [ -n "$url" ]; then
+		if [ -z "$url" ]; then
+			# Empty lines are not URLs and must not block the queue.
+			remove_first_line || exit 1
+		elif yt-dlp -- "$url"; then
+			# Read the queue again here. This preserves lines appended while
+			# yt-dlp was running instead of replacing it with an old snapshot.
+			current_url=
+			if IFS= read -r current_url <"$queue_file" || [ -n "$current_url" ]; then
+				if [ "$current_url" = "$url" ]; then
+					remove_first_line || exit 1
+				fi
+			fi
+		fi
+	fi
+
+	sleep 1
+done
