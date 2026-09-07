@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+import argparse
+import re
+import sys
+from pathlib import Path
+
+
+def parse_acf_value(text: str, key: str) -> str | None:
+    match = re.search(
+        rf'^\s*"{re.escape(key)}"\s+"([^"]*)"',
+        text,
+        flags=re.MULTILINE,
+    )
+    return match.group(1) if match else None
+
+
+def find_proton_prefix(game_path: Path) -> Path:
+    game_path = game_path.expanduser().resolve()
+
+    # Expected layout:
+    #   .../steamapps/common/<game>
+    try:
+        common_dir = game_path.parent
+        if common_dir.name != "common":
+            raise ValueError
+
+        steamapps_dir = common_dir.parent
+        if steamapps_dir.name != "steamapps":
+            raise ValueError
+    except ValueError:
+        raise RuntimeError(
+            f"Path does not look like a Steam game directory:\n"
+            f"  {game_path}\n\n"
+            f"Expected something like:\n"
+            f"  /path/to/steamapps/common/Game Name"
+        )
+
+    game_dir_name = game_path.name
+
+    for manifest in steamapps_dir.glob("appmanifest_*.acf"):
+        try:
+            text = manifest.read_text(errors="replace")
+        except OSError:
+            continue
+
+        installdir = parse_acf_value(text, "installdir")
+        appid = parse_acf_value(text, "appid")
+
+        if not installdir or not appid:
+            continue
+
+        if installdir == game_dir_name:
+            return steamapps_dir / "compatdata" / appid / "pfx"
+
+    raise RuntimeError(f"No appmanifest found for Steam installdir {game_dir_name!r}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Find the Proton/Wine prefix belonging to a Steam game."
+    )
+    parser.add_argument(
+        "game_path",
+        type=Path,
+        help="Path such as /home/user/.local/share/Steam/steamapps/common/Game Name/",
+    )
+    args = parser.parse_args()
+
+    try:
+        prefix = find_proton_prefix(args.game_path)
+    except RuntimeError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    print(prefix)
+
+    if not prefix.exists():
+        print(
+            "warning: prefix does not exist yet; "
+            "the game may not have been launched with Proton.",
+            file=sys.stderr,
+        )
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BOOKMARKS="${XDG_CONFIG_HOME:-$HOME/.config}/gtk-3.0/bookmarks"
+EDITOR="${EDITOR:-vi}"
+
+if [[ ! -f "$BOOKMARKS" ]]; then
+    echo "Bookmarks file not found: $BOOKMARKS" >&2
+    exit 1
+fi
+
+TMP="$(mktemp /tmp/edit-bookmarks.XXXXXX)"
+trap 'rm -f "$TMP"' EXIT
+
+# GTK bookmarks -> human-editable format
+python3 - "$BOOKMARKS" "$TMP" <<'PY'
+import sys
+from urllib.parse import unquote
+
+src, dst = sys.argv[1:3]
+
+with open(src, "r", encoding="utf-8") as f, \
+     open(dst, "w", encoding="utf-8") as out:
+
+    for raw in f:
+        line = raw.rstrip("\n")
+
+        if not line:
+            continue
+
+        parts = line.split(maxsplit=1)
+
+        location = unquote(parts[0])
+        name = parts[1] if len(parts) > 1 else ""
+
+        out.write(f"location: {location}\n")
+        out.write(f"name: {name}\n")
+        out.write("\n")
+PY
+
+"$EDITOR" "$TMP"
+
+# Human-editable format -> GTK bookmarks
+python3 - "$TMP" "$BOOKMARKS" <<'PY'
+import os
+import shutil
+import sys
+from urllib.parse import quote
+
+src, dst = sys.argv[1:3]
+
+entries = []
+current = {}
+
+def finish_entry():
+    if not current:
+        return
+
+    location = current.get("location", "").strip()
+    name = current.get("name", "").strip()
+
+    if not location:
+        raise ValueError("Entry has no location")
+
+    # Allow plain absolute filesystem paths as a convenience.
+    if location.startswith("/"):
+        location = "file://" + location
+
+    # Encode the URI while preserving URI syntax.
+    uri = quote(
+        location,
+        safe="/:@?&=+$,;~!*'()#"
+    )
+
+    if name:
+        entries.append(f"{uri} {name}\n")
+    else:
+        entries.append(f"{uri}\n")
+
+    current.clear()
+
+
+with open(src, "r", encoding="utf-8") as f:
+    for lineno, raw in enumerate(f, 1):
+        line = raw.rstrip("\n")
+
+        if not line.strip():
+            finish_entry()
+            continue
+
+        if line.startswith("location:"):
+            if "location" in current:
+                raise ValueError(
+                    f"Line {lineno}: duplicate location"
+                )
+            current["location"] = line[len("location:"):].lstrip()
+
+        elif line.startswith("name:"):
+            if "name" in current:
+                raise ValueError(
+                    f"Line {lineno}: duplicate name"
+                )
+            current["name"] = line[len("name:"):].lstrip()
+
+        else:
+            raise ValueError(
+                f"Line {lineno}: expected 'location:' or 'name:'"
+            )
+
+finish_entry()
+
+backup = dst + ".bak"
+shutil.copy2(dst, backup)
+
+tmpdst = dst + ".tmp"
+
+with open(tmpdst, "w", encoding="utf-8") as f:
+    f.writelines(entries)
+
+os.replace(tmpdst, dst)
+PY
+
+echo "Updated: $BOOKMARKS"
+echo "Backup:  $BOOKMARKS.bak"

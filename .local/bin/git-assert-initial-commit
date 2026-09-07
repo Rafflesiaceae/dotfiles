@@ -1,0 +1,97 @@
+#!/usr/bin/env sh
+set -eu
+
+readonly initial_message='Initial commit'
+
+fail() {
+   printf 'git-assert-initial-commit: %s\n' "$*" >&2
+   exit 1
+}
+
+# Git's empty tree is the only tree that gives a root commit an empty diff.
+empty_tree="$(git mktree </dev/null)" ||
+   fail 'not inside a Git repository'
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+   fail 'the current directory is not inside a Git working tree'
+fi
+
+if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+   fail 'cannot inspect or rewrite a shallow history'
+fi
+
+if git replace -l | grep . >/dev/null 2>&1; then
+   fail 'remove active replacement objects before rewriting history'
+fi
+
+# An unborn branch has no history, so creating the required root is sufficient.
+if ! old_head="$(git rev-parse --verify HEAD 2>/dev/null)"; then
+   new_head="$(printf '%s\n' "$initial_message" |
+      git commit-tree "$empty_tree")" ||
+      fail 'could not create the initial commit; check your Git identity'
+   git update-ref -m 'assert initial commit' HEAD "$new_head"
+   printf 'Created empty root commit %s (%s).\n' "$new_head" "$initial_message"
+   exit 0
+fi
+
+roots="$(git rev-list --max-parents=0 HEAD)"
+set -- $roots
+
+# Require a single root, its complete message, and the canonical empty tree.
+if [ "$#" -eq 1 ] &&
+   [ "$(git log -1 --format=%B "$1")" = "$initial_message" ] &&
+   [ "$(git rev-parse "$1^{tree}")" = "$empty_tree" ]; then
+   printf 'History already starts with an empty "%s" commit (%s).\n' \
+      "$initial_message" "$1"
+   exit 0
+fi
+
+# filter-branch refuses to run over tracked worktree or index changes. Checking
+# explicitly gives a useful failure before any temporary objects are created.
+git diff --quiet || fail 'tracked worktree changes must be committed or stashed'
+git diff --cached --quiet || fail 'staged changes must be committed or stashed'
+
+# Date and attribute the synthetic root like the first existing root. This
+# avoids requiring local identity configuration and keeps the new ancestor at
+# the beginning of date-ordered logs as well as topological logs.
+set -- $roots
+identity_source=$1
+author_name="$(git show -s --format=%an "$identity_source")"
+author_email="$(git show -s --format=%ae "$identity_source")"
+author_date="$(git show -s --format=%aI "$identity_source")"
+committer_name="$(git show -s --format=%cn "$identity_source")"
+committer_email="$(git show -s --format=%ce "$identity_source")"
+committer_date="$(git show -s --format=%cI "$identity_source")"
+
+new_root="$(printf '%s\n' "$initial_message" |
+   GIT_AUTHOR_NAME="$author_name" \
+   GIT_AUTHOR_EMAIL="$author_email" \
+   GIT_AUTHOR_DATE="$author_date" \
+   GIT_COMMITTER_NAME="$committer_name" \
+   GIT_COMMITTER_EMAIL="$committer_email" \
+   GIT_COMMITTER_DATE="$committer_date" \
+   git commit-tree "$empty_tree")"
+
+# Rewriting a private temporary ref keeps filter-branch's backup namespace away
+# from the user's branch. The final compare-and-swap refuses to overwrite HEAD
+# if another process changed it while the rewrite was running.
+temporary_ref="refs/git-assert-initial-commit/$$"
+backup_ref="refs/original/$temporary_ref"
+cleanup() {
+   git update-ref -d "$temporary_ref" >/dev/null 2>&1 || :
+   git update-ref -d "$backup_ref" >/dev/null 2>&1 || :
+}
+trap cleanup EXIT HUP INT TERM
+
+git update-ref "$temporary_ref" "$old_head"
+export new_root
+FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch \
+   --parent-filter 'sed "s/^$/-p $new_root/"' \
+   -- "$temporary_ref" >/dev/null
+new_head="$(git rev-parse "$temporary_ref")"
+git update-ref -m 'assert initial commit' HEAD "$new_head" "$old_head" ||
+   fail 'HEAD changed while its history was being rewritten'
+
+printf 'Inserted empty root commit %s (%s).\n' "$new_root" "$initial_message"
+printf 'Rewrote HEAD from %s to %s; update any corresponding remote branch.\n' \
+   "$old_head" "$new_head"
