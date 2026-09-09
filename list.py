@@ -291,6 +291,7 @@ sources = {
     "./.local/bin/mkdirp": "",
     "./.local/bin/mmbr": "",
     "./.local/bin/mouse-slowdown": "",
+    "./.local/bin/mpvu": "",
     "./.local/bin/music-to-youtube": "",
     "./.local/bin/music-youtube-dl": "",
     "./.local/bin/mvn-download-all-dependencies": "",

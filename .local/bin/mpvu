@@ -1,0 +1,730 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import fcntl
+import glob
+import hashlib
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Optional, Tuple
+from urllib.parse import urlparse
+
+SEP = " ∷ "  # U+2237
+APP = "mpvu"
+
+
+def eprint(*a: object) -> None:
+    print(*a, file=sys.stderr, flush=True)
+
+
+def trim(s: str) -> str:
+    return s.strip()
+
+
+def hash_url(url: str) -> str:
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()
+
+
+def pid_alive(pid: str | int | None) -> bool:
+    if pid is None:
+        return False
+    try:
+        p = int(str(pid).strip())
+    except Exception:
+        return False
+    if p <= 0:
+        return False
+    try:
+        os.kill(p, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except Exception:
+        return False
+
+
+def xdg_cache_dir() -> Path:
+    return Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / APP
+
+
+# def mpv_cache_dir() -> Path:
+#     # user-requested fixed location
+#     return Path.home() / ".cache" / "mpv"
+
+
+def history_path() -> Path:
+    # ~/.cache/mpv/history.txt
+    return xdg_cache_dir() / "history.txt"
+
+
+def mpv_watch_later_dir() -> Path:
+    # Keep resume state close to the history file
+    return xdg_cache_dir() / "watch_later"
+
+
+def mpv_resume_opts(no_vid_resume: bool) -> list[str]:
+    """
+    Default behavior: resume enabled + save position on quit.
+    If --no-vid-resume/-nvr is passed: disable resume for this invocation.
+    """
+    if no_vid_resume:
+        return [
+            "--resume-playback=no",
+            "--no-save-position-on-quit",
+        ]
+    wl = mpv_watch_later_dir()
+    wl.mkdir(parents=True, exist_ok=True)
+    return [
+        f"--watch-later-directory={wl}",
+        "--resume-playback=yes",
+        "--save-position-on-quit",
+    ]
+
+
+def parse_history_line(line: str) -> Tuple[str, str]:
+    line = line.strip()
+    if not line:
+        return "", ""
+    if SEP in line:
+        url, title = line.split(SEP, 1)
+        return url.strip(), title.strip()
+    return line.strip(), ""
+
+
+def read_history_urls_and_titles(path: Path) -> dict[str, str]:
+    out: dict[str, str] = {}
+    if not path.exists():
+        return out
+    try:
+        data = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return out
+    for line in data:
+        url, title = parse_history_line(line)
+        if url:
+            out[url] = title
+    return out
+
+
+def append_history_unique(path: Path, url: str, title: str) -> None:
+    """
+    Append "<url> ∷ <title>" if url not already present (unique by URL).
+    Preserves chronological order of first-seen URLs.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    fd = os.open(str(path), os.O_CREAT | os.O_RDWR, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+
+        os.lseek(fd, 0, os.SEEK_SET)
+        existing = (
+            os.read(fd, 10_000_000).decode("utf-8", errors="replace").splitlines()
+        )
+
+        urls: set[str] = set()
+        for line in existing:
+            u, _t = parse_history_line(line)
+            if u:
+                urls.add(u)
+
+        if url not in urls:
+            os.lseek(fd, 0, os.SEEK_END)
+            line = f"{url}{SEP}{title}\n"
+            os.write(fd, line.encode("utf-8"))
+    finally:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except Exception:
+            pass
+        os.close(fd)
+
+
+def is_youtube_url(url: str) -> bool:
+    u = url.strip()
+    if not u:
+        return False
+    if "://" not in u:
+        u = "https://" + u
+    p = urlparse(u)
+    host = (p.netloc or "").lower()
+    if not host and p.path:
+        return False
+    host = host.split("@")[-1]
+    host = host.split(":")[0]
+    host = host.lstrip("www.")
+    return (
+        host == "youtu.be"
+        or host == "youtube.com"
+        or host.endswith(".youtube.com")
+        or host == "youtube-nocookie.com"
+        or host.endswith(".youtube-nocookie.com")
+    )
+
+
+def pick_final_file(base: str) -> Optional[str]:
+    best: Optional[str] = None
+    best_size = -1
+    for f in glob.glob(f"{base}.*"):
+        if (
+            ".part" in f
+            or f.endswith(".url")
+            or f.endswith(".done")
+            or f.endswith(".lock")
+            or f.endswith(".path")
+            or f.endswith(".pid")
+            or f.endswith(".ytdlp.log")
+            or f.endswith(".info.json")
+            or f.endswith(".description")
+            or f.endswith(".json")
+        ):
+            continue
+        if not os.path.isfile(f):
+            continue
+        try:
+            size = os.stat(f).st_size
+        except Exception:
+            size = 0
+        if size > best_size:
+            best = f
+            best_size = size
+    return best
+
+
+def pick_single_part_file(base: str) -> Optional[str]:
+    parts = glob.glob(f"{base}.*.part*")
+    if len(parts) == 1:
+        return parts[0]
+    return None
+
+
+def tail_supports_pid() -> bool:
+    try:
+        p = subprocess.run(
+            ["tail", "--help"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=False,
+        )
+        return "--pid" in (p.stdout or "")
+    except Exception:
+        return False
+
+
+def exec_mpv(
+    mpv_bin: str, mpv_args: list[str], extra_mpv_opts: list[str], media: str
+) -> None:
+    argv = [mpv_bin, *mpv_args, *extra_mpv_opts, "--", media]
+    os.execvp(argv[0], argv)
+
+
+def exec_mpv_url(
+    mpv_bin: str,
+    mpv_args: list[str],
+    extra_mpv_opts: list[str],
+    url: str,
+    ytdl_format: str,
+) -> None:
+    argv = [
+        mpv_bin,
+        f"--ytdl-format={ytdl_format}",
+        *mpv_args,
+        *extra_mpv_opts,
+        "--",
+        url,
+    ]
+    os.execvp(argv[0], argv)
+
+
+def get_effective_url_and_title_via_ytdlp(
+    ytdlp_bin: str, url: str, timeout_s: float = 15.0
+) -> Tuple[str, str]:
+    cmd = [
+        ytdlp_bin,
+        "--no-playlist",
+        "--skip-download",
+        "--no-warnings",
+        "--print",
+        "webpage_url",
+        "--print",
+        "title",
+        url,
+    ]
+    try:
+        p = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+            timeout=timeout_s,
+        )
+        if p.returncode != 0:
+            return url, ""
+        lines = [ln.strip() for ln in (p.stdout or "").splitlines() if ln.strip()]
+        eff = lines[0] if len(lines) >= 1 else url
+        title = lines[1] if len(lines) >= 2 else ""
+        if not eff or eff.lower() == "na":
+            eff = url
+        return eff, title
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return url, ""
+    except Exception:
+        return url, ""
+
+
+def run_cb_first_line() -> str:
+    try:
+        p = subprocess.run(
+            ["cb"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        eprint("mpvu: no URL arg and 'cb' not found")
+        raise SystemExit(2)
+    return (p.stdout.splitlines()[:1] or [""])[0]
+
+
+def fzf_select(prompt: str, lines: list[str]) -> str:
+    try:
+        proc = subprocess.run(
+            ["fzf", "--tac", "--no-sort", "--prompt", prompt],
+            input="".join(l if l.endswith("\n") else (l + "\n") for l in lines),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        eprint("mpvu: resume prompt requires 'fzf' in PATH")
+        raise SystemExit(2)
+    return (proc.stdout or "").strip()
+
+
+def prompt_resume_from_history(hp: Path) -> Tuple[str, str]:
+    if not hp.exists():
+        eprint("mpvu: history is empty; nothing to resume")
+        raise SystemExit(1)
+
+    lines = hp.read_text(encoding="utf-8", errors="replace").splitlines()
+    lines = [ln for ln in lines if ln.strip()]
+    if not lines:
+        eprint("mpvu: history is empty; nothing to resume")
+        raise SystemExit(1)
+
+    sel = fzf_select("mpvu resume> ", lines)
+    if not sel:
+        raise SystemExit(0)
+
+    u, t = parse_history_line(sel)
+    if not u:
+        raise SystemExit(0)
+    return u, t
+
+
+def background_download(
+    url: str,
+    base: str,
+    fmt: str,
+    merge_fmt: str,
+    logfile: str,
+    pidfile: str,
+    donefile: str,
+    pathfile: str,
+    ytdlp_bin: str,
+) -> int:
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        try:
+            signal.signal(sig, signal.SIG_IGN)
+        except Exception:
+            pass
+
+    Path(pidfile).write_text(f"{os.getpid()}\n", encoding="utf-8")
+    Path(logfile).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(logfile, "a", encoding="utf-8", errors="replace") as log:
+        cmd = [
+            ytdlp_bin,
+            "--no-playlist",
+            "--continue",
+            "--format",
+            fmt,
+            "--merge-output-format",
+            merge_fmt,
+            "-o",
+            f"{base}.%(ext)s",
+            "--newline",
+            url,
+        ]
+        proc = subprocess.run(
+            cmd, stdout=log, stderr=subprocess.STDOUT, text=True, check=False
+        )
+        rc = proc.returncode
+
+    if rc == 0:
+        media = pick_final_file(base)
+        if media and os.path.isfile(media):
+            Path(pathfile).write_text(f"{media}\n", encoding="utf-8")
+            Path(donefile).write_text("", encoding="utf-8")
+
+    try:
+        os.remove(pidfile)
+    except Exception:
+        pass
+
+    return rc
+
+
+def start_detached_downloader(
+    url: str,
+    base: str,
+    fmt: str,
+    merge_fmt: str,
+    logfile: str,
+    pidfile: str,
+    donefile: str,
+    pathfile: str,
+    ytdlp_bin: str,
+) -> None:
+    script = os.path.abspath(sys.argv[0])
+    argv = [
+        sys.executable,
+        script,
+        "--_download",
+        url,
+        base,
+        fmt,
+        merge_fmt,
+        logfile,
+        pidfile,
+        donefile,
+        pathfile,
+        ytdlp_bin,
+    ]
+    subprocess.Popen(
+        argv,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        close_fds=True,
+    )
+
+
+def parse_args(argv: list[str]) -> tuple[argparse.Namespace, list[str]]:
+    p = argparse.ArgumentParser(
+        prog="mpvu",
+        add_help=True,
+        formatter_class=argparse.RawTextHelpFormatter,
+        description=(
+            "mpvu: mpv + yt-dlp helper with caching and optional progressive playback.\n\n"
+            "Examples:\n"
+            "  mpvu 'https://…' -- --fullscreen\n"
+            "  mpvu --resume -- --fullscreen\n"
+            "  mpvu --no-vid-resume 'https://…'\n"
+            "  mpvu -- --fullscreen        (URL from clipboard via `cb`)\n"
+        ),
+    )
+    p.add_argument(
+        "-r",
+        "--resume",
+        action="store_true",
+        help="Pick a previously stored URL from history via fzf, then play/resume it.",
+    )
+    p.add_argument(
+        "-nvr",
+        "--no-vid-resume",
+        action="store_true",
+        help="Disable mpv resume for this invocation (no resume + no save-position-on-quit).",
+    )
+    p.add_argument(
+        "url",
+        nargs="?",
+        help="URL to play. If omitted, read from `cb` (clipboard helper).",
+    )
+    p.add_argument(
+        "mpv_args",
+        nargs=argparse.REMAINDER,
+        help="Arguments passed through to mpv (everything after URL).",
+    )
+    args, unknown = p.parse_known_args(argv[1:])
+    return args, unknown
+
+
+def main() -> int:
+    if len(sys.argv) >= 2 and sys.argv[1] == "--_download":
+        if len(sys.argv) != 11:
+            eprint("mpvu: internal error: bad --_download args")
+            return 2
+        (
+            _,
+            _,
+            url,
+            base,
+            fmt,
+            merge_fmt,
+            logfile,
+            pidfile,
+            donefile,
+            pathfile,
+            ytdlp_bin,
+        ) = sys.argv
+        return background_download(
+            url=url,
+            base=base,
+            fmt=fmt,
+            merge_fmt=merge_fmt,
+            logfile=logfile,
+            pidfile=pidfile,
+            donefile=donefile,
+            pathfile=pathfile,
+            ytdlp_bin=ytdlp_bin,
+        )
+
+    mpv_bin = os.environ.get("MPV_BIN", "mpv")
+    ytdlp_bin = os.environ.get("YTDLP_BIN", "yt-dlp")
+
+    max_h = os.environ.get("MPVU_MAX_HEIGHT", "1080")
+    default_format = (
+        f"bestvideo[height<={max_h}][ext=mp4]+bestaudio[ext=m4a]/"
+        f"bestvideo[height<={max_h}]+bestaudio/"
+        f"best[height<={max_h}]"
+    )
+    fmt = os.environ.get("MPVU_FORMAT", default_format)
+    merge_fmt = os.environ.get("MPVU_MERGE_FORMAT", "mkv")
+
+    args, unknown = parse_args(sys.argv)
+
+    mpv_args = list(args.mpv_args)
+    if mpv_args and mpv_args[0] == "--":
+        mpv_args = mpv_args[1:]
+    if unknown:
+        mpv_args = unknown + mpv_args
+
+    extra_mpv_opts = mpv_resume_opts(args.no_vid_resume)
+
+    raw_url = args.url
+    hp = history_path()
+
+    # Explicit --resume
+    if args.resume:
+        u, _t = prompt_resume_from_history(hp)
+        raw_url = u
+
+    # If still no URL, read from cb
+    if not raw_url:
+        raw_url = run_cb_first_line()
+
+    raw_url = trim(raw_url)
+    if not raw_url:
+        eprint("mpvu: empty URL")
+        return 2
+
+    # Resolve effective url + title
+    hist = read_history_urls_and_titles(hp)
+    if raw_url in hist:
+        eff_url = raw_url
+        title = hist.get(raw_url, "")
+    else:
+        eff_url, title = get_effective_url_and_title_via_ytdlp(ytdlp_bin, raw_url)
+
+    eff_url = trim(eff_url) or raw_url
+    title = trim(title)
+
+    # Only store if effective URL is YouTube; otherwise tell user and show resume prompt
+    if not is_youtube_url(eff_url):
+        eprint(f"mpvu: effective URL is not a YouTube URL: {eff_url}")
+        u, t = prompt_resume_from_history(hp)
+        eff_url = u
+        title = t
+    else:
+        try:
+            append_history_unique(hp, eff_url, title)
+        except Exception:
+            pass
+
+    url = eff_url
+
+    cache_dir = xdg_cache_dir()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    h = hash_url(url)
+    base = str(cache_dir / h)
+    urlfile = f"{base}.url"
+    donefile = f"{base}.done"
+    lockfile = f"{base}.lock"
+    pathfile = f"{base}.path"
+    pidfile = f"{base}.pid"
+    logfile = f"{base}.ytdlp.log"
+
+    Path(urlfile).write_text(f"{url}\n", encoding="utf-8")
+
+    if os.path.isfile(donefile):
+        media = ""
+        try:
+            media = Path(pathfile).read_text(encoding="utf-8").strip()
+        except Exception:
+            media = ""
+        if media and os.path.isfile(media):
+            exec_mpv(mpv_bin, mpv_args, extra_mpv_opts, media)
+
+        media2 = pick_final_file(base)
+        if media2 and os.path.isfile(media2):
+            Path(pathfile).write_text(f"{media2}\n", encoding="utf-8")
+            exec_mpv(mpv_bin, mpv_args, extra_mpv_opts, media2)
+
+        for p in (donefile, pathfile):
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+
+    lock_fd = os.open(lockfile, os.O_CREAT | os.O_WRONLY, 0o644)
+    dl_pid = ""
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+
+        if os.path.isfile(donefile):
+            try:
+                media = Path(pathfile).read_text(encoding="utf-8").strip()
+            except Exception:
+                media = ""
+            if media and os.path.isfile(media):
+                exec_mpv(mpv_bin, mpv_args, extra_mpv_opts, media)
+
+        if os.path.isfile(pidfile):
+            try:
+                dl_pid = Path(pidfile).read_text(encoding="utf-8").strip()
+            except Exception:
+                dl_pid = ""
+            if dl_pid and not pid_alive(dl_pid):
+                try:
+                    os.remove(pidfile)
+                except Exception:
+                    pass
+                dl_pid = ""
+
+        if not dl_pid:
+            start_detached_downloader(
+                url=url,
+                base=base,
+                fmt=fmt,
+                merge_fmt=merge_fmt,
+                logfile=logfile,
+                pidfile=pidfile,
+                donefile=donefile,
+                pathfile=pathfile,
+                ytdlp_bin=ytdlp_bin,
+            )
+            for _ in range(200):
+                if os.path.isfile(pidfile):
+                    break
+                time.sleep(0.02)
+            try:
+                dl_pid = Path(pidfile).read_text(encoding="utf-8").strip()
+            except Exception:
+                dl_pid = ""
+    finally:
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+        except Exception:
+            pass
+        os.close(lock_fd)
+
+    part: Optional[str] = None
+    for _ in range(1200):
+        if os.path.isfile(donefile):
+            break
+        part = pick_single_part_file(base)
+        if part and os.path.isfile(part) and os.path.getsize(part) > 0:
+            break
+        time.sleep(0.05)
+
+    if os.path.isfile(donefile):
+        final = ""
+        try:
+            final = Path(pathfile).read_text(encoding="utf-8").strip()
+        except Exception:
+            final = ""
+        if not (final and os.path.isfile(final)):
+            final2 = pick_final_file(base)
+            if final2 and os.path.isfile(final2):
+                final = final2
+        if final and os.path.isfile(final):
+            exec_mpv(mpv_bin, mpv_args, extra_mpv_opts, final)
+
+    if part and os.path.isfile(part):
+        dl_pid_int: Optional[int] = None
+        try:
+            dl_pid_int = int(dl_pid) if dl_pid and pid_alive(dl_pid) else None
+        except Exception:
+            dl_pid_int = None
+
+        use_pid = tail_supports_pid() and (dl_pid_int is not None)
+
+        tail_cmd = ["tail"]
+        if use_pid:
+            tail_cmd.append(f"--pid={dl_pid_int}")
+        tail_cmd += ["-c", "+1", "-f", part]
+
+        mpv_cmd = [
+            mpv_bin,
+            "--cache=yes",
+            "--cache-secs=30",
+            *mpv_args,
+            *extra_mpv_opts,
+            "--",
+            "-",
+        ]
+
+        tail_p = subprocess.Popen(
+            tail_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=False,
+        )
+        assert tail_p.stdout is not None
+
+        mpv_p = subprocess.Popen(
+            mpv_cmd,
+            stdin=tail_p.stdout,
+        )
+
+        try:
+            tail_p.stdout.close()
+        except Exception:
+            pass
+
+        mpv_rc = mpv_p.wait()
+
+        try:
+            tail_p.terminate()
+        except Exception:
+            pass
+        try:
+            tail_p.wait(timeout=2.0)
+        except Exception:
+            try:
+                tail_p.kill()
+            except Exception:
+                pass
+
+        return mpv_rc
+
+    exec_mpv_url(mpv_bin, mpv_args, extra_mpv_opts, url, fmt)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
