@@ -1,0 +1,107 @@
+#!/usr/bin/env bun
+
+import { readdir, stat } from "node:fs/promises";
+import { homedir } from "node:os";
+import { dirname, basename, join, resolve } from "node:path";
+
+function expandHome(path) {
+  if (path === "~") return homedir();
+  if (path.startsWith("~/")) return join(homedir(), path.slice(2));
+  return path;
+}
+
+function hasGlob(path) {
+  return /[*?[\]{}]/.test(path);
+}
+
+async function globFiles(pattern) {
+  pattern = expandHome(pattern);
+
+  const dir = dirname(pattern);
+  const match = basename(pattern);
+
+  const glob = new Bun.Glob(match);
+  const files = [];
+
+  for await (const name of glob.scan({
+    cwd: dir,
+    onlyFiles: true,
+  })) {
+    files.push(join(dir, name));
+  }
+
+  return files;
+}
+
+async function directoryFiles(dir) {
+  dir = expandHome(dir);
+
+  const entries = await readdir(dir, { withFileTypes: true });
+
+  return entries
+    .filter((entry) => entry.isFile())
+    .map((entry) => join(dir, entry.name));
+}
+
+const args = process.argv.slice(2);
+
+let files = [];
+
+try {
+  if (args.length === 0) {
+    files = await directoryFiles(".");
+  } else if (args.length === 1) {
+    const arg = expandHome(args[0]);
+
+    if (hasGlob(arg)) {
+      files = await globFiles(arg);
+    } else {
+      const s = await stat(arg);
+
+      if (s.isDirectory()) {
+        files = await directoryFiles(arg);
+      } else if (s.isFile()) {
+        files = [arg];
+      }
+    }
+  } else {
+    // Shell may already have expanded something like ~/*.png.
+    files = args.map(expandHome);
+  }
+} catch (err) {
+  console.error(`last-file: ${err.message}`);
+  process.exit(1);
+}
+
+if (files.length === 0)
+  process.exit(1);
+
+let newestPath = null;
+let newestTime = -Infinity;
+
+await Promise.all(
+  files.map(async (path) => {
+    try {
+      const s = await stat(path);
+
+      if (!s.isFile())
+        return;
+
+      const time = s.birthtimeMs > 0
+        ? s.birthtimeMs
+        : s.mtimeMs;
+
+      if (time > newestTime) {
+        newestTime = time;
+        newestPath = path;
+      }
+    } catch {
+      // Ignore vanished/inaccessible files.
+    }
+  }),
+);
+
+if (newestPath === null)
+  process.exit(1);
+
+console.log(newestPath);
