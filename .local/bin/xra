@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 set -eo pipefail
 xrandr --auto
+xrandr-set-active-display-as-primary
