@@ -581,6 +581,9 @@ complete -C "q --list" q
 # for local zshrc settings outside of dotfiles
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
 
+# Deduplicate current PATH:
+typeset -U path PATH
+
 # @TODO clean local functions here bleeding into interactive shell context/scope
 
 true # or else one-liner conditionals bleed their status into last_exit_code
