@@ -20,7 +20,14 @@ REPORTTIME=5 # show time if command takes longer than 5 seconds
 
 fpath=("$HOME/.zsh" $fpath)
 
-autoload -Uz compinit && compinit
+# cache autoload for 10min
+autoload -Uz compinit
+if [[ ! -e ~/.zcompdump || -n ~/.zcompdump(#qN.mm+9) ]]; then
+    compinit
+else
+    compinit -C
+fi
+
 autoload -U colors && colors
 
 ## various
@@ -268,7 +275,7 @@ function TRAPUSR1() {
 TRAPUSR1
 function TRAPEXIT() {
     # cleanup async prompts
-    [[ -f "/tmp/zsh_prompt_$$" ]] && rm "/tmp/zsh_prompt_$$"
+    [[ -f "/tmp/zsh/zsh_prompt_$$" ]] && rm "/tmp/zsh/zsh_prompt_$$"
 }
 # }}}
 # {{{ PROMPT: Show last exit-code
