@@ -8,4 +8,4 @@ if [[ $# -eq 1 ]]; then
 fi
 
 set -x
-systemctl suspend
+exec systemctl suspend
