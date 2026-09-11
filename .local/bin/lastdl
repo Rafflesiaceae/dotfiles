@@ -10,6 +10,7 @@ usage() {
 cli_cat=
 cli_edit=
 cli_move=
+cli_movex=
 cli_sha=
 while :; do
     case $1 in
@@ -26,6 +27,9 @@ while :; do
             ;;
         -m|--move)
             cli_move=1
+            ;;
+        -mx|--move-x)
+            cli_movex=1
             ;;
         --)
             shift || usage
@@ -50,6 +54,8 @@ elif [[ $cli_edit ]]; then
     "$EDITOR" "$latest"
 elif [[ $cli_move ]]; then
     ( set -x; mv "$latest" "$PWD" )
+elif [[ $cli_movex ]]; then
+    ( set -x; chmod +x "$latest"; mv "$latest" "$PWD" )
 elif [[ $cli_sha ]]; then
     lastdl_path="$(lastdl)"
     shasum() {
