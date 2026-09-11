@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 set -eo pipefail
-if [[ "$1" == "initial" ]]; then
-    git rebase -i --root
-    git commit --amend --edit --reset-author --allow-empty
-    git-continue
-else
-    git rebase -r "$(git-first-commit)" --exec 'git commit --amend --no-edit --reset-author'
-fi
+
+git rebase -r --root \
+    --exec 'git commit --amend --no-edit --reset-author --allow-empty'
+
+# if [[ "$1" == "initial" ]]; then
+#     git rebase -i --root
+#     git commit --amend --edit --reset-author --allow-empty
+#     git-continue
+# else
+#     git rebase -r "$(git-first-commit)" --exec 'git commit --amend --no-edit --reset-author'
+# fi
 
 # rebase initial commit (manual for now)
 # git rebase -i --root
