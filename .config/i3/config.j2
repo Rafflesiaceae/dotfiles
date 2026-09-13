@@ -35,8 +35,6 @@ bindsym »mod«+h focus left
 bindsym »mod«+j focus down
 bindsym »mod«+k focus up
 bindsym »mod«+l focus right
-bindsym »mod«+y focus left
-bindsym »mod«+x focus right
 bindsym »mod«+Shift+Y move left
 bindsym »mod«+Shift+X move right
 
@@ -96,8 +94,9 @@ bindsym »mod«+w layout tabbed
 bindsym »mod«+e layout toggle split
 
 # scratchpad
-bindsym »mod«+Shift+s move scratchpad
-bindsym »mod«+s scratchpad show
+bindsym »mod«+Shift+s mark --add user-scratchpad, move scratchpad
+bindsym »mod«+s [con_mark="^user-scratchpad$"] scratchpad show
+bindsym »mod«+F12 scratchpad show
 
 bindsym »mod«+Shift+t sticky toggle
 
@@ -136,6 +135,8 @@ bindsym »mod«+BackSpace exec evolution
 bindsym »mod«+Shift+m exec mouse-toggle-cursor
 bindsym »mod«+m exec cb-surround-with-fences
 bindsym »mod«+o exec paup
+bindsym »mod«+y exec paup
+# bindsym »mod«+x exec paup
 bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
 bindsym »mod«+F2 exec idleby
 bindsym »mod«+F4 exec "termpopup --fullterm --no-wait -- vim \\"$(cb)\\""
