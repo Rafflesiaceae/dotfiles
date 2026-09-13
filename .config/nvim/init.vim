@@ -635,6 +635,7 @@ autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys(
 
 autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 
+autocmd FileType md lua vim.treesitter.start()
 autocmd FileType nu lua vim.treesitter.start()
 autocmd FileType rst lua vim.treesitter.start()
 autocmd FileType rst lua vim.treesitter.start()
@@ -1915,7 +1916,7 @@ endfunction
 " <Plug> mapping for flexibility
 nnoremap <silent> <Plug>(EchoRealpathCloseBuf) :call EchoRealpathCloseBuf()<CR>
 
-nmap <silent> <leader>t <Plug>(EchoRealpathCloseBuf)
+" nmap <silent> <leader>t <Plug>(EchoRealpathCloseBuf)
 unmap <leader>te
 unmap <leader>tm
 unmap <leader>tc
