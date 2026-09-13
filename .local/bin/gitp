@@ -1,2 +1,52 @@
-#!/bin/dash
-git push
+#!/usr/bin/env bash
+
+set -o pipefail
+
+command_name=${0##*/}
+declare -a push_options=(--porcelain --no-progress)
+if [[ $command_name == gitpf ]]; then
+    force=--force-with-lease
+    if [[ ${1-} == -f ]]; then
+        force=--force
+        shift
+    fi
+    push_options+=("$force")
+fi
+
+report_push() {
+    local flag refs summary target
+
+    while IFS=$'\t' read -r flag refs summary; do
+        case $flag in
+        '=')
+            # An up-to-date ref is the normal no-op path.
+            ;;
+        ' ' | '+' | '-' | '*' | '!')
+            target=${refs#*:}
+            printf '%s: %s: %s\n' "$command_name" "$target" "$summary"
+            reported=1
+            ;;
+        'To '* | Done | '')
+            # Porcelain framing is not useful to an interactive caller.
+            ;;
+        *)
+            # Preserve unexpected hook or future Git output.
+            printf '%s\n' "$flag"
+            ;;
+        esac
+    done
+}
+
+push_output=$(git push "${push_options[@]}" "$@")
+push_status=$?
+reported=
+report_push <<<"$push_output"
+
+if ((push_status != 0)); then
+    printf '%s: push failed (exit %d)\n' "$command_name" "$push_status" >&2
+    exit "$push_status"
+fi
+
+if [[ ! $reported ]]; then
+    printf '%s: already up to date\n' "$command_name"
+fi

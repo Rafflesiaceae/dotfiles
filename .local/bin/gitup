@@ -1,62 +1,208 @@
-#!/bin/bash
-function switch_if_necessary() {
-    if [[ "$(git rev-parse --abbrev-ref HEAD)" != "$1" ]]; then
-        git checkout --quiet "$1" || exit 9
-        return $?
-    fi
+#!/usr/bin/env bash
+
+set -o pipefail
+
+usage() {
+    printf '%s\n' \
+        'usage: gitup [-c|--change|-s|--switch] [--no-fetch] [--quiet] [BRANCH]...' \
+        'fetches once, then rebases the given branches when necessary'
 }
 
-# set -x
-# "cli"
 switch=
+fetch=1
+quiet_summary=
+declare -a requested_branches=()
+
+report_failure() {
+    status=$?
+    if ((status != 0)) && [[ ! $quiet_summary ]]; then
+        printf 'gitup: failed (exit %d)\n' "$status" >&2
+    fi
+}
+trap report_failure EXIT
+
 for arg; do
-    shift
     case "$arg" in
     -h | --help)
-        printf "usage: gitup [-c|--change|-s|--switch] [BRANCH]...\npulls given branch\n"
+        usage
         exit 0
         ;;
     -c | --change | -s | --switch)
         switch=1
-        continue
+        ;;
+    --no-fetch)
+        # Internal fast path for callers which have already refreshed every
+        # remote needed by the requested branches.
+        fetch=
+        ;;
+    --quiet)
+        # Used by callers which provide their own top-level summary.
+        quiet_summary=1
+        ;;
+    --)
+        shift
+        requested_branches+=("$@")
+        break
+        ;;
+    -*)
+        printf 'gitup: unknown option: %s\n' "$arg" >&2
+        usage >&2
+        exit 1
+        ;;
+    *)
+        requested_branches+=("$arg")
         ;;
     esac
-    set -- "$@" "$arg"
+    shift
 done
 
-# default to current branch
-if [[ $# -eq 0 ]]; then
-    current_branch=$(git rev-parse --abbrev-ref HEAD) || exit 1
-    set -- "$current_branch"
+previous_branch=$(git symbolic-ref --quiet --short HEAD) || {
+    printf 'gitup: detached HEAD; cannot pull a branch\n' >&2
+    exit 1
+}
+
+if ((${#requested_branches[@]} == 0)); then
+    requested_branches=("$previous_branch")
 fi
 
-now=$(date +%Y.%m.%d.%s).$RANDOM
-# printf "> pulling changes %s\n" "$now"
+# Read all branch/upstream relationships with one Git process. Besides being
+# faster for multiple branches, this lets us validate everything before doing
+# any network or worktree operation.
+declare -A known_branch=()
+declare -A upstream_for=()
+declare -A remote_for=()
+while IFS=$'\t' read -r branch upstream remote; do
+    known_branch["$branch"]=1
+    upstream_for["$branch"]=$upstream
+    remote_for["$branch"]=$remote
+done < <(git for-each-ref \
+    --format='%(refname:short)%09%(upstream:short)%09%(upstream:remotename)' \
+    refs/heads/)
 
-git stash save --quiet "$now" || exit 2
+declare -A seen_branch=()
+declare -A seen_remote=()
+declare -a branches=()
+declare -a upstreams=()
+declare -a fetch_remotes=()
 
-previous_branch=$(git rev-parse --abbrev-ref HEAD) || exit 3
+for branch in "${requested_branches[@]}"; do
+    # Repeating a branch must not fetch, check, or rebase it twice.
+    [[ ${seen_branch["$branch"]+yes} ]] && continue
+    seen_branch["$branch"]=1
 
-for branch in "$@"; do
-    switch_if_necessary "$branch" || exit 4
-    printf "> pulling changes (%s) ... " "$branch"
-    git pull --quiet --rebase || exit 5
-    printf "done\n"
+    if [[ ! ${known_branch["$branch"]+yes} ]]; then
+        printf "gitup: branch '%s' does not exist\n" "$branch" >&2
+        exit 4
+    fi
+
+    upstream=${upstream_for["$branch"]}
+    remote=${remote_for["$branch"]}
+    if [[ -z $upstream ]]; then
+        printf "gitup: branch '%s' has no upstream configured\n" "$branch" >&2
+        exit 5
+    fi
+
+    branches+=("$branch")
+    upstreams+=("$upstream")
+    if [[ -n $remote && $remote != . && ! ${seen_remote["$remote"]+yes} ]]; then
+        seen_remote["$remote"]=1
+        fetch_remotes+=("$remote")
+    fi
 done
 
-[[ $switch ]] || { switch_if_necessary "$previous_branch" || exit 6; }
+# Refresh each distinct remote exactly once. FETCH_HEAD is unnecessary because
+# all decisions below use the configured remote-tracking refs directly.
+if [[ $fetch && ${#fetch_remotes[@]} -gt 0 ]]; then
+    fetch_options=(
+        --quiet
+        --no-auto-maintenance
+        --no-write-commit-graph
+        --no-write-fetch-head
+    )
+    if ((${#fetch_remotes[@]} == 1)); then
+        git fetch "${fetch_options[@]}" "${fetch_remotes[0]}" || exit 5
+    else
+        git fetch --multiple --jobs=0 "${fetch_options[@]}" \
+            "${fetch_remotes[@]}" || exit 5
+    fi
+fi
 
-now_stash_ref=$(git stash list | sed -rn "s/(stash@\{[^\}]+\}).*${now}$/\1/p") || exit 7
-if [[ "$now_stash_ref" ]]; then
-    git stash pop --quiet "$now_stash_ref"
+# Determine every required update before touching the worktree. A branch which
+# already contains its upstream needs neither checkout, rebase, nor stash.
+declare -a needs_update=()
+worktree_operation=
+for i in "${!branches[@]}"; do
+    if git merge-base --is-ancestor "${upstreams[i]}" "${branches[i]}"; then
+        needs_update[i]=
+    else
+        status=$?
+        if ((status != 1)); then
+            printf "gitup: cannot compare '%s' with '%s'\n" \
+                "${branches[i]}" "${upstreams[i]}" >&2
+            exit 5
+        fi
+        needs_update[i]=1
+        worktree_operation=1
+    fi
+done
+
+final_branch=$previous_branch
+if [[ $switch ]]; then
+    # Deduplication above must not change --switch's final destination.
+    final_branch=${requested_branches[-1]}
+    [[ $final_branch == "$previous_branch" ]] || worktree_operation=1
+fi
+
+# Match the old command's treatment of untracked files: stash tracked changes
+# only. The common clean/up-to-date path now avoids invoking stash altogether.
+stashed=
+if [[ $worktree_operation ]] && ! git diff-index --quiet HEAD --; then
+    git stash push --quiet -m gitup || exit 2
+    stashed=1
+fi
+
+active_branch=$previous_branch
+updates=0
+switch_to() {
+    if [[ $active_branch != "$1" ]]; then
+        git checkout --quiet "$1" || return 9
+        active_branch=$1
+    fi
+}
+
+for i in "${!branches[@]}"; do
+    branch=${branches[i]}
+    if [[ ${needs_update[i]} ]]; then
+        switch_to "$branch" || exit 4
+        git rebase --quiet "${upstreams[i]}" || exit 5
+        ((updates += 1))
+        if [[ ! $quiet_summary ]]; then
+            printf "gitup: updated '%s' from '%s'\n" \
+                "$branch" "${upstreams[i]}"
+        fi
+    fi
+done
+
+switch_to "$final_branch" || exit 6
+
+if [[ $stashed ]]; then
+    git stash pop --quiet 'stash@{0}'
     popret=$?
     case $popret in
     0) ;;
     1)
-        printf "\nCONFLICTS:\n"
+        printf '\nCONFLICTS:\n'
         git diff --name-only --diff-filter=U
         exit 8
         ;;
     *) exit $((9 + popret)) ;;
     esac
+fi
+
+if [[ ! $quiet_summary && $updates -eq 0 ]]; then
+    if [[ $final_branch != "$previous_branch" ]]; then
+        printf "gitup: switched to '%s'; already up to date\n" "$final_branch"
+    else
+        printf 'gitup: already up to date\n'
+    fi
 fi

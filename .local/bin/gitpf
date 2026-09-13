@@ -1,8 +1,1 @@
-#!/usr/bin/env bash
-set -eo pipefail
-set -x
-if [[ "$1" == "-f" ]]; then
-    git push --force
-else
-    git push --force-with-lease
-fi
+gitp
