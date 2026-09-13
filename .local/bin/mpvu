@@ -113,10 +113,13 @@ def read_history_urls_and_titles(path: Path) -> dict[str, str]:
     return out
 
 
-def append_history_unique(path: Path, url: str, title: str) -> None:
+def record_history_use(path: Path, url: str, title: str) -> None:
     """
-    Append "<url> ∷ <title>" if url not already present (unique by URL).
-    Preserves chronological order of first-seen URLs.
+    Record a URL as most recently used.
+
+    History is kept oldest -> newest, one entry per URL. Reusing an existing
+    URL moves it to the end, so fzf --tac shows the MRU entry at the bottom
+    and preselects it with fzf's default bottom-up layout.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -129,16 +132,29 @@ def append_history_unique(path: Path, url: str, title: str) -> None:
             os.read(fd, 10_000_000).decode("utf-8", errors="replace").splitlines()
         )
 
-        urls: set[str] = set()
-        for line in existing:
-            u, _t = parse_history_line(line)
-            if u:
-                urls.add(u)
+        old_title = ""
+        entries: list[Tuple[str, str]] = []
+        seen: set[str] = set()
 
-        if url not in urls:
-            os.lseek(fd, 0, os.SEEK_END)
-            line = f"{url}{SEP}{title}\n"
-            os.write(fd, line.encode("utf-8"))
+        for line in existing:
+            u, t = parse_history_line(line)
+            if not u:
+                continue
+            if u == url:
+                if not old_title and t:
+                    old_title = t
+                continue
+            if u in seen:
+                continue
+            seen.add(u)
+            entries.append((u, t))
+
+        entries.append((url, title or old_title))
+        data = "".join(f"{u}{SEP}{t}\n" for u, t in entries)
+
+        os.lseek(fd, 0, os.SEEK_SET)
+        os.ftruncate(fd, 0)
+        os.write(fd, data.encode("utf-8"))
     finally:
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
@@ -542,15 +558,17 @@ def main() -> int:
     eff_url = trim(eff_url) or raw_url
     title = trim(title)
 
-    # Only store if effective URL is YouTube; otherwise tell user and show resume prompt
+    # If the effective URL is not YouTube, tell the user and show the history picker.
     if not is_youtube_url(eff_url):
         eprint(f"mpvu: effective URL is not a YouTube URL: {eff_url}")
         u, t = prompt_resume_from_history(hp)
         eff_url = u
         title = t
-    else:
+
+    # Keep history in MRU order: whichever URL we are about to play moves to the end.
+    if is_youtube_url(eff_url):
         try:
-            append_history_unique(hp, eff_url, title)
+            record_history_use(hp, eff_url, title)
         except Exception:
             pass
 
