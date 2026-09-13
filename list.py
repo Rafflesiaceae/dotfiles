@@ -63,6 +63,7 @@ sources = {
     "./.local/bin/#": "",
     "./.local/bin/0x0": "",
     "./.local/bin/add-breakpoint": {"linux": ""},
+    "./.local/bin/add-gpg-key": "",
     "./.local/bin/agt": "",
     "./.local/bin/agt-all-branches": "",
     "./.local/bin/ahk-ezautocompl.ahk": {"windows": ""},
