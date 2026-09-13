@@ -39,6 +39,30 @@ if [[ "$1" != "--no-record" ]]; then
     exit 0
 fi
 
+setup-or-update-git-repo() {
+    local repo_dir=$1
+    local remote=$2
+
+    mkdir -p "$repo_dir"
+    if [[ -e "$repo_dir/.git" ]]; then
+        pushd "$repo_dir"
+        gru
+        popd
+    else
+        git clone "$remote" "$repo_dir"
+    fi
+}
+
+echo {{{1 update numdots
+setup-or-update-git-repo \
+    "${HOME}/.numdots" \
+    "git@github.com:Rafflesiaceae/dotfiles.git"
+
+echo {{{1 update pkgbuilds
+setup-or-update-git-repo \
+    "${HOME}/workspace/pkgbuilds" \
+    "git@github.com:Rafflesiaceae/pkgbuilds.git"
+
 echo {{{1 update archlinux-keyring
 sudo pacman -Sy --noconfirm
 sudo pacman -S archlinux-keyring --noconfirm
@@ -46,40 +70,12 @@ sudo pacman -S archlinux-keyring --noconfirm
 echo {{{1 update official packages
 sudo pacman -Syu --noconfirm
 
-echo {{{1 update yay
-mkdir -p "${HOME}/.aur/yay"
-pushd "${HOME}/.aur/yay"
-# wget "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
-curl --fail --retry 3 -L -O "https://aur.archlinux.org/cgit/aur.git/snapshot/yay.tar.gz"
-tar xvfz "yay.tar.gz" -C ../
-makepkg -i --noconfirm --needed --skippgpcheck
+echo {{{1 install custom pkgbuilds AND AUR
+pushd "${HOME}/workspace/pkgbuilds"
+./install.py
 popd
 
-echo {{{1 update some AUR packages
-yay -S --answerdiff "None" --answerclean "None" --noconfirm \
-    aur/deadbeef
-
-echo {{{1 update amr
-amrloc="${HOME}/.amr"
-[[ ! -d "$amrloc" ]] && git clone "https://github.com/Rafflesiaceae/pkgbuilds.git" "$amrloc"
-pushd "$amrloc"
-git pull
-
-makepkg-and-install() {
-    pushd "$1"
-    if [[ "$2" == "force" ]]; then
-        makepkg -i --noconfirm --force
-    else
-        makepkg -i --noconfirm --needed
-    fi
-    popd
-}
-
-makepkg-and-install "rxvt-unicode-patched"  "force" # needs recompilation when perl updates
-makepkg-and-install "xkeyboard-config-desc"
-makepkg-and-install "lazy-user-session-bus"
-
-popd
+echo {{{1 --- POST INSTALL ---
 
 echo {{{1 update grub
 update-grub -y
