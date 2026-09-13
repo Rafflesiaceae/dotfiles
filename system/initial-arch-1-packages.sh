@@ -196,6 +196,7 @@ dev=(
     clang
     cmake
     ctags
+    devtools
     gdb
     go
     godot
@@ -204,6 +205,7 @@ dev=(
     meson
     nodejs
     npm
+    nvchecker
     ocaml
     ocaml-findlib
     opam
