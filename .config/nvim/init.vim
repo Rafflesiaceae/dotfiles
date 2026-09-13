@@ -1351,6 +1351,7 @@ function! CopyPathToClip()
     call setreg("*", expand("%:p"))
 endfunction
 nmap <leader>pc :call CopyPathToClip()<CR>
+nmap <leader>pl :let @+ = expand('%:p') . ':' . line('.') . ':' . col('.')<CR>
 nmap <leader>pp :call CopyPathToClip()<CR>
 function! CopyFileNameToClip()
     echo "Copying filename to clipboard..."
