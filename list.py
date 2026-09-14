@@ -30,7 +30,6 @@ sources = {
     "./.config/nvim/autoload/airline/themes/base16_kokonai.vim": {"linux": ""},
     "./.config/nvim/colors/base16-kokonai.vim": {"linux": ""},
     "./.config/nvim/init.vim": "",
-    "./.config/nvim/lua/treesitter-nu.lua": "",
     "./.config/parcellite/parcelliterc": {"linux": ""},
     "./.config/ranger/commands.py": {"linux": ""},
     "./.config/ranger/plugins/auto_title.py": "",

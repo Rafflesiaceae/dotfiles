@@ -635,11 +635,6 @@ autocmd BufRead /tmp/agt let @/ = readfile("/tmp/agt-query")[0] | call feedkeys(
 
 autocmd BufRead,BufNewFile tsconfig.json set filetype=json5
 
-autocmd FileType md lua vim.treesitter.start()
-autocmd FileType nu lua vim.treesitter.start()
-autocmd FileType rst lua vim.treesitter.start()
-autocmd FileType rst lua vim.treesitter.start()
-
 " BASH
 autocmd BufNewFile   *.sh 0r ~/.vim/templates/sh
 autocmd BufWritePre  *.sh call s:AddExecutablebitPre()
@@ -1262,57 +1257,6 @@ endfunction
 com! ToggleCD call s:ToggleCD()
 nnoremap <leader>sd :ToggleCD<CR>
 
-lua << EOF
-function ExchangeBufferWithClipboard()
-  local buf_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
-  local buf_text = table.concat(buf_content, "\n")
-
-  -- Get clipboard content and normalize it
-  local clipboard_lines = vim.split(vim.fn.getreg('+'), "\n")
-  if clipboard_lines[#clipboard_lines] == "" then
-    table.remove(clipboard_lines, #clipboard_lines)
-  end
-  local clipboard = table.concat(clipboard_lines, "\n")
-
-  local msg = ""
-  if buf_text == clipboard then
-    msg = "Buffer was identical to clipboard."
-  else
-    -- Replace buffer with normalized clipboard content
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, clipboard_lines)
-    msg = "Buffer was replaced with clipboard content."
-  end
-
-  vim.cmd('write')
-  vim.api.nvim_echo({{msg, "None"}}, false, {})
-end
-EOF
-nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
-
-lua << EOF
-function InsertClipboardAsCode(trim_last_line)
-  -- Get clipboard contents as a list of lines
-  local clipboard = vim.fn.getreg('+', 1, true)
-
-  -- Optionally trim the last line if empty
-  if trim_last_line and #clipboard > 0 and clipboard[#clipboard]:match('^%s*$') then
-    table.remove(clipboard, #clipboard)
-  end
-
-  -- Add code block lines
-  table.insert(clipboard, 1, '```')
-  table.insert(clipboard, '```')
-
-  -- Get current line number (0-based)
-  local row = vim.api.nvim_win_get_cursor(0)[1]
-  -- Delete the current line
-  vim.api.nvim_buf_set_lines(0, row-1, row, false, {})
-  -- Insert at the position of the deleted line
-  vim.api.nvim_buf_set_lines(0, row-1, row-1, false, clipboard)
-end
-EOF
-
-nnoremap <leader>sa :lua InsertClipboardAsCode(true)<CR>
 
 
 "" ??-?? forgot what this does
@@ -1679,8 +1623,8 @@ Plug 'heavenshell/vim-jsdoc'
 Plug 'maxmellon/vim-jsx-pretty'
 " Plug 'edwinb/idris-vim'
 " Plug 'mitsuhiko/vim-python-combined' ,{ 'for': 'python'  }
-Plug 'Rafflesiaceae/vim-py-indent',         { 'for': 'python,starlark' }
-Plug 'Rafflesiaceae/vim-xml-indent'
+" Plug 'Rafflesiaceae/vim-py-indent'
+" Plug 'Rafflesiaceae/vim-xml-indent'
 " Plug 'python-rope/ropevim'
 " Plug 'vim-scripts/DoxyGen-Syntax'
 
@@ -1876,22 +1820,6 @@ highlight WinSeparator ctermfg=19 ctermbg=18
 " highlight MatchParen cterm=none ctermfg=none ctermbg=178
 " }}}
 
-" {{{ Setup NU Treesitter
-" HACK : List of filetypes to skip tresitter-nu
-let g:treesitter_nu_skip_filetypes = ['bash']
-
-augroup NotCertainFiletypes
-    autocmd!
-    autocmd FileType * call MaybeSetupTreesitterNu()
-augroup END
-
-function! MaybeSetupTreesitterNu()
-    if index(g:treesitter_nu_skip_filetypes, &filetype) < 0
-        " Not in the skip list, so run setup
-        lua require('treesitter-nu')
-    endif
-endfunction
-" }}}
 " {{{ Pop current buffer to new vim instance
 " Resolve realpath of current buffer, echo via system(), then close buffer
 function! EchoRealpathCloseBuf() abort
@@ -1924,10 +1852,6 @@ unmap <leader>tc
 unmap <leader>to
 unmap <leader>tn
 " }}}
-
-" lua << EOF
-" vim.lsp.enable('kotlin_lsp')
-" EOF
 
 " {{{ SplitJumpAndSync
 " Split, jump to nearest //! comment above, and sync horizontal scrolling
@@ -1972,8 +1896,76 @@ augroup SetTxtIfNoFiletype
         \ if empty(&filetype) | setlocal filetype=txt | endif
 augroup END
 
-" {{{ LUA_INIT
 lua << LUA_INIT
+-- {{{ CLIPBOARD HELPERS
+function ExchangeBufferWithClipboard()
+  local buf_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+  local buf_text = table.concat(buf_content, "\n")
+
+  -- Get clipboard content and normalize it
+  local clipboard_lines = vim.split(vim.fn.getreg('+'), "\n")
+  if clipboard_lines[#clipboard_lines] == "" then
+    table.remove(clipboard_lines, #clipboard_lines)
+  end
+  local clipboard = table.concat(clipboard_lines, "\n")
+
+  local msg = ""
+  if buf_text == clipboard then
+    msg = "Buffer was identical to clipboard."
+  else
+    -- Replace buffer with normalized clipboard content
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, clipboard_lines)
+    msg = "Buffer was replaced with clipboard content."
+  end
+
+  vim.cmd('write')
+  vim.api.nvim_echo({{msg, "None"}}, false, {})
+end
+
+function InsertClipboardAsCode(trim_last_line)
+  -- Get clipboard contents as a list of lines
+  local clipboard = vim.fn.getreg('+', 1, true)
+
+  -- Optionally trim the last line if empty
+  if trim_last_line and #clipboard > 0 and clipboard[#clipboard]:match('^%s*$') then
+    table.remove(clipboard, #clipboard)
+  end
+
+  -- Add code block lines
+  table.insert(clipboard, 1, '```')
+  table.insert(clipboard, '```')
+
+  -- Get current line number (0-based)
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  -- Delete the current line
+  vim.api.nvim_buf_set_lines(0, row-1, row, false, {})
+  -- Insert at the position of the deleted line
+  vim.api.nvim_buf_set_lines(0, row-1, row-1, false, clipboard)
+end
+-- }}} CLIPBOARD HELPERS
+-- {{{ TREESITTER
+require("nvim-treesitter").setup({})
+
+local skipped_filetypes = {
+    "bash",
+}
+
+local function start(buf)
+    if not vim.tbl_contains(skipped_filetypes, vim.bo[buf].filetype) then
+        pcall(vim.treesitter.start, buf)
+    end
+end
+
+vim.api.nvim_create_autocmd("FileType", {
+    callback = function(args)
+        start(args.buf)
+    end,
+})
+
+-- Filetype detection for the startup buffer has already happened by the time
+-- this setup runs, so the FileType autocmd above cannot initialize it.
+start(vim.api.nvim_get_current_buf())
+-- }}} TREESITTER
 -- {{{ AUTO TITLE
 vim.opt.title = true
 
@@ -2065,18 +2057,19 @@ end
 
 vim.g["airline_section_x"] = "%{v:lua.JsonPath()}"
 -- }}} JSON_PATH
+--[[ {{{ CTRLSEARCHF
+vim.keymap.set('n', '<C-f>', function()
+  -- Get word under cursor
+  local word = vim.fn.expand('<cword>')
+  if word == nil or word == '' then
+    return
+  end
+
+  -- Run :CtrlSF <word>
+  vim.cmd('CtrlSF ' .. vim.fn.shellescape(word))
+end, { noremap = true, silent = true })
+CTRLSEARCHF }}} ]]
 LUA_INIT
-" }}} LUA_INIT
 
-" lua << CTRLSEARCHF
-" vim.keymap.set('n', '<C-f>', function()
-"   -- Get word under cursor
-"   local word = vim.fn.expand('<cword>')
-"   if word == nil or word == '' then
-"     return
-"   end
-
-"   -- Run :CtrlSF <word>
-"   vim.cmd('CtrlSF ' .. vim.fn.shellescape(word))
-" end, { noremap = true, silent = true })
-" CTRLSEARCHF
+nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
+nnoremap <leader>sa :lua InsertClipboardAsCode(true)<CR>
