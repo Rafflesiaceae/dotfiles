@@ -1,0 +1,429 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+# systemd-edit — create/edit/delete systemd *user* units with an interactive control prompt.
+#
+# Usage:
+#   systemd-edit <name|name.ext>
+#   systemd-edit -d|--delete <name|name.ext>
+#
+# Examples:
+#   systemd-edit daemon          # edits ~/.config/systemd/user/daemon.service
+#   systemd-edit daemon.socket   # edits ~/.config/systemd/user/daemon.socket
+#   systemd-edit --delete daemon # disables/stops/deletes daemon.service
+
+die() {
+    echo "ERROR: $*" >&2
+    exit 1
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+EDITOR_CMD="${EDITOR:-${VISUAL:-}}"
+if [[ -z "${EDITOR_CMD}" ]]; then
+    if have nano; then
+        EDITOR_CMD="nano"
+    else
+        EDITOR_CMD="vi"
+    fi
+fi
+
+SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+
+SYSTEMCTL_CMD=(systemctl)
+JOURNALCTL_CMD=(journalctl)
+if [[ $EUID -ne 0 ]]; then
+    SYSTEMCTL_CMD+=(--user)
+    JOURNALCTL_CMD+=(--user)
+fi
+
+KNOWN_EXTS=(
+    service socket timer path target mount automount swap scope slice device
+)
+
+is_known_ext() {
+    local ext="$1"
+    local k
+    for k in "${KNOWN_EXTS[@]}"; do
+        [[ "$ext" == "$k" ]] && return 0
+    done
+    return 1
+}
+
+title_case() {
+    local s="$1"
+    s="${s//_/ }"
+    s="${s//-/ }"
+    s="$(echo "$s" | sed -E 's/ +/ /g; s/^ //; s/ $//')"
+    echo "$s" | sed -E 's/(^| )([a-z])/\1\u\2/g'
+}
+
+upper_snake() {
+    local s="$1"
+    s="${s//-/_}"
+    s="${s//./_}"
+    echo "$s" | tr '[:lower:]' '[:upper:]'
+}
+
+# Returns:
+#   0 if a new unit file was created
+#   1 if the unit file already existed (no changes)
+write_new_unit_template() {
+    local unit_path="$1"
+    local unit_name="$2"
+    local base="$3"
+    local ext="$4"
+
+    mkdir -p "$(dirname "$unit_path")"
+
+    if [[ -e "$unit_path" ]]; then
+        return 1
+    fi
+
+    local desc nice envprefix
+    nice="$(title_case "$base")"
+    desc="$nice"
+    envprefix="$(upper_snake "$base")"
+
+    case "$ext" in
+    service)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc
+;; Start after the user session is up (good default for GUI-ish tools)
+After=default.target network-online.target
+Wants=network-online.target
+
+;; Rate-limit restart loops
+; StartLimitIntervalSec=30
+; StartLimitBurst=5
+
+[Service]
+Type=simple
+
+; WorkingDirectory=%h/.local/share/$base
+
+;; Prefer stable absolute paths
+ExecStart=%h/.local/bin/$base --config %h/.config/$base/config.toml
+; ExecReload=/bin/kill -HUP \$MAINPID
+
+;; Environment handling
+; Environment=DEBUG=1
+; Environment=${envprefix}_LOG=info
+; Environment=${envprefix}_CACHE_DIR=%h/.cache/$base
+
+;; Restart policy
+; Restart=on-failure
+; RestartSec=2s
+; TimeoutStartSec=30s
+; TimeoutStopSec=15s
+
+[Install]
+WantedBy=default.target
+EOF
+        ;;
+    socket)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc (socket)
+
+[Socket]
+# Adjust to your needs
+ListenStream=%t/$base.sock
+SocketMode=0600
+
+[Install]
+WantedBy=sockets.target
+EOF
+        ;;
+    timer)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc (timer)
+
+[Timer]
+# Adjust to your needs
+OnBootSec=1min
+OnUnitActiveSec=5min
+Unit=$base.service
+
+[Install]
+WantedBy=timers.target
+EOF
+        ;;
+    path)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc (path)
+
+[Path]
+# Adjust to your needs
+PathChanged=%h/.config/$base
+
+[Install]
+WantedBy=default.target
+EOF
+        ;;
+    target)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc (target)
+EOF
+        ;;
+    *)
+        cat >"$unit_path" <<EOF
+[Unit]
+Description=$desc ($ext)
+
+# TODO: add the appropriate [$ext] section.
+#
+# See:
+#   man systemd.$ext
+EOF
+        ;;
+    esac
+
+    return 0
+}
+
+run_cmd() {
+    if [[ "${1:-}" == "silent" ]]; then
+        shift
+    else
+        echo "+ $*"
+    fi
+    "$@"
+    local rc=$?
+    if [[ $rc -ne 0 ]]; then
+        echo "  (command failed with exit code $rc)" >&2
+    fi
+    return $rc
+}
+
+open_editor() {
+    local path="$1"
+    run_cmd "$EDITOR_CMD" "$path"
+}
+
+daemon_reload() {
+    run_cmd silent "${SYSTEMCTL_CMD[@]}" daemon-reload
+}
+
+enable_unit() {
+    local unit="$1"
+    run_cmd silent "${SYSTEMCTL_CMD[@]}" enable "$unit"
+}
+
+start_unit() {
+    local unit="$1"
+    run_cmd "${SYSTEMCTL_CMD[@]}" start "$unit"
+}
+
+stop_unit() {
+    local unit="$1"
+    run_cmd "${SYSTEMCTL_CMD[@]}" stop "$unit"
+}
+
+restart_unit() {
+    local unit="$1"
+    run_cmd "${SYSTEMCTL_CMD[@]}" restart "$unit"
+}
+
+status_unit() {
+    local unit="$1"
+    run_cmd "${SYSTEMCTL_CMD[@]}" status "$unit" --no-pager
+}
+
+journal_unit() {
+    local unit="$1"
+    run_cmd "${JOURNALCTL_CMD[@]}" -u "$unit" -n 2000 --no-pager
+}
+
+unit_is_active() {
+    local unit="$1"
+    "${SYSTEMCTL_CMD[@]}" is-active --quiet "$unit"
+}
+
+print_legend() {
+    printf "============ Enter (d)elete (e)dit (j)ournal (s)tatus sto(p) (r)estart star(t) (q)uit: "
+}
+
+confirm_delete() {
+    # 0 => confirmed (y/Y)
+    # 1 => aborted (anything else)
+    echo
+    printf "Delete '%s'? [y/N] " "$UNIT_NAME"
+    local k=""
+    IFS= read -rsn1 k
+    echo
+    case "$k" in
+    y | Y) return 0 ;;
+    *) return 1 ;;
+    esac
+}
+
+unit_delete() {
+    echo
+    echo "Deleting user unit: $UNIT_NAME"
+    run_cmd "${SYSTEMCTL_CMD[@]}" stop "$UNIT_NAME" || true
+    run_cmd "${SYSTEMCTL_CMD[@]}" disable "$UNIT_NAME" || true
+
+    if [[ -e "$UNIT_PATH" ]]; then
+        echo "+ rm -f -- '$UNIT_PATH'"
+        rm -f -- "$UNIT_PATH"
+    else
+        echo "(unit file not found at $UNIT_PATH)"
+    fi
+
+    daemon_reload
+    exit 0
+}
+
+unit_edit() {
+    open_editor "$UNIT_PATH"
+    daemon_reload
+    enable_unit "$UNIT_NAME"
+    if unit_is_active "$UNIT_NAME"; then
+        restart_unit "$UNIT_NAME"
+    else
+        start_unit "$UNIT_NAME"
+    fi
+}
+
+# -------------------- arg parsing --------------------
+
+DELETE=0
+UNIT_ARG=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -d | --delete)
+        DELETE=1
+        shift
+        ;;
+    -h | --help)
+        sed -n '1,140p' "$0"
+        exit 0
+        ;;
+    --)
+        shift
+        break
+        ;;
+    -*)
+        die "Unknown option: $1"
+        ;;
+    *)
+        UNIT_ARG="$1"
+        shift
+        break
+        ;;
+    esac
+done
+
+[[ -z "${UNIT_ARG}" ]] && die "Missing unit name. Example: $0 daemon  (or: $0 daemon.socket)"
+
+# Determine final unit name
+base=""
+ext=""
+
+if [[ "$UNIT_ARG" == *.* ]]; then
+    ext="${UNIT_ARG##*.}"
+    if is_known_ext "$ext"; then
+        base="${UNIT_ARG%.*}"
+        UNIT_NAME="$UNIT_ARG"
+    else
+        base="$UNIT_ARG"
+        ext="service"
+        UNIT_NAME="${base}.service"
+    fi
+else
+    base="$UNIT_ARG"
+    ext="service"
+    UNIT_NAME="${base}.service"
+fi
+
+# Basic validation
+[[ -z "$base" ]] && die "Invalid unit base name."
+[[ "$base" == *"/"* ]] && die "Unit name must not contain '/'."
+[[ "$UNIT_NAME" == *$'\n'* ]] && die "Unit name must not contain newlines."
+
+UNIT_PATH="$SYSTEMD_USER_DIR/$UNIT_NAME"
+
+# -------------------- delete mode --------------------
+
+if [[ $DELETE -eq 1 ]]; then
+    unit_delete
+fi
+
+# -------------------- create/edit flow --------------------
+
+UNIT_CREATED=0
+if [[ $EUID -ne 0 ]]; then
+    if write_new_unit_template "$UNIT_PATH" "$UNIT_NAME" "$base" "$ext"; then
+        UNIT_CREATED=1
+    fi
+fi
+
+if [[ $UNIT_CREATED -eq 1 ]]; then
+    unit_edit
+    # open_editor "$UNIT_PATH"
+fi
+
+# daemon_reload
+# enable_unit "$UNIT_NAME"
+
+# -------------------- interactive prompt --------------------
+
+print_legend
+while true; do
+    IFS= read -rsn1 key
+
+    case "$key" in
+    d | D)
+        if confirm_delete; then
+            unit_delete
+        else
+            # aborted -> just return to prompt
+            print_legend
+        fi
+        ;;
+    e | E)
+        echo
+        unit_edit
+        print_legend
+        ;;
+    j | J)
+        echo
+        journal_unit "$UNIT_NAME"
+        print_legend
+        ;;
+    s | S)
+        echo
+        status_unit "$UNIT_NAME"
+        print_legend
+        ;;
+    p | P)
+        echo
+        stop_unit "$UNIT_NAME"
+        print_legend
+        ;;
+    r | R)
+        echo
+        restart_unit "$UNIT_NAME"
+        print_legend
+        ;;
+    t | T)
+        echo
+        start_unit "$UNIT_NAME"
+        print_legend
+        ;;
+    q | Q)
+        echo
+        exit 0
+        ;;
+    *)
+        # Unknown key: do nothing, print nothing, do NOT re-print the legend.
+        continue
+        ;;
+    esac
+done

@@ -350,6 +350,7 @@ sources = {
     "./.local/bin/syncfs": "",
     "./.local/bin/syncfs.bash": "",
     "./.local/bin/syncy": "",
+    "./.local/bin/systemd-edit": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": {"linux": ""},
     "./.local/bin/tests": "",
