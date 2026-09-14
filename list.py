@@ -406,7 +406,7 @@ sources = {
     "./.vimrc": "",
     "./.vsvimrc": {"windows": ""},
     "./.Xmodmap": {"linux": ""},
-    "./.gitconfig.j2": "",
+    "./.gitconfig": "",
     "./.inputrc": "",
     "./.shellrc": "",
     "./.tigrc": {"linux": "", "windows": "./.config/tig/config"},
