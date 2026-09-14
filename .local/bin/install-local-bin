@@ -10,7 +10,20 @@ die() {
 
 local_bin_dir="${HOME}/.local/bin"
 
-[[ $# -lt 1 ]] && die "USAGE: pass a binary file to install to local bin"
+if [[ "${1-}" == "-h" || "${1-}" == "--help" ]]; then
+    cat <<EOF
+USAGE: install-local-bin <file> [name]
+
+Symlinks <file> into ~/.local/bin.
+If [name] is given, the symlink is created with that name instead of the filename.
+
+Example:
+  install-local-bin ./examples/aws.siml aws
+EOF
+    exit 0
+fi
+
+[[ $# -lt 1 ]] && die "USAGE: install-local-bin <file> [name]"
 
 input_path="$1"
 input_path=$(realpath -s "$input_path")
