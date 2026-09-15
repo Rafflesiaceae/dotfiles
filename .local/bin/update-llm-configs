@@ -24,12 +24,23 @@
 # actually installed/used here. If none of a tool's source files exist
 # yet, that tool is skipped and its current file (if any) is left alone.
 #
+# A copy of each tool's generated output is cached under
+# ~/.cache/llm-configs/<tool>.md. Before regenerating, the current live
+# file is compared against its cache entry: if they differ, someone
+# edited the generated file directly (instead of the source snippets)
+# since the last run, and those edits are about to be thrown away.
+# vimdiff is opened on (cache, live file) so the edits can be spotted
+# and copied into the right source snippet by hand; quitting vimdiff
+# with a non-zero exit (e.g. ":cq") skips regenerating that tool so the
+# edits aren't lost, rather than "qa"/exit 0 which proceeds as usual.
+#
 # Usage:
 #   ./update-llm-configs
 
 set -euo pipefail
 
 LLM_CONFIGS_DIR="${LLM_CONFIGS_DIR:-$HOME/.config/llm-configs}"
+LLM_CONFIGS_CACHE_DIR="${LLM_CONFIGS_CACHE_DIR:-$HOME/.cache/llm-configs}"
 
 # Map: tool name -> "config dir|generated file name".
 # Add new tools here as needed.
@@ -42,6 +53,7 @@ declare -A TOOLS=(
 # Source snippets are user-maintained; just make sure the directory
 # exists so there's somewhere to put them.
 mkdir -p "$LLM_CONFIGS_DIR"
+mkdir -p "$LLM_CONFIGS_CACHE_DIR"
 
 for tool in "${!TOOLS[@]}"; do
     IFS='|' read -r tool_dir tool_file <<<"${TOOLS[$tool]}"
@@ -71,6 +83,21 @@ for tool in "${!TOOLS[@]}"; do
     fi
 
     target="$tool_dir/$tool_file"
+    cache_file="$LLM_CONFIGS_CACHE_DIR/$tool.md"
+
+    # If the live file no longer matches what we cached from the last
+    # run, it was edited directly rather than through the source
+    # snippets - give a chance to move those edits over before they're
+    # overwritten below.
+    if [[ -f "$cache_file" && -f "$target" ]] && ! cmp -s "$cache_file" "$target"; then
+        vimdiff_cmd=(vimdiff)
+        command -v vimdiff >/dev/null 2>&1 || vimdiff_cmd=(vim -d)
+        echo "$target changed since it was last generated - opening vimdiff (quit with :cq to skip regenerating it this run)" >&2
+        if ! "${vimdiff_cmd[@]}" "$cache_file" "$target"; then
+            echo "skip $tool: left $target as-is, move any edits into $LLM_CONFIGS_DIR sources and rerun" >&2
+            continue
+        fi
+    fi
 
     # A previous manual setup may have used a symlink to keep two tools'
     # instructions in sync (e.g. copilot-instructions.md -> CLAUDE.md).
@@ -93,6 +120,7 @@ for tool in "${!TOOLS[@]}"; do
             cat "$src"
         done
     } >"$tmp"
+    cp "$tmp" "$cache_file"
     mv "$tmp" "$target"
 
     names=()
