@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#
+# update-llm-configs
+#
+# Regenerates the global instructions/"system prompt" files for the
+# various LLM coding assistants (Claude Code, Codex, GitHub Copilot, ...)
+# from a shared set of source snippets, so the same guidance doesn't have
+# to be copy-pasted (and kept in sync by hand) across tools.
+#
+# Source snippets live in ~/.config/llm-configs/ and are assembled in
+# this order for a given tool, skipping any that don't exist:
+#   all.md           - prose shared by every tool
+#   <tool>.md        - tool-specific additions
+#   all.local.md     - shared, host-local additions (e.g. things that
+#                      shouldn't be committed to a dotfiles repo)
+#   <tool>.local.md  - tool-specific, host-local additions
+#
+# "all.md" and "<tool>.md" are expected to be tracked in a dotfiles
+# repo; the ".local.md" variants are expected to be gitignored there.
+#
+# A tool's file is only (re)generated if the tool's own config directory
+# already exists on this machine (e.g. ~/.claude) - we never create that
+# directory ourselves, since its presence is what indicates the tool is
+# actually installed/used here. If none of a tool's source files exist
+# yet, that tool is skipped and its current file (if any) is left alone.
+#
+# Usage:
+#   ./update-llm-configs
+
+set -euo pipefail
+
+LLM_CONFIGS_DIR="${LLM_CONFIGS_DIR:-$HOME/.config/llm-configs}"
+
+# Map: tool name -> "config dir|generated file name".
+# Add new tools here as needed.
+declare -A TOOLS=(
+    [claude]="$HOME/.claude|CLAUDE.md"
+    [codex]="$HOME/.codex|AGENTS.md"
+    [copilot]="$HOME/.copilot|copilot-instructions.md"
+)
+
+# Source snippets are user-maintained; just make sure the directory
+# exists so there's somewhere to put them.
+mkdir -p "$LLM_CONFIGS_DIR"
+
+for tool in "${!TOOLS[@]}"; do
+    IFS='|' read -r tool_dir tool_file <<<"${TOOLS[$tool]}"
+
+    if [[ ! -d "$tool_dir" ]]; then
+        echo "skip $tool: $tool_dir does not exist" >&2
+        continue
+    fi
+
+    # Assemble in the required order, keeping only the parts that exist.
+    sources=(
+        "$LLM_CONFIGS_DIR/all.md"
+        "$LLM_CONFIGS_DIR/$tool.md"
+        "$LLM_CONFIGS_DIR/all.local.md"
+        "$LLM_CONFIGS_DIR/$tool.local.md"
+    )
+    existing_sources=()
+    for src in "${sources[@]}"; do
+        if [[ -f "$src" ]]; then
+            existing_sources+=("$src")
+        fi
+    done
+
+    if [[ ${#existing_sources[@]} -eq 0 ]]; then
+        echo "skip $tool: no source files found in $LLM_CONFIGS_DIR" >&2
+        continue
+    fi
+
+    target="$tool_dir/$tool_file"
+
+    # A previous manual setup may have used a symlink to keep two tools'
+    # instructions in sync (e.g. copilot-instructions.md -> CLAUDE.md).
+    # Replace it with a real file, since each tool now gets its own
+    # generated content instead.
+    if [[ -L "$target" ]]; then
+        rm -f "$target"
+    fi
+
+    # Write via a temp file + mv (same directory, so same filesystem) so
+    # a reader never sees a half-written file.
+    tmp="$(mktemp "${target}.XXXXXX")"
+    {
+        first=1
+        for src in "${existing_sources[@]}"; do
+            if [[ $first -eq 0 ]]; then
+                printf '\n'
+            fi
+            first=0
+            cat "$src"
+        done
+    } >"$tmp"
+    mv "$tmp" "$target"
+
+    names=()
+    for src in "${existing_sources[@]}"; do
+        names+=("$(basename "$src")")
+    done
+    echo "updated $target (from ${names[*]})"
+done

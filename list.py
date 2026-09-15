@@ -367,6 +367,7 @@ sources = {
     "./.local/bin/update-arch": {"linux": ""},
     "./.local/bin/update-arch-android": {"linux": ""},
     "./.local/bin/update-grub": "",
+    "./.local/bin/update-llm-configs": "",
     "./.local/bin/update-numdots": "",
     "./.local/bin/update-ycm": "",
     "./.local/bin/vim-pipe": "",
