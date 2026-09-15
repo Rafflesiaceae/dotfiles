@@ -1,8 +1,32 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1083
 set -eo pipefail
 
-echo {{{1 run this script in tmux
+# {{{1 utils
+# colors are best-effort: tput can fail (e.g. no terminal / dumb TERM), in
+# which case we silently fall back to uncolored output
+cbold=$(2>/dev/null tput bold) || true
+cblue=$(2>/dev/null tput setaf 4) || true
+cred=$(2>/dev/null tput setaf 1) || true
+creset=$(2>/dev/null tput sgr0) || true
+
+# prints a colored section banner, used in place of plain `echo` so the
+# script's progress is easy to scan while still keeping a `{{{1` vim
+# foldmarker comment above each section for editing
+banner() {
+    printf '\n%s%s==>%s %s\n' "$cbold" "$cblue" "$creset" "$1"
+}
+
+# prints a colored error and aborts
+die() {
+    printf '%s%sERROR:%s %s\n' "$cbold" "$cred" "$creset" "$1" >&2
+    exit 1
+}
+
+# {{{1 only run on Arch Linux
+[[ -f /etc/arch-release ]] || die "this script only runs on Arch Linux"
+
+# {{{1 run this script in tmux
+banner "run this script in tmux"
 if [[ "$1" != "--run" ]]; then
     if tmux has-session -t "update-arch" 2>/dev/null; then
         tmux attach-session -t "update-arch"
@@ -27,7 +51,8 @@ if [[ "$1" != "--run" ]]; then
 fi
 shift
 
-echo {{{1 record itself
+# {{{1 record itself
+banner "record itself"
 if [[ "$1" != "--no-record" ]]; then
     title=".update_arch_$(date +%s)"
     echo "recording output to ${HOME}/${title}.cast"
@@ -45,56 +70,48 @@ setup-or-update-git-repo() {
 
     mkdir -p "$repo_dir"
     if [[ -e "$repo_dir/.git" ]]; then
-        pushd "$repo_dir"
+        # silence pushd/popd's directory-stack printout, we only care about
+        # what `gru` itself reports
+        pushd "$repo_dir" >/dev/null
         gru
-        popd
+        popd >/dev/null
     else
         git clone "$remote" "$repo_dir"
     fi
 }
 
-echo {{{1 update numdots
+# {{{1 update numdots
+banner "update numdots"
 setup-or-update-git-repo \
     "${HOME}/.numdots" \
     "git@github.com:Rafflesiaceae/dotfiles.git"
 
-echo {{{1 update pkgbuilds
+# {{{1 update pkgbuilds
+banner "update pkgbuilds"
 setup-or-update-git-repo \
     "${HOME}/workspace/pkgbuilds" \
     "git@github.com:Rafflesiaceae/pkgbuilds.git"
 
-echo {{{1 update archlinux-keyring
+# {{{1 update archlinux-keyring
+banner "update archlinux-keyring"
 sudo pacman -Sy --noconfirm
 sudo pacman -S archlinux-keyring --noconfirm
 
-echo {{{1 update official packages
+# {{{1 update official packages
+banner "update official packages"
 sudo pacman -Syu --noconfirm
 
-echo {{{1 install custom pkgbuilds AND AUR
-pushd "${HOME}/workspace/pkgbuilds"
+# {{{1 install custom pkgbuilds AND AUR
+banner "install custom pkgbuilds AND AUR"
+pushd "${HOME}/workspace/pkgbuilds" >/dev/null
 ./install.py
-popd
+popd >/dev/null
 
-echo {{{1 --- POST INSTALL ---
+# {{{1 --- POST INSTALL ---
+banner "--- POST INSTALL ---"
 
-echo {{{1 update grub
+# {{{1 update grub
+banner "update grub"
 update-grub -y
 
-echo {{{1 update vim plugins
-nvim +'PlugUpdate --sync' +qa
-
-echo {{{1 update YCM
-pushd "${HOME}/.vim/plugged/YouCompleteMe"
-./install.py \
-    --clangd-completer \
-    --go-completer \
-    --rust-completer \
-    --ts-completer
-# npm i --global vscode-json-languageserver # json
-GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
-popd
-
-echo {{{1 System Checks
-check-system || true
-
-echo "CONSIDER RESTARTING!"
+update-post-install
