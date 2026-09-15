@@ -65,7 +65,7 @@ tick) # "main"
         # --pango; this just embeds the resulting markup.
         if command -v llm-usage &>/dev/null; then
             claude_usage=$(llm-usage --pango)
-            result+=("$(printf "✴️%s" "$claude_usage")")
+            result+=("$(printf "🪩 %s" "$claude_usage")")
         fi
 
         echo "${result[@]}"

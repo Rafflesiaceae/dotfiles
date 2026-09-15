@@ -27,8 +27,6 @@ order += "battery 0"
 order += "load"
 order += "tztime local"
 
-order += "read_file separator"
-
 read_file i3status_additional {
     format = "%content"
     format_bad = ""
@@ -58,15 +56,14 @@ ethernet _first_ {
 }
 
 battery 0 {
-        format = " %status %percentage %remaining %emptytime "
+        format = "🔌 %percentage <span foreground='#B3B3B3'>%emptytime</span>"
         format_down = "No battery"
-        status_chr = "⚡"
-        status_bat = "🔋"
-        status_unk = "⚡"
-        status_full = "⏻"
         path = "/sys/class/power_supply/BAT%d/uevent"
-        low_threshold = 10
+        low_threshold = 20
         threshold_type = percentage
+        last_full_capacity = true
+        integer_battery_capacity = true
+        hide_seconds = true
 }
 
 run_watch DHCP {
@@ -79,7 +76,7 @@ run_watch VPNC {
 }
 
 tztime local {
-        format = '   📅 %Y-%m-%d   🕓 %H:%M:%S  '
+        format = '   🔢 %Y-%m-%d  🕓 %H:%M:%S  '
         # hide_if_equals_localtime = true
 }
 
@@ -89,8 +86,8 @@ tztime berlin {
 }
 
 load {
-        format                 = " ⌬ %1min"
-        format_above_threshold = " <span foreground='white'>⌬</span> <span foreground='#FDD102'>%5min</span>"
+        format                 = " ☄️ %1min"
+        format_above_threshold = " <span foreground='white'>☄️</span> <span foreground='#FDD102'>%5min</span>"
         max_threshold = "2.0"
 }
 
@@ -108,7 +105,7 @@ memory {
 
 disk "/" {
     low_threshold          = 10
-    format_below_threshold = "Disk: %percentage_avail"
+    format_below_threshold = "🧱 Disk: %percentage_avail"
     threshold_type         = percentage_avail
 
     format = ""
