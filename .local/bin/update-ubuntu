@@ -22,47 +22,10 @@ die() {
     exit 1
 }
 
-# {{{1 only run on Arch Linux
-[[ -f /etc/arch-release ]] || die "this script only runs on Arch Linux"
-
-# {{{1 run this script in tmux
-banner "run this script in tmux"
-if [[ "$1" != "--run" ]]; then
-    if tmux has-session -t "update-arch" 2>/dev/null; then
-        tmux attach-session -t "update-arch"
-        exit 0
-    fi
-
-    tmux new-session -d -s "update-arch" "$0" "--run" "$@"
-    tmux attach-session -t "update-arch"
-
-    # find latest .cast file
-    unset -v latest_cast_file
-    for file in "${HOME}/.update_arch_"*".cast"; do
-        if [[ -z "$latest_cast_file" ]] || [[ "$file" -nt "$latest_cast_file" ]]; then
-            latest_cast_file=$file
-        fi
-    done
-
-    # cat it
-    asciinema play -s 1000000 "$latest_cast_file"
-
-    exit 0
-fi
-shift
-
-# {{{1 record itself
-banner "record itself"
-if [[ "$1" != "--no-record" ]]; then
-    title=".update_arch_$(date +%s)"
-    echo "recording output to ${HOME}/${title}.cast"
-    asciinema rec \
-        --command "\"$0\" --run --no-record" \
-        --title "$title" \
-        --quiet \
-        "${HOME}/${title}.cast"
-    exit 0
-fi
+# {{{1 only run on Ubuntu
+# shellcheck source=/etc/os-release
+. /etc/os-release
+[[ "$ID" == "ubuntu" ]] || die "this script only runs on Ubuntu"
 
 setup-or-update-git-repo() {
     local repo_dir=$1
@@ -80,7 +43,7 @@ setup-or-update-git-repo() {
     fi
 }
 
-banner "====================== UPDATE ARCH ========================="
+banner "===================== UPDATE UBUNTU ========================"
 
 # {{{1 update numdots
 banner "update numdots"
@@ -94,14 +57,11 @@ setup-or-update-git-repo \
     "${HOME}/workspace/pkgbuilds" \
     "git@github.com:Rafflesiaceae/pkgbuilds.git"
 
-# {{{1 update archlinux-keyring
-banner "update archlinux-keyring"
-sudo pacman -Sy --noconfirm
-sudo pacman -S archlinux-keyring --noconfirm
-
-# {{{1 update official packages
-banner "update official packages"
-sudo pacman -Syu --noconfirm
+# {{{1 update apt packages
+banner "update apt packages"
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt autoremove -y
 
 # {{{1 install custom pkgbuilds AND AUR
 banner "install custom pkgbuilds AND AUR"
@@ -111,9 +71,4 @@ popd >/dev/null
 
 # {{{1 --- POST INSTALL ---
 banner "==================== POST INSTALL =========================="
-
-# {{{1 update grub
-banner "update grub"
-update-grub -y
-
 update-post-install

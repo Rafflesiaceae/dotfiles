@@ -371,6 +371,8 @@ sources = {
     "./.local/bin/update-grub": "",
     "./.local/bin/update-llm-configs": "",
     "./.local/bin/update-numdots": "",
+    "./.local/bin/update-post-install": "",
+    "./.local/bin/update-ubuntu": "",
     "./.local/bin/update-ycm": "",
     "./.local/bin/vim-pipe": "",
     "./.local/bin/vim-resave-all-text-files-below": "",

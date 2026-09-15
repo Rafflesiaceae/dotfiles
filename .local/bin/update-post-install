@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# {{{1 utils
+# colors are best-effort: tput can fail (e.g. no terminal / dumb TERM), in
+# which case we silently fall back to uncolored output
+cbold=$(2>/dev/null tput bold) || true
+cblue=$(2>/dev/null tput setaf 4) || true
+cyellow=$(2>/dev/null tput setaf 3) || true
+creset=$(2>/dev/null tput sgr0) || true
+
+# prints a colored section banner, used in place of plain `echo` so the
+# script's progress is easy to scan while still keeping a `{{{1` vim
+# foldmarker comment above each section for editing
+banner() {
+    printf '\n%s%s==>%s %s\n' "$cbold" "$cblue" "$creset" "$1"
+}
+
+# {{{1 update-llm-configs
+banner "update-llm-configs"
+update-llm-configs
+
+# {{{1 update vim plugins
+banner "update vim plugins"
+nvim +'PlugUpdate --sync' +qa
+
+# {{{1 update YCM
+banner "update YCM"
+ycm_dir="${HOME}/.vim/plugged/YouCompleteMe"
+ycm_state_file="${XDG_CACHE_HOME:-${HOME}/.cache}/update-post-install/ycm-build-state"
+ycm_completer_flags=(--clangd-completer --go-completer --rust-completer --ts-completer)
+
+# install.py's build is a slow C++ compile, so only re-run it when something
+# that can actually change its output has changed: the plugin's own git
+# state (incl. submodules), the completer flags we pass it, or the
+# toolchain used to build/link ycm_core (python/cmake/compiler). The
+# toolchain check matters because a plain system package upgrade (apt
+# full-upgrade / pacman -Syu, run earlier in update-arch/update-ubuntu) can
+# silently bump python's ABI or the compiler, leaving a stale ycm_core*.so
+# that's still present on disk but no longer loadable/correct.
+ycm_core_lib=$(find "$ycm_dir/third_party/ycmd" -maxdepth 1 -name 'ycm_core*.so' -print -quit 2>/dev/null) || true
+ycm_state=$(
+    {
+        git -C "$ycm_dir" rev-parse HEAD
+        git -C "$ycm_dir" submodule status
+        printf '%s\n' "${ycm_completer_flags[@]}"
+        python3 --version
+        cmake --version | head -n1
+        "${CXX:-c++}" --version | head -n1
+    } 2>&1 | sha1sum | cut -d' ' -f1
+)
+
+if [[ -n "$ycm_core_lib" ]] && [[ -f "$ycm_state_file" ]] && [[ "$(<"$ycm_state_file")" == "$ycm_state" ]]; then
+    echo "ycm_core is already up to date (git state, flags and toolchain unchanged), skipping rebuild"
+else
+    pushd "$ycm_dir" >/dev/null
+    ./install.py "${ycm_completer_flags[@]}"
+    popd >/dev/null
+    # npm i --global vscode-json-languageserver # json
+    mkdir -p "$(dirname "$ycm_state_file")"
+    echo "$ycm_state" >"$ycm_state_file"
+fi
+
+GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
+
+# {{{1 System Checks
+banner "System Checks"
+check-system || true
+
+printf '\n%s%sCONSIDER RESTARTING!%s\n' "$cbold" "$cyellow" "$creset"
