@@ -60,16 +60,12 @@ tick) # "main"
             fi
         fi
 
-        # llm-usage
+        # llm-usage — colour-coding (white/orange/red against the workday
+        # pace guideline) is decided by claude-usage-monthly itself via
+        # --pango; this just embeds the resulting markup.
         if command -v llm-usage &>/dev/null; then
-            claude_usage=$(llm-usage)
-            textcolor='#FDFDFD'
-            if [[ "$claude_usage" -gt 90 ]]; then
-                textcolor='#FD0000'
-            elif [[ "$claude_usage" -gt 80 ]]; then
-                textcolor='#FDA202'
-            fi
-            result+=("$(printf "✴️<span foreground='%s'>%s%%</span>" "$textcolor" "$claude_usage")")
+            claude_usage=$(llm-usage --pango)
+            result+=("$(printf "✴️%s" "$claude_usage")")
         fi
 
         echo "${result[@]}"
