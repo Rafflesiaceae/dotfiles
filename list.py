@@ -312,6 +312,7 @@ sources = {
     "./.local/bin/pdfify": "",
     "./.local/bin/polyfill-tree": "",
     "./.local/bin/posix-timestamp-milliseconds-to-date": "",
+    "./.local/bin/proc-cpu-monitor": "",
     "./.local/bin/pulseaudio-restart": "",
     "./.local/bin/pushtonumstash": "",
     "./.local/bin/q": "",

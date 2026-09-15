@@ -1,0 +1,824 @@
+#!/usr/bin/env luajit
+
+-- Continuously sample Linux procfs so CPU-heavy programs and short-lived
+-- processes remain visible after an individual process exits.
+
+local ffi = require("ffi")
+local bit = require("bit")
+
+ffi.cdef([[
+typedef long ssize_t;
+typedef struct __dirstream DIR;
+struct dirent {
+    unsigned long d_ino;
+    long d_off;
+    unsigned short d_reclen;
+    unsigned char d_type;
+    char d_name[256];
+};
+DIR *opendir(const char *name);
+struct dirent *readdir(DIR *dirp);
+int closedir(DIR *dirp);
+ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
+int getpid(void);
+long sysconf(int name);
+int usleep(unsigned int usec);
+int isatty(int fd);
+typedef unsigned char cc_t;
+typedef unsigned int speed_t;
+typedef unsigned int tcflag_t;
+struct termios {
+    tcflag_t c_iflag;
+    tcflag_t c_oflag;
+    tcflag_t c_cflag;
+    tcflag_t c_lflag;
+    cc_t c_line;
+    cc_t c_cc[32];
+    speed_t c_ispeed;
+    speed_t c_ospeed;
+};
+int tcgetattr(int fd, struct termios *termios_p);
+int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
+ssize_t read(int fd, void *buf, size_t count);
+]])
+
+local C = ffi.C
+local SC_CLK_TCK = 2 -- Linux/glibc's _SC_CLK_TCK value.
+local SORT_INTERVAL = 2
+local TCSANOW = 0
+local ISIG = 1
+local ICANON = 2
+local ECHO = 8
+local ECHONL = 64
+local VTIME = 5
+local VMIN = 6
+local terminal_state
+
+local function restore_terminal()
+	if terminal_state then
+		C.tcsetattr(0, TCSANOW, terminal_state)
+		terminal_state = nil
+	end
+end
+
+local function enable_terminal_input(options)
+	if options.no_clear or C.isatty(0) ~= 1 or C.isatty(1) ~= 1 then
+		return
+	end
+
+	local original = ffi.new("struct termios[1]")
+	if C.tcgetattr(0, original) ~= 0 then
+		return
+	end
+	local raw = ffi.new("struct termios[1]")
+	ffi.copy(raw, original, ffi.sizeof("struct termios"))
+	-- Keep input immediately readable and suppress echo. ISIG is disabled so
+	-- Ctrl-C arrives as a byte and follows the same clean restoration path as q.
+	raw[0].c_lflag = bit.band(raw[0].c_lflag, bit.bnot(bit.bor(ISIG, ICANON, ECHO, ECHONL)))
+	raw[0].c_cc[VMIN] = 0
+	raw[0].c_cc[VTIME] = 0
+	if C.tcsetattr(0, TCSANOW, raw) == 0 then
+		terminal_state = original
+	end
+end
+
+local function quit_requested()
+	if not terminal_state then
+		return false
+	end
+	local buffer = ffi.new("unsigned char[64]")
+	local length = C.read(0, buffer, 64)
+	for index = 0, tonumber(length) - 1 do
+		if buffer[index] == string.byte("q") or buffer[index] == string.byte("Q") or buffer[index] == 3 then
+			return true
+		end
+	end
+	return false
+end
+
+local function usage(stream)
+	stream:write([[
+Usage: proc-cpu-monitor [options]
+
+Continuously show the programs using the most CPU. CPU usage is aggregated by
+executable (and by script/module for common interpreters), while individual
+running and recently exited processes are shown underneath each program.
+
+Options:
+  -i, --interval SECONDS   Sampling interval (default: 0.05)
+  -w, --window SECONDS     Recent CPU averaging window (default: 10)
+  -l, --limit COUNT        Maximum programs to display (default: 15)
+  -p, --instances COUNT    Instances per program (default: 3; 0 hides them)
+  -n, --count COUNT        Stop after this many measured samples
+  -ss, --show-self         Include proc-cpu-monitor in the output
+      --no-clear           Print every sample instead of refreshing the screen
+  -h, --help               Show this help
+
+CPU percentages use top's per-core convention, so a process fully occupying
+two CPU cores is shown as 200%. Press q or Ctrl-C to stop an unlimited TUI run.
+]])
+end
+
+local function die(message)
+	restore_terminal()
+	io.stderr:write("proc-cpu-monitor: ", message, "\n\n")
+	usage(io.stderr)
+	os.exit(2)
+end
+
+local function positive_number(value, option)
+	local number = tonumber(value)
+	if not number or number <= 0 or number ~= number or number == math.huge then
+		die(option .. " requires a number greater than zero")
+	end
+	return number
+end
+
+local function nonnegative_integer(value, option)
+	local number = tonumber(value)
+	if not number or number < 0 or number ~= number or number == math.huge or number ~= math.floor(number) then
+		die(option .. " requires a non-negative integer")
+	end
+	return number
+end
+
+local function parse_options(arguments)
+	local options = {
+		interval = 0.05,
+		window = 10,
+		limit = 15,
+		instances = 3,
+		count = nil,
+		no_clear = false,
+	}
+
+	local index = 1
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-h" or argument == "--help" then
+			usage(io.stdout)
+			os.exit(0)
+		elseif argument == "--no-clear" then
+			options.no_clear = true
+		elseif argument == "-ss" or argument == "--show-self" then
+			options.show_self = true
+		elseif argument == "-i" or argument == "--interval" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.interval = positive_number(arguments[index], argument)
+		elseif argument == "-w" or argument == "--window" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.window = positive_number(arguments[index], argument)
+		elseif argument == "-l" or argument == "--limit" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.limit = nonnegative_integer(arguments[index], argument)
+			if options.limit == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		elseif argument == "-p" or argument == "--instances" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.instances = nonnegative_integer(arguments[index], argument)
+		elseif argument == "-n" or argument == "--count" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.count = nonnegative_integer(arguments[index], argument)
+			if options.count == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		else
+			die("unknown option: " .. argument)
+		end
+		index = index + 1
+	end
+
+	return options
+end
+
+local function read_file(path)
+	local file = io.open(path, "rb")
+	if not file then
+		return nil
+	end
+	local contents = file:read("*a")
+	file:close()
+	return contents
+end
+
+local function read_link(path)
+	local buffer_size = 4096
+	local buffer = ffi.new("char[?]", buffer_size)
+	local length = C.readlink(path, buffer, buffer_size)
+	if length < 0 then
+		return nil
+	end
+	return ffi.string(buffer, length)
+end
+
+local function proc_uptime()
+	local contents = read_file("/proc/uptime")
+	return contents and tonumber(contents:match("^(%S+)")) or nil
+end
+
+local function load_average()
+	local contents = read_file("/proc/loadavg")
+	if not contents then
+		return "? ? ?"
+	end
+	return contents:match("^(%S+%s+%S+%s+%S+)") or "? ? ?"
+end
+
+local function cpu_snapshot()
+	local contents = read_file("/proc/stat")
+	if not contents then
+		return nil
+	end
+
+	local line = contents:match("^([^\n]+)")
+	local values = {}
+	for value in line:gmatch("%d+") do
+		values[#values + 1] = tonumber(value)
+	end
+	if #values < 4 then
+		return nil
+	end
+
+	local total = 0
+	-- Guest time is already included in user/nice, so only the first eight
+	-- counters belong in the total used by tools such as top.
+	for index = 1, math.min(8, #values) do
+		total = total + values[index]
+	end
+	local idle = values[4] + (values[5] or 0)
+
+	local cores = 0
+	for _ in contents:gmatch("\ncpu%d+%s") do
+		cores = cores + 1
+	end
+	return { total = total, idle = idle, cores = cores }
+end
+
+local function system_cpu_percent(previous, current)
+	if not previous or not current then
+		return 0
+	end
+	local total_delta = current.total - previous.total
+	local idle_delta = current.idle - previous.idle
+	if total_delta <= 0 then
+		return 0
+	end
+	return 100 * (total_delta - idle_delta) / total_delta
+end
+
+local function process_ids()
+	local directory = C.opendir("/proc")
+	if directory == nil then
+		return nil, "cannot open /proc"
+	end
+
+	local ids = {}
+	while true do
+		local entry = C.readdir(directory)
+		if entry == nil then
+			break
+		end
+		local name = ffi.string(entry.d_name)
+		if name:match("^%d+$") then
+			ids[#ids + 1] = tonumber(name)
+		end
+	end
+	C.closedir(directory)
+	return ids
+end
+
+local function process_stat(pid)
+	local contents = read_file("/proc/" .. pid .. "/stat")
+	if not contents then
+		return nil
+	end
+
+	-- The command may itself contain parentheses, so split around the last one.
+	local parsed_pid, command, state, remainder = contents:match("^(%d+) %((.*)%) (%S) (.*)$")
+	if not parsed_pid then
+		return nil
+	end
+
+	local fields = {}
+	for value in remainder:gmatch("%S+") do
+		fields[#fields + 1] = value
+	end
+	local user_ticks = tonumber(fields[11])
+	local system_ticks = tonumber(fields[12])
+	local start_ticks = tonumber(fields[19])
+	if not user_ticks or not system_ticks or not start_ticks then
+		return nil
+	end
+
+	return {
+		pid = tonumber(parsed_pid),
+		command = command,
+		state = state,
+		ticks = user_ticks + system_ticks,
+		start_ticks = start_ticks,
+	}
+end
+
+local function process_arguments(pid)
+	local contents = read_file("/proc/" .. pid .. "/cmdline")
+	local arguments = {}
+	if contents then
+		for argument in contents:gmatch("([^%z]+)") do
+			-- Avoid letting control characters in command lines corrupt the display.
+			arguments[#arguments + 1] = argument:gsub("[%c]", "?")
+		end
+	end
+	return arguments
+end
+
+local function basename(path)
+	return path:match("([^/]+)/*$") or path
+end
+
+local interpreters = {
+	bash = true,
+	dash = true,
+	fish = true,
+	lua = true,
+	luajit = true,
+	node = true,
+	perl = true,
+	ruby = true,
+	sh = true,
+	zsh = true,
+}
+
+local function is_interpreter(name)
+	return interpreters[name]
+		or name:match("^lua%d*%.?%d*$") ~= nil
+		or name:match("^luajit[%d%.%-]*$") ~= nil
+		or name:match("^python%d*%.?%d*$") ~= nil
+end
+
+local function interpreter_subject(arguments)
+	local index = 2
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-m" and arguments[index + 1] then
+			return "-m " .. arguments[index + 1]
+		elseif (argument == "-c" or argument == "-e") and arguments[index + 1] then
+			return argument .. " " .. arguments[index + 1]
+		elseif argument:sub(1, 1) ~= "-" then
+			return argument
+		end
+		index = index + 1
+	end
+	return nil
+end
+
+local function process_identity(pid, stat)
+	local executable = read_link("/proc/" .. pid .. "/exe")
+	local arguments = process_arguments(pid)
+	local executable_name = executable and basename(executable) or stat.command
+	local key = executable or ("[" .. stat.command .. "]")
+	local label = executable_name
+
+	-- Separate scripts and modules that happen to share the same interpreter.
+	if is_interpreter(executable_name) then
+		local subject = interpreter_subject(arguments)
+		if subject then
+			key = key .. "\0" .. subject
+			label = executable_name .. " " .. subject
+		end
+	end
+
+	local command_line
+	if #arguments > 0 then
+		command_line = table.concat(arguments, " ")
+	else
+		command_line = "[" .. stat.command .. "]"
+	end
+	return key, label, command_line
+end
+
+local function truncate(value, maximum)
+	if #value <= maximum then
+		return value
+	end
+	if maximum <= 3 then
+		return value:sub(1, maximum)
+	end
+	return value:sub(1, maximum - 3) .. "..."
+end
+
+local function format_duration(seconds)
+	if seconds < 10 then
+		return string.format("%.1fs", seconds)
+	elseif seconds < 60 then
+		return string.format("%.0fs", seconds)
+	elseif seconds < 3600 then
+		return string.format("%dm%02ds", seconds / 60, seconds % 60)
+	end
+	return string.format("%dh%02dm", seconds / 3600, (seconds % 3600) / 60)
+end
+
+local function create_program(key, label, now)
+	return {
+		key = key,
+		label = label,
+		first_seen = now,
+		last_seen = now,
+		running = 0,
+		total_ticks = 0,
+		interval_ticks = 0,
+		recent_ticks = 0,
+		events = {},
+		recent_exits = {},
+		instances = {},
+		new_starts = 0,
+	}
+end
+
+local function add_recent_exit(program, instance, maximum)
+	if maximum == 0 then
+		return
+	end
+	table.insert(program.recent_exits, 1, instance)
+	while #program.recent_exits > maximum do
+		table.remove(program.recent_exits)
+	end
+end
+
+local function retire_instance(state, instance, now, maximum)
+	local program = instance.program
+	program.instances[instance.key] = nil
+	if instance.counted_running then
+		program.running = program.running - 1
+	end
+	program.last_seen = now
+	instance.interval_ticks = 0
+	instance.exited_at = now
+	add_recent_exit(program, instance, maximum)
+	state.instances[instance.key] = nil
+end
+
+local function sleep_for(seconds)
+	-- Poll input between short sleeps so q stays responsive with long intervals.
+	while seconds > 0 do
+		local slice = math.min(seconds, 0.05)
+		C.usleep(math.floor(slice * 1000000))
+		if quit_requested() then
+			return true
+		end
+		seconds = seconds - slice
+	end
+	return false
+end
+
+local function prune_events(program, cutoff)
+	local remove_count = 0
+	while program.events[remove_count + 1] and program.events[remove_count + 1].time < cutoff do
+		program.recent_ticks = program.recent_ticks - program.events[remove_count + 1].ticks
+		remove_count = remove_count + 1
+	end
+	for _ = 1, remove_count do
+		table.remove(program.events, 1)
+	end
+end
+
+local function sample_processes(state, now, elapsed, options, clock_ticks)
+	for _, program in pairs(state.programs) do
+		program.interval_ticks = 0
+	end
+
+	local ids, error_message = process_ids()
+	if not ids then
+		die(error_message)
+	end
+
+	state.sequence = state.sequence + 1
+	for _, pid in ipairs(ids) do
+		local stat = (pid ~= state.self_pid or options.show_self) and process_stat(pid) or nil
+		if stat then
+			local instance_key = pid .. ":" .. stat.start_ticks
+			local instance = state.instances[instance_key]
+			local delta = 0
+			local exec_delta
+			local identity_key, identity_label, identity_command_line
+
+			-- An exec keeps the PID and start time but begins a new logical program
+			-- instance. A process can also rename itself, so confirm its executable
+			-- identity changed before preserving the old record as an exited one.
+			if instance and instance.stat_command ~= stat.command then
+				identity_key, identity_label, identity_command_line = process_identity(pid, stat)
+				if identity_key ~= instance.program.key or identity_command_line ~= instance.command_line then
+					exec_delta = math.max(0, stat.ticks - instance.previous_ticks)
+					retire_instance(state, instance, now, options.instances)
+					instance = nil
+				else
+					instance.stat_command = stat.command
+					identity_key = nil
+				end
+			end
+
+			if not instance then
+				local program_key, program_label, command_line
+				if identity_key then
+					program_key, program_label, command_line = identity_key, identity_label, identity_command_line
+				else
+					program_key, program_label, command_line = process_identity(pid, stat)
+				end
+				local program = state.programs[program_key]
+				if not program then
+					program = create_program(program_key, program_label, now)
+					state.programs[program_key] = program
+				end
+
+				instance = {
+					key = instance_key,
+					pid = pid,
+					start_ticks = stat.start_ticks,
+					command_line = command_line,
+					program = program,
+					first_seen = now,
+					last_seen = now,
+					previous_ticks = stat.ticks,
+					total_ticks = 0,
+					interval_ticks = 0,
+					state = stat.state,
+					stat_command = stat.command,
+					counted_running = stat.state ~= "Z",
+					seen_sequence = state.sequence,
+				}
+				state.instances[instance_key] = instance
+				program.instances[instance_key] = instance
+				if instance.counted_running then
+					program.running = program.running + 1
+				end
+
+				-- Anything absent from the baseline scan was born during this run,
+				-- so its first procfs CPU value has no older CPU time mixed into it.
+				if state.sequence > 1 then
+					delta = exec_delta or stat.ticks
+					program.new_starts = program.new_starts + 1
+				end
+			else
+				delta = math.max(0, stat.ticks - instance.previous_ticks)
+				instance.previous_ticks = stat.ticks
+				instance.last_seen = now
+				if instance.counted_running and stat.state == "Z" then
+					instance.program.running = instance.program.running - 1
+					instance.counted_running = false
+				end
+				instance.state = stat.state
+				instance.seen_sequence = state.sequence
+			end
+
+			instance.interval_ticks = delta
+			instance.total_ticks = instance.total_ticks + delta
+			instance.program.interval_ticks = instance.program.interval_ticks + delta
+			instance.program.total_ticks = instance.program.total_ticks + delta
+			instance.program.last_seen = now
+		end
+	end
+
+	-- PID plus start time distinguishes reused PIDs. Finished instances are
+	-- summarized by their program and retained briefly for the detail view.
+	for key, instance in pairs(state.instances) do
+		if instance.seen_sequence ~= state.sequence then
+			retire_instance(state, instance, now, options.instances)
+		end
+	end
+
+	for _, program in pairs(state.programs) do
+		if program.interval_ticks > 0 then
+			program.events[#program.events + 1] = {
+				time = now,
+				ticks = program.interval_ticks,
+			}
+			program.recent_ticks = program.recent_ticks + program.interval_ticks
+		end
+		prune_events(program, now - options.window)
+		program.current_percent = 100 * program.interval_ticks / clock_ticks / elapsed
+		local recent_duration = math.min(options.window, math.max(elapsed, now - state.started_at))
+		program.recent_percent = 100 * program.recent_ticks / clock_ticks / recent_duration
+	end
+end
+
+local function sorted_programs(programs)
+	local result = {}
+	for _, program in pairs(programs) do
+		if program.running > 0 or program.total_ticks > 0 or program.new_starts > 0 then
+			result[#result + 1] = program
+		end
+	end
+	table.sort(result, function(left, right)
+		if left.recent_percent ~= right.recent_percent then
+			return left.recent_percent > right.recent_percent
+		elseif left.current_percent ~= right.current_percent then
+			return left.current_percent > right.current_percent
+		elseif left.total_ticks ~= right.total_ticks then
+			return left.total_ticks > right.total_ticks
+		end
+		return left.label < right.label
+	end)
+	return result
+end
+
+local function instance_rows(program)
+	local rows = {}
+	for _, instance in pairs(program.instances) do
+		rows[#rows + 1] = instance
+	end
+	for _, instance in ipairs(program.recent_exits) do
+		rows[#rows + 1] = instance
+	end
+	table.sort(rows, function(left, right)
+		if (left.exited_at == nil) ~= (right.exited_at == nil) then
+			return left.exited_at == nil
+		elseif left.interval_ticks ~= right.interval_ticks then
+			return left.interval_ticks > right.interval_ticks
+		elseif left.total_ticks ~= right.total_ticks then
+			return left.total_ticks > right.total_ticks
+		end
+		return left.pid < right.pid
+	end)
+	return rows
+end
+
+local function refresh_sort_order(state, now)
+	if state.sorted_programs and now - state.sorted_at < SORT_INTERVAL then
+		return
+	end
+
+	state.sorted_programs = sorted_programs(state.programs)
+	state.sorted_instances = {}
+	for _, program in ipairs(state.sorted_programs) do
+		state.sorted_instances[program] = instance_rows(program)
+	end
+	state.sorted_at = now
+end
+
+local function render(state, now, elapsed, options, clock_ticks, system_percent, cores)
+	local lines = {}
+	lines[#lines + 1] = string.format(
+		"proc-cpu-monitor  elapsed %s  interval %.2fs  CPU %.1f%% of %d cores  load %s",
+		format_duration(now - state.started_at),
+		elapsed,
+		system_percent,
+		cores or 0,
+		load_average()
+	)
+	lines[#lines + 1] = string.format(
+		"%8s %8s %9s %4s %7s %9s  %s",
+		"CPU NOW",
+		string.format("%.0fs AVG", options.window),
+		"CPU TIME",
+		"RUN",
+		"SPAWN",
+		"LAST",
+		"PROGRAM / INSTANCE"
+	)
+
+	-- Values refresh at the sampling rate, but row order changes less often so
+	-- the user can follow a process without the TUI constantly reshuffling it.
+	refresh_sort_order(state, now)
+	local programs = state.sorted_programs
+	local displayed = math.min(options.limit, #programs)
+	for index = 1, displayed do
+		local program = programs[index]
+		local last = program.running > 0 and "now" or format_duration(now - program.last_seen) .. " ago"
+		lines[#lines + 1] = string.format(
+			"%7.1f%% %7.1f%% %8.2fs %4d %7d %9s  %s",
+			program.current_percent,
+			program.recent_percent,
+			program.total_ticks / clock_ticks,
+			program.running,
+			program.new_starts,
+			last,
+			truncate(program.label, 72)
+		)
+
+		local rows = state.sorted_instances[program]
+		for row_index = 1, math.min(options.instances, #rows) do
+			local instance = rows[row_index]
+			local status
+			if instance.exited_at then
+				status = "exited " .. format_duration(now - instance.exited_at) .. " ago"
+			else
+				status = "state " .. instance.state
+			end
+			local instance_percent = 100 * instance.interval_ticks / clock_ticks / elapsed
+			lines[#lines + 1] = string.format(
+				"  %6.1f%% %8s %8.2fs %4s %7s %9s    pid %-7d %s",
+				instance_percent,
+				"",
+				instance.total_ticks / clock_ticks,
+				"",
+				"",
+				status,
+				instance.pid,
+				truncate(instance.command_line, 64)
+			)
+		end
+	end
+
+	if displayed == 0 then
+		lines[#lines + 1] = "No process has accumulated CPU time yet."
+	elseif #programs > displayed then
+		lines[#lines + 1] = string.format("... %d more programs observed", #programs - displayed)
+	end
+	local key_hint = terminal_state and "q quit | " or ""
+	lines[#lines + 1] = key_hint .. "AVG sort every 2s | AVG retains short jobs | SPAWN counts launches"
+
+	if not options.no_clear and C.isatty(1) == 1 then
+		-- Full-screen clears visibly flash in terminals such as rxvt-unicode.
+		-- Clear once, then overwrite rows and erase only stale line contents.
+		if not state.rendered then
+			io.write("\27[2J\27[H")
+			state.rendered = true
+		else
+			io.write("\27[H")
+		end
+		io.write(table.concat(lines, "\27[K\n"), "\27[K\n\27[J")
+	else
+		io.write(table.concat(lines, "\n"), "\n")
+	end
+	io.flush()
+end
+
+local function main()
+	local options = parse_options(arg)
+	local clock_ticks = tonumber(C.sysconf(SC_CLK_TCK))
+	if not clock_ticks or clock_ticks <= 0 then
+		die("could not determine the procfs clock tick rate")
+	end
+
+	local started_at = proc_uptime()
+	if not started_at then
+		die("cannot read /proc/uptime; this script requires Linux procfs")
+	end
+
+	local state = {
+		started_at = started_at,
+		self_pid = tonumber(C.getpid()),
+		sequence = 0,
+		programs = {},
+		instances = {},
+	}
+
+	-- Establish baselines for processes that predate the monitor, then report CPU
+	-- consumed over each subsequent sampling interval.
+	local previous_time = started_at
+	local previous_cpu = cpu_snapshot()
+	sample_processes(state, started_at, options.interval, options, clock_ticks)
+	enable_terminal_input(options)
+
+	local measured_samples = 0
+	while not options.count or measured_samples < options.count do
+		if quit_requested() then
+			break
+		end
+		if sleep_for(options.interval) then
+			break
+		end
+
+		local now = proc_uptime()
+		if not now then
+			die("lost access to /proc/uptime")
+		end
+		local elapsed = math.max(0.001, now - previous_time)
+		local current_cpu = cpu_snapshot()
+		sample_processes(state, now, elapsed, options, clock_ticks)
+		render(
+			state,
+			now,
+			elapsed,
+			options,
+			clock_ticks,
+			system_cpu_percent(previous_cpu, current_cpu),
+			current_cpu and current_cpu.cores
+		)
+		previous_time = now
+		previous_cpu = current_cpu
+		measured_samples = measured_samples + 1
+	end
+end
+
+local succeeded, error_message = xpcall(main, debug.traceback)
+restore_terminal()
+if not succeeded then
+	io.stderr:write("proc-cpu-monitor: ", error_message, "\n")
+	os.exit(1)
+end
