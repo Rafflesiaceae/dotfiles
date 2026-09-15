@@ -76,7 +76,7 @@ run_watch VPNC {
 }
 
 tztime local {
-        format = '   🔢 %Y-%m-%d  🕓 %H:%M:%S  '
+        format = '   📰 %Y-%m-%d  🕓 %H:%M:%S  '
         # hide_if_equals_localtime = true
 }
 
@@ -86,8 +86,8 @@ tztime berlin {
 }
 
 load {
-        format                 = " ☄️ %1min"
-        format_above_threshold = " <span foreground='white'>☄️</span> <span foreground='#FDD102'>%5min</span>"
+        format                 = " 🔲 %1min"
+        format_above_threshold = " <span foreground='white'>🔲</span> <span foreground='#FDD102'>%5min</span>"
         max_threshold = "2.0"
 }
 
@@ -113,10 +113,6 @@ disk "/" {
 
 read_file uptime {
         path = "/proc/uptime"
-}
-
-read_file separator {
-        path = "/tmp/.i3status.additional.separator"
 }
 
 # vim: set ft=conf:
