@@ -70,7 +70,7 @@ base=(
     gvfs-mtp
     gvfs-nfs
     gvfs-smb
-    gvim
+    vim
     highlight
     htop
     hyperfine
@@ -119,7 +119,7 @@ base=(
     whois
     wine
     xdg-user-dirs
-    youtube-dl
+    yt-dlp
     yq
     zip
     zsh
@@ -127,7 +127,7 @@ base=(
 
 x11=(
     # xorg-xbacklight # conflicts with acpilight
-    d-feet
+    # d-feet # moved to AUR
     dunst
     freetype2
     i3-wm
@@ -146,7 +146,7 @@ x11=(
     tigervnc
     ttf-dejavu
     ttf-droid
-    ttf-joypixels
+    # ttf-joypixels # broken
     ttf-liberation
     xclip
     xf86-input-evdev # without this, pacman upgrades can easily crash the desktop session: https://bugs.archlinux.org/task/77789
@@ -177,7 +177,7 @@ gui_applications=(
     inkscape
     keepassxc
     libreoffice-fresh
-    lxappearance-gtk3 # Theme
+    lxappearance # Theme
     lxrandr
     mpv
     papirus-icon-theme # Theme
@@ -187,9 +187,9 @@ gui_applications=(
     thunar-archive-plugin
     thunar-media-tags-plugin
     thunar-volman
-    thunderbird
+    # thunderbird
     vlc
-    vscode
+    # vscode
 )
 dev=(
     base-devel
@@ -200,7 +200,7 @@ dev=(
     gdb
     go
     godot
-    intellij-idea-community-edition
+    # intellij-idea-community-edition
     llvm
     meson
     nodejs
@@ -213,7 +213,7 @@ dev=(
     python-jinja
     python-lxml
     python-pillow
-    python-pipenv
+    # python-pipenv
     python-pynvim
     python-requests
     python-yaml
@@ -263,7 +263,7 @@ popd
 
 aur=(
     # nimbus-git
-    rxvt-unicode-patched
+    # rxvt-unicode-patched
     ttf-symbola
     ttf-vista-fonts
     )
