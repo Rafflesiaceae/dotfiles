@@ -836,6 +836,12 @@ endfunction
 
 function! s:AttemptToCdToGitDir() abort
     let l:file = expand('%:p')
+
+    " BufFilePost runs before terminal buftype is set, so reject URI buffers.
+    if l:file =~# '^\a\+://'
+        return
+    endif
+
     if empty(l:file) || l:file =~# '^/tmp/agt'
         let s:did_attempt_git_cd = 1
         return
