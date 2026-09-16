@@ -38,9 +38,15 @@
 [color.diff]
   whitespace = red reverse
 [safe]
-	directory = *
+  directory = *
 [advice]
-	skippedCherryPicks = false
+  skippedCherryPicks = false
+  detachedHead = false
+
+  statusHints = false
+  waitingForEditor = false
+  addEmptyPathspec = false
+  diverging = false
 [include]
   path = :(optional)~/.config/git/local
 
