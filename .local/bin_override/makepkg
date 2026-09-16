@@ -1,0 +1,134 @@
+#!/usr/bin/env luajit
+
+local ffi = require("ffi")
+
+ffi.cdef[[
+    int execvp(const char *file, char *const argv[]);
+    char *strerror(int errnum);
+]]
+
+local LIMIT_PERCENT = 80
+
+local function die(message, ...)
+    io.stderr:write(string.format(message, ...), "\n")
+    os.exit(1)
+end
+
+local function read_command(command)
+    local pipe = io.popen(command, "r")
+    if not pipe then
+        return nil
+    end
+
+    local output = pipe:read("*a")
+    pipe:close()
+    return output and output:match("^%s*(.-)%s*$")
+end
+
+local mem_file = io.open("/proc/meminfo", "r")
+if not mem_file then
+    die("makepkg: could not read /proc/meminfo")
+end
+
+local mem_kib
+for line in mem_file:lines() do
+    mem_kib = line:match("^MemTotal:%s+(%d+)")
+    if mem_kib then
+        mem_kib = tonumber(mem_kib)
+        break
+    end
+end
+mem_file:close()
+
+if not mem_kib or mem_kib <= 0 then
+    die("makepkg: could not determine physical memory")
+end
+
+local cpu_count = tonumber(read_command("nproc --all 2>/dev/null") or "")
+if not cpu_count or cpu_count <= 0 then
+    die("makepkg: could not determine CPU count")
+end
+
+local memory_limit = math.floor(mem_kib * 1024 * LIMIT_PERCENT / 100)
+local cpu_quota = math.floor(cpu_count * LIMIT_PERCENT)
+local properties = {
+    "-p", "MemoryHigh=" .. memory_limit .. "B",
+    "-p", "MemoryMax=" .. memory_limit .. "B",
+    "-p", "CPUQuota=" .. cpu_quota .. "%",
+}
+
+local io_speed = os.getenv("MAKEPKG_IO_SPEED")
+if io_speed and io_speed ~= "" then
+    local number, suffix = io_speed:match("^%s*(%d+%.?%d*)%s*([%a]*)%s*$")
+    local multipliers = {
+        [""] = 1,
+        ["K"] = 1000, ["KB"] = 1000,
+        ["M"] = 1000 ^ 2, ["MB"] = 1000 ^ 2,
+        ["G"] = 1000 ^ 3, ["GB"] = 1000 ^ 3,
+        ["T"] = 1000 ^ 4, ["TB"] = 1000 ^ 4,
+        ["KI"] = 1024, ["KIB"] = 1024,
+        ["MI"] = 1024 ^ 2, ["MIB"] = 1024 ^ 2,
+        ["GI"] = 1024 ^ 3, ["GIB"] = 1024 ^ 3,
+        ["TI"] = 1024 ^ 4, ["TIB"] = 1024 ^ 4,
+    }
+
+    suffix = suffix and suffix:upper()
+    local multiplier = suffix and multipliers[suffix]
+    local io_speed_bytes = number and multiplier and math.floor(tonumber(number) * multiplier)
+
+    if not io_speed_bytes then
+        die("makepkg: invalid MAKEPKG_IO_SPEED: %s", io_speed)
+    end
+    if io_speed_bytes <= 0 then
+        die("makepkg: MAKEPKG_IO_SPEED must be greater than zero")
+    end
+
+    local io_limit_bytes = math.floor(io_speed_bytes * LIMIT_PERCENT / 100)
+    local io_target = os.getenv("MAKEPKG_IO_TARGET")
+    if not io_target or io_target == "" then
+        io_target = os.getenv("PWD") or "."
+    end
+
+    -- systemd accepts a file path here and resolves its backing block device.
+    -- Read and write limits are separate, so both receive the supplied 80%
+    -- limit. MAKEPKG_IO_TARGET can select a specific file or device.
+    table.insert(properties, "-p")
+    table.insert(properties, "IOReadBandwidthMax=" .. io_target .. " " .. io_limit_bytes .. "B")
+    table.insert(properties, "-p")
+    table.insert(properties, "IOWriteBandwidthMax=" .. io_target .. " " .. io_limit_bytes .. "B")
+else
+    io.stderr:write(
+        "makepkg: I/O bandwidth cap skipped; set MAKEPKG_IO_SPEED to enable it\n",
+        "             (for example: MAKEPKG_IO_SPEED=500M ./makepkg -s)\n"
+    )
+end
+
+local makepkg_bin = os.getenv("MAKEPKG_BIN")
+if not makepkg_bin or makepkg_bin == "" then
+    makepkg_bin = "/usr/bin/makepkg"
+end
+
+local command = {"systemd-run", "--user", "--scope"}
+for _, value in ipairs(properties) do
+    table.insert(command, value)
+end
+table.insert(command, "--")
+table.insert(command, makepkg_bin)
+for index = 1, #arg do
+    table.insert(command, arg[index])
+end
+
+-- Use execvp rather than a shell so makepkg arguments are passed verbatim.
+-- Keep each buffer referenced until execvp() so LuaJIT cannot collect it.
+local c_command = ffi.new("char *[?]", #command + 1)
+local c_strings = {}
+for index, value in ipairs(command) do
+    c_strings[index] = ffi.new("char[?]", #value + 1)
+    ffi.copy(c_strings[index], value)
+    c_command[index - 1] = c_strings[index]
+end
+c_command[#command] = nil
+
+ffi.C.execvp(command[1], c_command)
+local errno = ffi.errno()
+die("makepkg: failed to execute systemd-run: %s", ffi.string(ffi.C.strerror(errno)))
