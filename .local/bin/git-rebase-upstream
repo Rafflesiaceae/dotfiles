@@ -60,7 +60,11 @@ fi
 
 script_dir=${BASH_SOURCE[0]%/*}
 [[ $script_dir == "${BASH_SOURCE[0]}" ]] && script_dir=.
+# Keep the starting tip so a pull by gitup is reflected in this command's
+# summary, even when the branch then contains the requested upstream.
+starting_head=$(git rev-parse --verify HEAD)
 "$script_dir/gitup" --no-fetch --quiet
+head_after_gitup=$(git rev-parse --verify HEAD)
 
 case ${1-} in
 c | current | u | upstream)
@@ -82,8 +86,13 @@ c | current | u | upstream)
 esac
 
 if git merge-base --is-ancestor "$upstream_branch" "$current_branch"; then
-    printf "git-rebase-upstream: '%s' is up to date with '%s'\n" \
-        "$current_branch" "$upstream_branch"
+    if [[ $head_after_gitup != "$starting_head" ]]; then
+        printf "git-rebase-upstream: updated '%s' from '%s'\n" \
+            "$current_branch" "$tracking_ref"
+    else
+        printf "git-rebase-upstream: '%s' is up to date with '%s'\n" \
+            "$current_branch" "$upstream_branch"
+    fi
 else
     status=$?
     if ((status != 1)); then
