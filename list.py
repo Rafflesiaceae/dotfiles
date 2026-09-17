@@ -123,6 +123,7 @@ sources = {
     "./.local/bin/chatgpt-check-limits": "",
     "./.local/bin/chatgpt-on-state-change": "",
     "./.local/bin/check-if-tcp-port-is-open": "",
+    "./.local/bin/check-mouse": "",
     "./.local/bin/check-sh-dash": "",
     "./.local/bin/check-system": "",
     "./.local/bin/check-xml": "",

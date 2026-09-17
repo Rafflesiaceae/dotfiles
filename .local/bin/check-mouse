@@ -1,0 +1,322 @@
+#!/usr/bin/env bash
+# Check the G403's saved and live pointer baseline after a replug or reboot.
+# Run inside the i3/Xorg session as the normal desktop user, without sudo.
+
+set -u
+set -o pipefail
+
+mouse='Logitech G403 HERO Gaming Mouse'
+passed=0
+failed=0
+motion=0
+mouse_present=0
+
+pass() {
+    printf 'PASS  %s\n' "$1"
+    ((passed += 1))
+}
+fail() {
+    printf 'FAIL  %s\n' "$1"
+    ((failed += 1))
+}
+info() { printf 'INFO  %s\n' "$1"; }
+
+property() {
+    # XInput numeric property IDs change, so match by the full property name.
+    awk -v key="$1" '{
+        line = $0
+        sub(/^[[:space:]]*/, "", line)
+        if (index(line, key " (") == 1) {
+            sub(/^[^:]*:[[:space:]]*/, "", line)
+            print line
+            exit
+        }
+    }' <<<"$2"
+}
+
+check_axes() {
+    # Kernel REL_X and REL_Y are bits 0 and 1 of the relative-axis mask.
+    local node=$1 expected=$2 label=$3 file value
+    file="/sys/class/input/$(basename -- "$node")/device/capabilities/rel"
+    if [[ ! -r $file ]]; then
+        fail "$label: cannot read $file"
+        return
+    fi
+    value=$(<"$file")
+    if [[ $value =~ ^[[:xdigit:]]+$ ]] && (((16#$value & 3) == expected)); then
+        pass "$label: X/Y mask is $expected (0x$value)"
+    else
+        fail "$label: unexpected X/Y mask (0x$value)"
+    fi
+}
+
+if (($# > 1)); then
+    printf 'Usage: %s [--motion]\n' "$0" >&2
+    exit 2
+fi
+if (($# == 1)); then
+    case $1 in
+    --motion) motion=1 ;;
+    -h | --help)
+        printf 'Usage: %s [--motion]\n' "$0"
+        printf 'Use --motion for the optional interactive slow/fast stroke test.\n'
+        exit 0
+        ;;
+    *)
+        printf 'Unknown option: %s\n' "$1" >&2
+        exit 2
+        ;;
+    esac
+fi
+
+printf 'G403 HERO baseline check\n========================\n'
+for program in xinput ratbagctl xrandr udevadm python3; do
+    if command -v "$program" >/dev/null 2>&1; then
+        pass "$program available"
+    else
+        fail "$program missing"
+    fi
+done
+
+# Discover the current XInput ID and event node; neither survives replugging.
+if command -v xinput >/dev/null 2>&1; then
+    if id=$(xinput list --id-only "$mouse" 2>&1) && [[ $id =~ ^[0-9]+$ ]] &&
+        props=$(xinput list-props "$id" 2>&1); then
+        mouse_present=1
+        pass "G403 XInput motion device present (ID $id)"
+
+        profile=$(property 'libinput Accel Profile Enabled' "$props" | tr -d '[:space:]')
+        if [[ $profile == '0,1,0' ]]; then
+            pass 'live libinput profile is flat'
+        else
+            fail "live libinput profile is not flat: $profile"
+        fi
+
+        speed=$(property 'libinput Accel Speed' "$props")
+        if [[ $speed =~ ^-?0([.]0+)?$ ]]; then
+            pass 'live libinput speed is 0'
+        else
+            fail "live libinput speed is not 0: $speed"
+        fi
+
+        enabled=$(property 'Device Enabled' "$props")
+        if [[ $enabled == 1 ]]; then
+            pass 'G403 XInput device enabled'
+        else fail "G403 XInput device disabled or unknown: $enabled"; fi
+
+        matrix=$(property 'Coordinate Transformation Matrix' "$props")
+        if awk -F, 'NF != 9 { exit 1 } {
+            for (i = 1; i <= 9; i++) {
+                expected = (i == 1 || i == 5 || i == 9) ? 1 : 0
+                if ($i + 0 != expected) exit 1
+            }
+        }' <<<"$matrix"; then
+            pass 'coordinate transformation is identity'
+        else
+            fail "coordinate transformation is not identity: $matrix"
+        fi
+
+        node=$(property 'Device Node' "$props" | tr -d '"')
+        if [[ $node =~ ^/dev/input/event[0-9]+$ ]]; then
+            pass "motion event node is $node"
+            check_axes "$node" 3 'main G403 interface'
+            if udev=$(udevadm info --query=property --name="$node" 2>&1); then
+                if grep -qx 'ID_VENDOR_ID=046d' <<<"$udev" &&
+                    grep -qx 'ID_MODEL_ID=c08f' <<<"$udev"; then
+                    pass 'USB identity is 046d:c08f'
+                else
+                    fail 'USB identity is not 046d:c08f'
+                fi
+                dpi_db=$(sed -n 's/^MOUSE_DPI=//p' <<<"$udev")
+                if printf '%s\n' "$dpi_db" | tr ' ' '\n' | grep -Fxq '*800@1000'; then
+                    pass 'udev DPI database defaults to 800@1000'
+                else
+                    fail "udev DPI database differs: $dpi_db"
+                fi
+            else
+                fail "cannot read udev properties: $udev"
+            fi
+        else
+            fail "invalid G403 event node: $node"
+        fi
+    else
+        fail "G403 XInput device unavailable: $id"
+    fi
+
+    # This extra interface carries wheel/key events and must not add X/Y motion.
+    if secondary_id=$(xinput list --id-only "$mouse Keyboard" 2>/dev/null) &&
+        [[ $secondary_id =~ ^[0-9]+$ ]] &&
+        secondary_props=$(xinput list-props "$secondary_id" 2>/dev/null); then
+        secondary_node=$(property 'Device Node' "$secondary_props" | tr -d '"')
+        if [[ $secondary_node =~ ^/dev/input/event[0-9]+$ ]]; then
+            check_axes "$secondary_node" 0 'G403 wheel/key interface'
+        else
+            fail "invalid wheel/key event node: $secondary_node"
+        fi
+    else
+        info 'no separate G403 wheel/key interface exposed in XInput'
+    fi
+fi
+
+# libratbag reads the mouse's active firmware state, unlike static udev DPI.
+if command -v ratbagctl >/dev/null 2>&1; then
+    if devices=$(ratbagctl list 2>&1); then
+        ratbag_id=$(awk -F: -v wanted="$mouse" '{
+            label = $2
+            sub(/^[[:space:]]*/, "", label)
+            sub(/[[:space:]]*$/, "", label)
+            if (label == wanted) print $1
+        }' <<<"$devices")
+        if [[ $ratbag_id =~ ^[a-zA-Z0-9-]+$ ]] &&
+            details=$(ratbagctl "$ratbag_id" info 2>&1); then
+            pass "libratbag found G403 ($ratbag_id)"
+            if grep -Eq '^Profile 0: \(active\)[[:space:]]*$' <<<"$details"; then
+                pass 'firmware profile 0 active'
+            else
+                fail 'firmware profile 0 inactive'
+            fi
+            if grep -Eq '^[[:space:]]*Report Rate:[[:space:]]*1000Hz[[:space:]]*$' <<<"$details"; then
+                pass 'report rate is 1000 Hz'
+            else
+                fail 'report rate is not 1000 Hz'
+            fi
+            if awk '/^[[:space:]]*[0-9]+: 800dpi/ && /\(active\)/ && /\(default\)/ { n++ }
+                    END { exit !(n == 1) }' <<<"$details"; then
+                pass '800 DPI is active and default'
+            else
+                fail '800 DPI is not both active and default'
+            fi
+            if awk '/^[[:space:]]*[0-9]+: [0-9]+dpi/ && /\(active\)/ { n++ }
+                    END { exit !(n == 1) }' <<<"$details"; then
+                pass 'exactly one DPI stage active'
+            else
+                fail 'active DPI stage count is not one'
+            fi
+        else
+            fail "libratbag could not read exactly one G403: $ratbag_id"
+        fi
+    else
+        fail "libratbag device list unavailable: $devices"
+    fi
+fi
+
+# A later program can override this rule, which is why live checks come first.
+config=/etc/X11/xorg.conf.d/50-mouse.conf
+if [[ -r $config ]] && awk '
+    /^[[:space:]]*Section[[:space:]]+"InputClass"/ {
+        inside = 1; name = pointer = driver = profile = speed = 0; next
+    }
+    inside && /^[[:space:]]*EndSection/ {
+        if (name && pointer && driver && profile && speed) found = 1
+        inside = 0; next
+    }
+    inside && /^[[:space:]]*Identifier[[:space:]]+"All Mice"/ { name = 1 }
+    inside && /^[[:space:]]*MatchIsPointer[[:space:]]+"yes"/ { pointer = 1 }
+    inside && /^[[:space:]]*Driver[[:space:]]+"libinput"/ { driver = 1 }
+    inside && /^[[:space:]]*Option[[:space:]]+"AccelProfile"[[:space:]]+"flat"/ { profile = 1 }
+    inside && /^[[:space:]]*Option[[:space:]]+"AccelSpeed"[[:space:]]+"0([.]0+)?"/ { speed = 1 }
+    END { exit !found }
+' "$config"; then
+    pass 'saved Xorg rule sets pointer libinput flat at speed 0'
+else
+    fail "saved Xorg rule missing or changed: $config"
+fi
+
+# Read the newest available Xorg log to verify its selected motion scheme.
+log=''
+for candidate in /var/log/Xorg.0.log "$HOME/.local/share/xorg/Xorg.0.log"; do
+    if [[ -r $candidate ]] && { [[ -z $log ]] || [[ $candidate -nt $log ]]; }; then
+        log=$candidate
+    fi
+done
+if ((! mouse_present)); then
+    info 'Xorg initialization log check skipped while G403 is absent'
+elif [[ -n $log ]]; then
+    if awk -v name="$mouse" '
+        index($0, "Adding input device " name " (/dev/input/event") {
+            active = 1; driver = speed = profile = scheme = 0
+            next
+        }
+        active && index($0, "Using input driver '\''libinput'\'' for '\''" name "'\''") { driver = 1 }
+        active && /Option "AccelSpeed" "0([.]0+)?"/ { speed = 1 }
+        active && /Option "AccelProfile" "flat"/ { profile = 1 }
+        active && index($0, name ": (accel) selected scheme none/0") { scheme = 1 }
+        active && index($0, name ": (accel) acceleration threshold:") {
+            good = driver && speed && profile && scheme
+            active = 0
+        }
+        END { exit !good }
+    ' "$log"; then
+        pass 'latest Xorg G403 initialization used libinput, flat, speed 0, and scheme none'
+    else
+        fail "latest Xorg G403 initialization does not match baseline in $log"
+    fi
+else
+    fail 'current Xorg log unavailable'
+fi
+
+if command -v xrandr >/dev/null 2>&1; then
+    if display_modes=$(xrandr --current 2>&1) && awk '
+        / connected primary / { primary = index($0, "1920x1080") > 0; scanning = 1; next }
+        scanning && /^[^[:space:]]/ { scanning = 0 }
+        scanning && $1 == "1920x1080" && /144[.]00[*]/ { hz = 1 }
+        END { exit !(primary && hz) }
+    ' <<<"$display_modes"; then
+        pass 'primary display is 1920x1080 at 144 Hz'
+    else
+        fail 'primary display is not 1920x1080 at 144 Hz'
+    fi
+fi
+
+if command -v python3 >/dev/null 2>&1; then
+    # The standard X11 compositor selection owner is 0 when none runs.
+    if owner=$(python3 -c 'from Xlib import display; d=display.Display(); a=d.intern_atom("_NET_WM_CM_S0"); print(d.get_selection_owner(a)); d.close()' 2>&1); then
+        if [[ $owner == 0 ]]; then
+            pass 'no X11 compositor owns screen 0'
+        else fail "X11 compositor present: owner $owner"; fi
+    else
+        fail "cannot inspect X11 compositor selection: $owner"
+    fi
+fi
+
+if command -v nvidia-settings >/dev/null 2>&1; then
+    if meta=$(nvidia-settings --query CurrentMetaMode --terse 2>&1); then
+        if grep -Eq 'Force(Full)?CompositionPipeline[[:space:]]*=[[:space:]]*(On|1)' <<<"$meta"; then
+            fail 'NVIDIA forced composition pipeline enabled'
+        elif [[ $meta == *'ViewPortIn=1920x1080'* && $meta == *'ViewPortOut=1920x1080+0+0'* ]]; then
+            pass 'NVIDIA viewport has no forced composition or scaling'
+        else
+            fail "NVIDIA viewport differs: $meta"
+        fi
+    else
+        fail "cannot read NVIDIA display mode: $meta"
+    fi
+else
+    info 'nvidia-settings unavailable; NVIDIA pipeline check skipped'
+fi
+
+# These were observed, but they are not pointer acceleration settings.
+xft_dpi=$(xrdb -query 2>/dev/null | awk '$1 == "Xft.dpi:" { print $2 }')
+info "Xft.dpi=$xft_dpi (UI sizing only)"
+legacy=$(xset q 2>/dev/null | awk '/^Pointer Control:/ { getline; sub(/^[[:space:]]*/, ""); print }')
+info "legacy xset: $legacy (does not govern the G403 libinput path)"
+
+if ((motion)); then
+    # A person must perform this part; the static checks above need no motion.
+    helper="$(dirname -- "$(readlink -f -- "$0")")/mouse-motion-check.py"
+    if ((! mouse_present)); then
+        fail 'interactive motion test needs the G403 connected'
+    elif [[ ! -r $helper ]]; then
+        fail "interactive helper missing: $helper"
+    elif [[ ! -r /dev/tty ]]; then
+        fail 'interactive motion test requires a terminal'
+    else
+        printf '\nThe motion test will move the pointer and ask for slow and fast strokes.\n'
+        if python3 "$helper"; then
+            pass 'slow and fast motion both mapped 1:1'
+        else fail 'interactive 1:1 motion test failed'; fi
+    fi
+fi
+
+printf '\nSummary: %d passed, %d failed\n' "$passed" "$failed"
+((failed == 0))
