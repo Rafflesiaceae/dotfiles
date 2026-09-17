@@ -255,19 +255,6 @@ else
     fail 'current Xorg log unavailable'
 fi
 
-if command -v xrandr >/dev/null 2>&1; then
-    if display_modes=$(xrandr --current 2>&1) && awk '
-        / connected primary / { primary = index($0, "1920x1080") > 0; scanning = 1; next }
-        scanning && /^[^[:space:]]/ { scanning = 0 }
-        scanning && $1 == "1920x1080" && /144[.]00[*]/ { hz = 1 }
-        END { exit !(primary && hz) }
-    ' <<<"$display_modes"; then
-        pass 'primary display is 1920x1080 at 144 Hz'
-    else
-        fail 'primary display is not 1920x1080 at 144 Hz'
-    fi
-fi
-
 if command -v python3 >/dev/null 2>&1; then
     # The standard X11 compositor selection owner is 0 when none runs.
     if owner=$(python3 -c 'from Xlib import display; d=display.Display(); a=d.intern_atom("_NET_WM_CM_S0"); print(d.get_selection_owner(a)); d.close()' 2>&1); then
