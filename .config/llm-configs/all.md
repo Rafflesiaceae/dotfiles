@@ -16,6 +16,12 @@
     - verify that the repositories you are looking at are on the right branch
       and up-to-date (if not you can run `gru`)
 
+    - be careful about tone when writing replies, they should not be directly
+      accusatory etc. - i.e. be nice with a soft tone!
+
+    - don't report differences between PR-title/description/Commit-Messages/etc.
+      and actual PR contents - nobody cares about that
+
 - never reference specific Jenkins builds/build-numbers in documentation or code, they
   are ephemeral - referencing Jobs is fine tho
 
