@@ -1560,7 +1560,7 @@ augroup END
 " {{{ Additional filetype detection
 augroup user_additional_filetypes
     autocmd!
-    autocmd BufRead,BufNewFile *.jsonl setlocal filetype=plain
+    autocmd BufRead,BufNewFile *.jsonl setlocal filetype=json
     autocmd BufRead,BufNewFile *.containerfile,*.Containerfile setlocal filetype=dockerfile
     autocmd BufRead,BufNewFile *.cfg.j2 setlocal filetype=cfg.jinja2
     autocmd BufRead,BufNewFile *.html.j2 setlocal filetype=html.jinja2
