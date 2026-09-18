@@ -1558,9 +1558,22 @@ augroup user_quickfix
 augroup END
 " }}} Quickfix behavior
 " {{{ Additional filetype detection
+" vim-json's syntax regexes choke on long lines; a multi-MB .jsonl file (one
+" huge object per line) can take tens of seconds or hang outright. Only turn
+" on json highlighting below a size where that stays snappy.
+let s:jsonl_max_bytes_for_highlighting = 262144
+function! s:SetJsonlFiletype() abort
+    let l:size = getfsize(expand('<afile>:p'))
+    if l:size >= 0 && l:size <= s:jsonl_max_bytes_for_highlighting
+        setlocal filetype=json
+    else
+        setlocal filetype=plain
+    endif
+endfunction
+
 augroup user_additional_filetypes
     autocmd!
-    autocmd BufRead,BufNewFile *.jsonl setlocal filetype=json
+    autocmd BufRead,BufNewFile *.jsonl call s:SetJsonlFiletype()
     autocmd BufRead,BufNewFile *.containerfile,*.Containerfile setlocal filetype=dockerfile
     autocmd BufRead,BufNewFile *.cfg.j2 setlocal filetype=cfg.jinja2
     autocmd BufRead,BufNewFile *.html.j2 setlocal filetype=html.jinja2
