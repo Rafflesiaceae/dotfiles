@@ -28,6 +28,8 @@ af=lavfi=[loudnorm=I=-16:TP=-3:LRA=4]
 # Use cache for network streams
 cache=auto
 
+watch-later-options-remove=vid
+
 screenshot-template="~/mpv_%n"
 osd-duration=2000
 
