@@ -75,6 +75,11 @@ c | current | u | upstream)
         upstream_branch="$upstream_remote/main"
     elif git show-ref --verify --quiet "refs/remotes/$upstream_remote/master"; then
         upstream_branch="$upstream_remote/master"
+    elif git show-ref --verify --quiet \
+        "refs/remotes/$upstream_remote/$current_branch"; then
+        # Repositories without main/master commonly use the current branch as
+        # their shared upstream, so compare against its remote-tracking ref.
+        upstream_branch="$upstream_remote/$current_branch"
     else
         printf 'git-rebase-upstream: cannot determine upstream branch\n' >&2
         exit 1
