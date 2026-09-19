@@ -1215,7 +1215,7 @@ noremap <leader>! :OpenTig<CR>
 noremap <leader>" :OpenTig expand("%:p")<CR>
 noremap <leader>C :OpenTerminal<CR>
 " noremap <leader>T :OpenTerminal<CR>
-nnoremap <leader>T <Cmd>call jobstart(['thunar', expand('%:p')], {'detach': v:true})<CR>
+nnoremap <leader>t <Cmd>call jobstart(['thunar', expand('%:p')], {'detach': v:true})<CR>
 noremap <leader>P G:call search('^\([ -1234567890]\)\{3}raf', 'W')<CR>
 noremap <leader>gc :Git commit<CR>
 noremap <leader>gd :Gdiff<CR>
@@ -1250,7 +1250,7 @@ nnoremap <leader>w :YcmCompleter <tab>
 " nnoremap <leader>w :YcmCompleter GetHover
 nnoremap <CR> :YcmCompleter GoTo<CR>
 nnoremap <leader>R :YcmCompleter RefactorRename <C-r><C-w>
-nnoremap <leader>t :YcmCompleter GoToType<CR>
+" nnoremap <leader>t :YcmCompleter GoToType<CR>
 nnoremap <silent> <c :pclose<CR>
 nnoremap <silent> <h :YcmCompleter GetDoc<CR>
 nnoremap <silent> <n :cn<CR>
