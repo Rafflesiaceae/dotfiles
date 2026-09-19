@@ -59,7 +59,7 @@ battery 0 {
         format = "🔌 %percentage <span foreground='#B3B3B3'>%emptytime</span>"
         format_down = "No battery"
         path = "/sys/class/power_supply/BAT%d/uevent"
-        low_threshold = 20
+        low_threshold = 30
         threshold_type = percentage
         last_full_capacity = true
         integer_battery_capacity = true
@@ -87,7 +87,7 @@ tztime berlin {
 
 load {
         format                 = " 🔲 %1min"
-        format_above_threshold = " <span foreground='white'>🔲</span> <span foreground='#FDD102'>%5min</span>"
+        format_above_threshold = " 🔲 <span foreground='#FDD102'>%5min</span>"
         max_threshold = "2.0"
 }
 
