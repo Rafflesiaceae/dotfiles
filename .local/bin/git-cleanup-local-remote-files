@@ -4,8 +4,8 @@ doit() {
     find . -regex "$1" -printf '%P\0' 2> >(grep -v "Permission denied" ) | xargs -r0 -I '{}' bash -c 'echo "{}"; bkm "{}"'
 }
 
-doit ".*_LOCAL_.*"
-doit ".*_REMOTE_.*"
-doit ".*_BACKUP_.*"
-doit ".*_BASE_.*"
-doit "^.*\.rej$"
+doit ".*_LOCAL_.*" || true
+doit ".*_REMOTE_.*" || true
+doit ".*_BACKUP_.*" || true
+doit ".*_BASE_.*" || true
+doit "^.*\.rej$" || true
