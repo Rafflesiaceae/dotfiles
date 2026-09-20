@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SERVICE=/etc/systemd/system/night-suspend.service
+TIMER=/etc/systemd/system/night-suspend.timer
+WAKE_SERVICE=/etc/systemd/system/morning-wake.service
+WAKE_TIMER=/etc/systemd/system/morning-wake.timer
+
+usage() {
+    cat <<EOF
+Usage: $0 {on|off}
+
+  on       Install and enable automatic suspend at 01:00
+           and automatic wake at 07:00.
+
+  off      Disable and uninstall the systemd units.
+
+  -h,
+  --help   Show this help.
+EOF
+}
+
+die() {
+    echo "Error: $*" >&2
+    exit 1
+}
+
+check_rtc_wakealarm() {
+    local rtc wakealarm wakeup state
+    local found_rtc=false
+    local found_alarm=false
+
+    shopt -s nullglob
+
+    for rtc in /sys/class/rtc/rtc*; do
+        found_rtc=true
+        wakealarm="$rtc/wakealarm"
+
+        [[ -e "$wakealarm" ]] || continue
+        found_alarm=true
+
+        [[ -r "$wakealarm" ]] ||
+            die "$wakealarm is not readable."
+
+        [[ -w "$wakealarm" ]] ||
+            die "$wakealarm is not writable."
+
+        wakeup="$rtc/device/power/wakeup"
+        if [[ -e "$wakeup" ]]; then
+            state=$(<"$wakeup")
+
+            [[ "$state" == "enabled" ]] ||
+                die "RTC wakeup is disabled: $wakeup ($state)"
+        fi
+
+        echo "RTC wake alarm supported: $wakealarm"
+        return
+    done
+
+    $found_rtc ||
+        die "No RTC device found under /sys/class/rtc."
+
+    $found_alarm ||
+        die "No RTC exposes a wake-alarm interface."
+
+    die "No usable RTC wake-alarm interface found."
+}
+
+(($# == 1)) || {
+    usage >&2
+    exit 2
+}
+
+case "$1" in
+-h | --help)
+    usage
+    exit
+    ;;
+
+on | off)
+    ;;
+
+*)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+# Re-run ourselves through sudo when necessary.
+if ((EUID != 0)); then
+    command -v sudo >/dev/null ||
+        die "Root privileges are required and sudo was not found."
+
+    exec sudo -- "$0" "$@"
+fi
+
+# Verify that this machine exposes an RTC capable of wake alarms.
+check_rtc_wakealarm
+
+case "$1" in
+on)
+    cat >"$SERVICE" <<'EOF'
+[Unit]
+Description=Suspend during the nightly sleep window
+
+[Service]
+Type=oneshot
+ExecCondition=/bin/sh -c 'h=$(/usr/bin/date +%%H); [ "$h" -ge 1 ] && [ "$h" -lt 7 ]'
+ExecStart=/usr/bin/systemctl suspend --ignore-inhibitors
+EOF
+
+    cat >"$TIMER" <<'EOF'
+[Unit]
+Description=Suspend daily at 01:00
+
+[Timer]
+OnCalendar=*-*-* 01:00:00
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    cat >"$WAKE_SERVICE" <<'EOF'
+[Unit]
+Description=Morning wake target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/true
+EOF
+
+    cat >"$WAKE_TIMER" <<'EOF'
+[Unit]
+Description=Wake daily at 07:00
+
+[Timer]
+OnCalendar=*-*-* 07:00:00
+AccuracySec=1s
+WakeSystem=true
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable --now \
+        night-suspend.timer \
+        morning-wake.timer
+
+    echo "Night suspend installed and enabled."
+    echo "Suspend: 01:00"
+    echo "Wake:    07:00"
+    ;;
+
+off)
+    systemctl disable --now \
+        night-suspend.timer \
+        morning-wake.timer 2>/dev/null || true
+
+    rm -f \
+        "$SERVICE" \
+        "$TIMER" \
+        "$WAKE_SERVICE" \
+        "$WAKE_TIMER"
+
+    systemctl daemon-reload
+
+    systemctl reset-failed \
+        night-suspend.service \
+        night-suspend.timer \
+        morning-wake.service \
+        morning-wake.timer 2>/dev/null || true
+
+    echo "Night suspend uninstalled."
+    ;;
+esac

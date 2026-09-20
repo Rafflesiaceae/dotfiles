@@ -354,6 +354,7 @@ sources = {
     "./.local/bin/syncfs": "",
     "./.local/bin/syncfs.bash": "",
     "./.local/bin/syncy": "",
+    "./.local/bin/systemctl-night-suspend": "",
     "./.local/bin/systemd-edit": "",
     "./.local/bin/t": "",
     "./.local/bin/termpopup": {"linux": ""},
