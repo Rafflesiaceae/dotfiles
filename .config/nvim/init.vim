@@ -1201,6 +1201,7 @@ vnoremap Y "+y<CR>
 vnoremap <C-c> "+y<CR>
 nnoremap <leader>cy :%y+<CR>
 vnoremap <leader>cy "+y<CR>
+nnoremap <A-c> :%y+<CR>
 nnoremap <leader>cd :%d+<CR>
 vnoremap <leader>cd "+d<CR>
 nnoremap <leader>cp "+p<CR>
@@ -1907,6 +1908,7 @@ end, { noremap = true, silent = true })
 CTRLSEARCHF }}} ]]
 LUA_INIT
 
+nnoremap <A-v> :lua ExchangeBufferWithClipboard()<CR>
 nnoremap <leader>ss :lua ExchangeBufferWithClipboard()<CR>
 nnoremap <leader>sa :lua InsertClipboardAsCode(true)<CR>
 " }}} 🚀 Post-plugin and Neovim setup
