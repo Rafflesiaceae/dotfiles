@@ -34,6 +34,7 @@ sources = {
     "./.config/nvim/colors/base16-kokonai.vim": {"linux": ""},
     "./.config/nvim/init.vim": "",
     "./.config/parcellite/parcelliterc": {"linux": ""},
+    "./.config/qt6ct/colors/adwaita-dark.conf": {"linux": ""},
     "./.config/ranger/commands.py": {"linux": ""},
     "./.config/ranger/plugins/auto_title.py": "",
     "./.config/ranger/rc.conf": {"linux": ""},
