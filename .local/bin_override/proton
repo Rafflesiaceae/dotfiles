@@ -1,0 +1,37 @@
+#!/bin/sh
+set -e
+
+STEAM_ROOT="${HOME}/.local/share/Steam"
+COMPATDATA="${STEAM_ROOT}/steamapps/compatdata"
+
+if [ "$1" = "cd" ]; then
+    echo "cd ${COMPATDATA}/pfx/drive_c"
+    exit 0
+fi
+
+PROTON_DIR=$(
+    find "${STEAM_ROOT}/steamapps/common" \
+        -maxdepth 1 \
+        -type d \
+        -name 'Proton [0-9]*' \
+        -printf '%f\n' |
+        sort -V |
+        tail -n1
+)
+
+if [ -z "$PROTON_DIR" ]; then
+    echo "No Steam-installed Proton version found." >&2
+    exit 1
+fi
+
+PROTON="${STEAM_ROOT}/steamapps/common/${PROTON_DIR}/proton"
+
+if [ ! -x "$PROTON" ]; then
+    echo "Proton executable not found: $PROTON" >&2
+    exit 1
+fi
+
+export STEAM_COMPAT_DATA_PATH="$COMPATDATA"
+export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_ROOT"
+
+exec "$PROTON" run "$@"
