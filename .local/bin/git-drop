@@ -19,4 +19,19 @@ elif [[ $# -gt 0 ]]; then
 else
     die "pass me some commits, or '-' for HEAD/latest"
 fi
-GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --log --drop $commits" git rebase -i "HEAD@{2.weeks.ago}"
+
+# Anchor the replay range to the merge-base with the remote default branch
+# instead of a fixed 2-week reflog window, so we only ever replay commits
+# that are actually unpushed rather than re-touching already-merged history
+# (which was prone to spurious conflicts on commits superseded upstream).
+default_branch=$(git-remote-branch) || true
+default_branch=${ORIGIN_BRANCH:-${default_branch:-master}}
+
+remote="origin"
+if git-has-remote "upstream"; then
+    remote="upstream"
+fi
+
+base=$(git merge-base HEAD "${remote}/${default_branch}") || die "could not find merge-base with ${remote}/${default_branch}"
+
+GIT_SEQUENCE_EDITOR="git-rebase-noninteractive --log --drop $commits" git rebase -i "$base"
