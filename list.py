@@ -11,6 +11,7 @@ sources = {
         "linux": "",
         "windows": "AppData/Roaming/alacritty/alacritty.yml",
     },
+    "./.config/copyq/copyq.conf": {"linux": ""},
     "./.config/dunst/dunstrc": {"linux": ""},
     "./.config/ezautocompl.yml": "",
     "./.config/fontconfig/fonts.conf": {"linux": ""},
