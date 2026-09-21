@@ -1,1 +1,1 @@
- export PATH=$HOME/.local/bin_override:$PATH
+export PATH=$HOME/.local/bin_override:$PATH
