@@ -1,15 +1,145 @@
 #!/usr/bin/env bash
 set -eo pipefail
+
+usage() {
+    cat <<EOF
+Usage:
+  ${0##*/} [OPTIONS] <commit>
+  ${0##*/} [OPTIONS] <commit> <new-branch>
+
+With one positional argument, the branch name is derived from the
+commit subject.
+
+Options:
+  -v, --verbose   Stream command stdout/stderr while also logging it
+  -h, --help      Show this help
+EOF
+}
+
 die() {
     printf '%b\n' "$1" >&2
     exit "${2:-1}"
 }
 
-# "cli"
-arg1=$1
-shift || die "usage: <new-branch>\n  or\nusage: <commit-to-cherry-pick> <new-branch>"
+verbose=
 
-arg2=$1
+while (($#)); do
+    case "$1" in
+        -v|--verbose)
+            verbose=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            printf 'Unknown option: %s\n\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if (($# < 1 || $# > 2)); then
+    usage >&2
+    exit 2
+fi
+
+arg1=$1
+arg2=${2:-}
+
+# Keep the original stdout/stderr available so that we can show the log
+# after a failure even though normal command output is redirected.
+exec 3>&1 4>&2
+
+log_file=$(mktemp "${TMPDIR:-/tmp}/${0##*/}.XXXXXX.log") ||
+    die "failed to create temporary log file"
+
+cleanup() {
+    status=$?
+
+    # Avoid set -e interfering with cleanup/error reporting.
+    set +e
+
+    if ((status != 0)) && [[ -z "$verbose" ]]; then
+        if [[ -s "$log_file" ]]; then
+            printf '\n' >&4
+            cat "$log_file" >&4
+        fi
+    fi
+
+    rm -f "$log_file"
+
+    trap - EXIT
+    exit "$status"
+}
+trap cleanup EXIT
+
+# From here on, every command's stdout/stderr goes into the logfile.
+# In verbose mode it is additionally streamed to the terminal.
+if [[ "$verbose" ]]; then
+    exec > >(tee -a "$log_file" >&3)
+    exec 2> >(tee -a "$log_file" >&4)
+else
+    exec >>"$log_file" 2>&1
+fi
+
+open_url() {
+    local url=$1
+
+    if command -v xdg-open >/dev/null 2>&1; then
+        xdg-open "$url"
+    elif command -v gio >/dev/null 2>&1; then
+        gio open "$url"
+    else
+        die "found URL after push, but neither xdg-open nor gio is available:\n$url"
+    fi
+}
+
+push_and_open_url() {
+    local output status url
+
+    # Capture push output so we can inspect it, then replay it through our
+    # normal stdout path so it is logged/streamed like every other command.
+    if output=$(git push --set-upstream origin "$branch" 2>&1); then
+        status=0
+    else
+        status=$?
+    fi
+
+    [[ -z "$output" ]] || printf '%s\n' "$output"
+
+    if ((status != 0)); then
+        return "$status"
+    fi
+
+    # Find the first HTTP(S) URL printed by the remote, e.g. GitHub's
+    # "Create a pull request ... by visiting:" URL.
+    url=$(
+        printf '%s\n' "$output" |
+            grep -Eo 'https?://[^[:space:]<>()"]+' |
+            head -n1 ||
+            true
+    )
+
+    # Strip punctuation that may immediately follow a URL in prose.
+    url=${url%%[$'\r\n']}
+    while [[ "$url" == *[\.,\;\!\?] ]]; do
+        url=${url%?}
+    done
+
+    if [[ -n "$url" ]]; then
+        open_url "$url"
+    fi
+}
 
 if [[ -n "$arg2" ]]; then
     commit=$arg1
@@ -18,7 +148,12 @@ else
     commit=$arg1
     branch=$(git log -1 --format=%s "$commit")
     branch="${branch#*: }" # strip potential 'prefix: '
-    branch=$(echo "$branch" | sed 's/[[:space:][:punct:]]/-/g' | tr '[:upper:]' '[:lower:]' | sed 's/^-*//')
+    branch=$(
+        printf '%s\n' "$branch" |
+            sed 's/[[:space:][:punct:]]/-/g' |
+            tr '[:upper:]' '[:lower:]' |
+            sed 's/^-*//'
+    )
 fi
 
 has_changes=
@@ -37,20 +172,23 @@ fi
 if [[ "$has_changes" ]]; then
     git stash
 fi
+
 if [[ -n "$commit" ]]; then
-    set -x
     git checkout "${remote}/${default_branch}"
     git checkout -B "$branch"
     git cherry-pick "$commit"
-    git push --set-upstream origin "$branch"
+
+    push_and_open_url
+
     git-go-back co 1
     git-drop "$commit"
+
     if [[ "$has_changes" ]]; then
         git stash pop
     fi
 else # TODO - this doesn't make sense anymore
-    set -x
     git checkout -B "$branch"
     git rebase --autostash -i 'HEAD~30'
-    git push --set-upstream origin "$branch"
+
+    push_and_open_url
 fi
