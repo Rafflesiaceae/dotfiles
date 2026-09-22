@@ -37,18 +37,22 @@ set horizontal-scroll = 20%
 
 ## Colors
 # color author cyan default
+color title-focus white black
+color title-blur white black
+# color title-blur black 166
 
 color "commit " 16 default
 color id 16 default
 
-color author magenta default
-color "Author: " magenta default
-color "Commit: " cyan default
+color author blue default
+color "Author: " blue default
+color "Commit: " magenta default
 
 # color diff.author magenta default
 # color diff.committer cyan default
 
 color cursor black yellow
+# color cursor-blur black yellow
 color cursor-blur black 16
 color date yellow default
 color graph-commit green default
@@ -73,6 +77,8 @@ bind generic gg move-first-line
 bind main    G move-last-line
 bind generic G move-last-line
 
+bind generic o maximize
+
 bind generic <C-H> back
 bind generic <C-L> view-next
 bind generic <C-E> !sh -c 'git-rebase-noninteractive-single --edit %(commit)'
@@ -88,6 +94,7 @@ bind diff R >pause-on-error git rebase --autostash -i %(commit)^
 bind main ! >git revert %(commit)
 
 bind generic C >pause-on-error git commit
+bind status C >pause-on-error git commit
 # bind generic C @sh -c "git show -s --format=%B %(commit) | cb"
 #
 bind main <Esc>c @sh -c "git show -s --format=%B %(commit) | cb"
