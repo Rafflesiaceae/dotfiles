@@ -420,13 +420,22 @@ bindkey "^v" expand_command_line
 autoload edit-command-line; zle -N edit-command-line
 bindkey "^k" edit-command-line
 # }}}
-# {{{ edit which current buffer <F5>
+# {{{ edit which first word in current buffer <F5>
 edit_which_current_buffer() {
-    trimmed_buffer=$(echo "$BUFFER" | awk '{$1=$1;print}') # trim string
-    file=$(which "$trimmed_buffer")
-    if [[ -L "$file" ]]; then # resolve symlinks
-        file=$(readlink "$file")
+    local cmd file
+    local -a words
+
+    words=(${(z)BUFFER})
+    cmd=$words[1]
+
+    [[ -z "$cmd" ]] && return
+
+    file=$(which "$cmd") || return
+
+    if [[ -L "$file" ]]; then
+        file=$(readlink -f "$file")
     fi
+
     "$EDITOR" "$file"
 }
 zle -N edit_which_current_buffer
