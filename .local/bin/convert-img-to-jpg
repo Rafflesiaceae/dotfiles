@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+in="$1"
+out="${in%.*}.jpg"
+
+magick "$in" \
+    -background white \
+    -alpha remove \
+    -alpha off \
+    -quality 85 \
+    "$out"

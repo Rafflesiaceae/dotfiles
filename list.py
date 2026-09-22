@@ -138,6 +138,7 @@ sources = {
     "./.local/bin/container-run": "",
     "./.local/bin/container-stop-all": "",
     "./.local/bin/convert-html-to-md": "",
+    "./.local/bin/convert-img-to-jpg": "",
     "./.local/bin/convert-md-to-html": "",
     "./.local/bin/convert-md-to-rst": "",
     "./.local/bin/convert-rst-to-md": "",

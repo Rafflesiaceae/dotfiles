@@ -68,4 +68,15 @@
     <text-files/>
     <video-files/>
   </action>
+  <action>
+    <icon>image-x-gif</icon>
+    <name>Convert IMG to JPG</name>
+    <submenu></submenu>
+    <unique-id>1790082586629470-1</unique-id>
+    <command>convert-img-to-jpg &apos;%f&apos;</command>
+    <description></description>
+    <range>*</range>
+    <patterns>*</patterns>
+    <image-files/>
+  </action>
 </actions>
