@@ -78,6 +78,25 @@ augroup user_core_events
     autocmd Syntax * syntax sync minlines=256 maxlines=1000
 augroup END
 
+" Start numdots commit messages ready for typing when Git's template is empty.
+function! StartInsertForEmptyNumdotsCommit() abort
+    let l:prompt_line = match(getline(1, '$'), '^# Please enter the commit message')
+    if l:prompt_line < 0
+        return
+    endif
+
+    " match() returns a zero-based index, so this range ends before the prompt.
+    let l:message_lines = l:prompt_line == 0 ? [] : getline(1, l:prompt_line)
+    if empty(filter(l:message_lines, 'v:val =~# ''\S'''))
+        startinsert
+    endif
+endfunction
+
+augroup user_numdots_commit_message
+    autocmd!
+    autocmd BufReadPost /home/raf/.numdots/.git/COMMIT_EDITMSG call StartInsertForEmptyNumdotsCommit()
+augroup END
+
 " }}} 🔨 Core options
 " {{{ 🔌 Plugin settings
 " Configurations
