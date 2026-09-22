@@ -3,7 +3,7 @@
 unset -v latest
 
 usage() {
-    echo "usage: [-m|--move][-e|--edit]"
+    echo "usage: [-s|--sha][-c|--cat][-e|--edit][-m|--move][-mx|--move-x]"
     exit 1
 }
 
@@ -19,10 +19,10 @@ while :; do
         -e|--edit)
             cli_edit=1
             ;;
-        -c|-sha|--sha|--hash)
+        -s|--sha|--hash)
             cli_sha=1
             ;;
-        -cat)
+        -c|--cat)
             cli_cat=1
             ;;
         -m|--move)
@@ -53,7 +53,11 @@ if [[ $cli_cat ]]; then
 elif [[ $cli_edit ]]; then
     "$EDITOR" "$latest"
 elif [[ $cli_move ]]; then
-    ( set -x; mv "$latest" "$PWD" )
+    if [[ -n "$1" ]]; then
+        ( set -x; mv "$latest" "$1" )
+    else
+        ( set -x; mv "$latest" "$PWD" )
+    fi
 elif [[ $cli_movex ]]; then
     ( set -x; chmod +x "$latest"; mv "$latest" "$PWD" )
 elif [[ $cli_sha ]]; then
