@@ -56,15 +56,40 @@ ALL_STAGED="$TMPDIR/all_staged.nul"
 ALLOWED_NUL="$TMPDIR/allowed.nul"
 PATCH="$TMPDIR/staged.patch"
 
-# Track stash breadcrumb so we can tell the user on early exit
+# Track the exact stash commit, not its current stash@{N} position.
+# stash@{N} can change if another stash is created while this script runs.
 UNSTAGED_STASHED=0
+UNSTAGED_STASH_OID=""
 UNSTAGED_STASH_REF=""
 
-# If the script exits early and we created a stash, tell the user how to restore it
+resolve_unstaged_stash_ref() {
+    local oid ref
+
+    [ -n "$UNSTAGED_STASH_OID" ] || return 1
+
+    while IFS=$'\t' read -r oid ref; do
+        if [ "$oid" = "$UNSTAGED_STASH_OID" ]; then
+            printf '%s\n' "$ref"
+            return 0
+        fi
+    done < <(git_nr stash list --format='%H%x09%gd')
+
+    return 1
+}
+
+# If the script exits early and we created a stash, tell the user how to restore it.
 announce_stash_on_exit() {
-    if [ "$UNSTAGED_STASHED" -eq 1 ] && [ -n "$UNSTAGED_STASH_REF" ]; then
-        printf "\n\e[33mNOTE:\e[0m Your unstaged changes are safe in \e[1m%s\e[0m.\n" "$UNSTAGED_STASH_REF" >&2
-        printf "Restore with:  git stash apply \"%s\"\n\n" "$UNSTAGED_STASH_REF" >&2
+    local ref
+
+    if [ "$UNSTAGED_STASHED" -eq 1 ] && [ -n "$UNSTAGED_STASH_OID" ]; then
+        ref="$(resolve_unstaged_stash_ref || true)"
+        if [ -n "$ref" ]; then
+            printf "\n\e[33mNOTE:\e[0m Your unstaged changes are safe in \e[1m%s\e[0m.\n" "$ref" >&2
+            printf "Restore with:  git stash apply \"%s\"\n\n" "$ref" >&2
+        else
+            printf "\n\e[33mNOTE:\e[0m Your unstaged changes are safe in stash commit \e[1m%s\e[0m.\n" "$UNSTAGED_STASH_OID" >&2
+            printf "Restore with:  git stash apply \"%s\"\n\n" "$UNSTAGED_STASH_OID" >&2
+        fi
     fi
 }
 trap 'rc=$?; announce_stash_on_exit; exit $rc' INT TERM
@@ -115,8 +140,7 @@ if ! git_nr diff --quiet || { [ "$INCLUDE_UNTRACKED" -eq 1 ] && [ -n "$(git_nr l
         git_nr stash push -k -m "$MSG"
     fi
     UNSTAGED_STASHED=1
-    # exact reference to this stash via reflog search
-    UNSTAGED_STASH_REF="stash^{/$MSG}"
+    UNSTAGED_STASH_OID="$(git_nr rev-parse --verify 'stash@{0}')"
 else
     info "No unstaged changes to stash."
 fi
@@ -149,9 +173,18 @@ git-continue
 # 9) restore previously UNSTAGED changes and keep them unstaged
 if [ "$UNSTAGED_STASHED" -eq 1 ]; then
     info "Restoring previously UNSTAGED changes..."
-    # Use the exact ref we recorded
+
+    UNSTAGED_STASH_REF="$(resolve_unstaged_stash_ref || true)"
+    if [ -z "$UNSTAGED_STASH_REF" ]; then
+        err "Could not locate temporary stash $UNSTAGED_STASH_OID in the stash reflog."
+        printf "The stash commit itself is: %s\n" "$UNSTAGED_STASH_OID" >&2
+        printf "Restore with:  git stash apply \"%s\"\n" "$UNSTAGED_STASH_OID" >&2
+        exit 1
+    fi
+
     if git_nr stash pop "$UNSTAGED_STASH_REF"; then
         UNSTAGED_STASHED=0
+        UNSTAGED_STASH_OID=""
         UNSTAGED_STASH_REF=""
     else
         err "Failed to pop $UNSTAGED_STASH_REF. Resolve conflicts and apply manually:"
