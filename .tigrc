@@ -1,26 +1,55 @@
-# Settings
+## Keybinding Prefixes ↓↓↓
+##  !   Run the command in the foreground with output shown.
+##  @   Run the command in the background with no output.
+##  +   Run the command synchronously, and echo the first line
+##      of output to the status bar.
+##  ?   Prompt the user before executing the command.
+##  <   Exit Tig after executing the command.
+##  >   Re-open Tig instantly in the last displayed view after
+##      executing the command.
+##
+##      Also see:
+##      https://jonas.github.io/tig/doc/tigrc.5.html?q=#:~:text=Browsing%20state%20variables
+##
+## Settings
 set main-view = line-number:no,interval=4 \
     id:yes \
-    date:default \
+    date:default,local=yes \
     author:full \
     commit-title:yes,graph,refs,overflow=72
 
 set line-graphics = utf-8
 set show-changes = yes
 set show-untracked = no
+
 # set ignore-space = no
 # set ignore-space-at-eol = no
 # set ws-error-highlight = all
 
 set tab-size = 4
-set ignore-case = true
+set ignore-case = smart-case
+
+set truncation-delimiter = utf-8
+
+set horizontal-scroll = 20%
 
 # set diff-options = --word-diff=plain --word-diff-regex=.
 
-# Colors
-color author green default
+## Colors
+# color author cyan default
+
+color "commit " 16 default
+color id 16 default
+
+color author magenta default
+color "Author: " magenta default
+color "Commit: " cyan default
+
+# color diff.author magenta default
+# color diff.committer cyan default
+
 color cursor black yellow
-# color cursor-blur black yellow
+color cursor-blur black 16
 color date yellow default
 color graph-commit green default
 color main-head magenta default
@@ -33,21 +62,10 @@ color title-focus white black
 color tree.directory cyan default
 color tree.header white default
 
-# Keybindings
-# 
-#   !   Run the command in the foreground with output shown.
-#   @   Run the command in the background with no output.
-#   +   Run the command synchronously, and echo the first line
-#       of output to the status bar.
-#   ?   Prompt the user before executing the command.
-#   <   Exit Tig after executing the command.
-#   >   Re-open Tig instantly in the last displayed view after
-#       executing the command.
-#
-# Also see:
-# https://jonas.github.io/tig/doc/tigrc.5.html?q=#:~:text=Browsing%20state%20variables
+## Keybinding
 bind generic h scroll-left
 bind generic l scroll-right
+bind generic H scroll-first-col
 
 bind generic g none
 bind generic gg move-first-line
@@ -57,36 +75,35 @@ bind generic G move-last-line
 
 bind generic <C-H> back
 bind generic <C-L> view-next
-bind generic H view-help
 bind generic <C-E> !sh -c 'git-rebase-noninteractive-single --edit %(commit)'
 bind generic <C-R> !sh -c 'git-rebase-noninteractive-single --reword %(commit)'
 bind generic f refresh
 
-bind main R !git rebase --autostash -i %(commit)^
-bind diff R !git rebase --autostash -i %(commit)^
+bind main R >pause-on-error git rebase --autostash -i %(commit)^
+bind diff R >pause-on-error git rebase --autostash -i %(commit)^
 
 # @TODO
 # bind diff ! !notify-send qwe %(text)^
 
 bind main ! >git revert %(commit)
 
-bind generic C !git commit
+bind generic C >pause-on-error git commit
 # bind generic C @sh -c "git show -s --format=%B %(commit) | cb"
 #
 bind main <Esc>c @sh -c "git show -s --format=%B %(commit) | cb"
 bind main v @sh -c "git show -s --format=%B %(commit) | cb"
 bind main c !?<git checkout %(commit)
-bind main C >git commit
+bind main C >pause-on-error git commit
 
 # bind refs C !?git checkout -b %(tag) %(tag)
 # bind refs c !?git checkout -b %(tag) %(tag)
 bind refs c !?<git checkout %(branch)
 
 # bind main A >git commit --amend
-bind main A >git-amend-to-particular-commit  %(commit)
+bind main A >pause-on-error git-amend-to-particular-commit  %(commit)
 
-bind generic a >git add -u
-bind generic u >git reset
+# bind generic a >pause-on-error git add -u
+bind main U @pause-on-error git reset
 
 bind generic <F8> >git-debug-commitpush
 # bind generic <F4> >git-debug-commitpush
@@ -100,7 +117,8 @@ bind main  I !@sh -c "git-stage-all-unstaged-changes"
 bind stage I !@sh -c "git-stage-all-unstaged-changes"
 
 bind status D !@?rm %(file)
-bind stage U @!git stage %(file)
+# bind stage U @!git stage %(file)
+bind stage U >pause-on-error git stage %(file)
 
 bind refs 1 @?git tag -d %(tag)
 bind refs D !?git push %(remote) --delete %(branch)
@@ -117,10 +135,9 @@ bind generic <Space> +@sh -c "cb -a -s \" %(commit)\"; echo \"appended %(commit)
 bind generic <C-B> +@sh -c "git show --format='%B' --quiet \"%(commit)\" | xclip -selection c; echo \"copied message for %(commit)\""
 bind generic <C-T> !@sh -c "termpopup --no-escape --no-float -- git-edit-date \"%(commit)\""
 
-
 bind generic <C-s> !@?git stash
 
-bind generic E !@code -g %(file):%(lineno)
+# bind generic E !@code -g %(file):%(lineno)
 bind diff 7 !git diff %(commit)^ %(commit)
 
 # bind status i !sh -c 'echo "$(tig --current)" >> .gitignore && git add .gitignore'
@@ -128,3 +145,11 @@ bind diff 7 !git diff %(commit)^ %(commit)
 # bind status i !sh -c 'git-ignore-add \"%(file)\"'
 # bind status i !sh -c 'git-ignore-add "%(file)"; exec tig status'
 bind status i +@sh -c 'git-ignore-add "%(file)"'
+
+## Shortcut reminders
+# bind generic ? :echo "C=commit | a=add -u | f=refresh | V=show | <C-c>=copy SHA | <Space>=append SHA | <C-b>=copy msg | <C-s>=stash"
+bind main    ? :echo "C=commit | S=create patch | A=amend | U=reset | c=checkout | v=copy msg | R=rebase | p=push | P=split | <C-p>=cherry-pick"
+bind refs    ? :echo "c=checkout branch | 1=delete tag | D=delete remote branch | C=commit | a=add -u | f=refresh"
+bind diff    ? :echo "R=rebase | 7=commit diff | C=commit | a=add -u | f=refresh"
+bind status  ? :echo "D=remove file | i=ignore file | T=stage all | C=commit | a=add -u | f=refresh"
+bind stage   ? :echo "U=stage file | I=stage all | C=commit | a=add -u | f=refresh"
