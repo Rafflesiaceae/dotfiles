@@ -165,7 +165,7 @@ EOF
         echo "Add additional debug prints in case they are necessary to confirm the fixes - if possible only when \$DEBUG env is set."
         echo "Implement what is required to fix this and return a single fenced yaml code block with only the changed files and no extra text."
         echo ""
-        echo "If files are not changed don't output them."
+        echo "If files are not changed don't output them. Files contents must be output as a whole with a 'content' field, patches are not supported!"
         echo ""
         echo "Also add a new file to the filetree named: ${commitmessagef}"
         echo 'Inside, write a git commit body - the title max being 50 characters (starting with 'CGPT: ') and the body description 640 characters at most (wrapped at 80 characters per line).'

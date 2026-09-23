@@ -2258,13 +2258,65 @@ simple shell script (.systemd .service): |
     WantedBy=multi-user.target
 
 # CGPT {{{1
-Apply SPEC.rst (.cgtp .chatgpt): |
-    Make sure that the codebase covers what is mentioned in the SPEC.rst. (Apply what is specified in SPEC.rst to the codebase).
+# Apply SPEC.rst (.llm): |
+#     Make sure that the codebase covers what is mentioned in the SPEC.rst. (Apply what is specified in SPEC.rst to the codebase).
 
-General Footer (.cgtp .chatgpt): |
-    Also add a new file to the filetree named: wip-commit-message
-    Inside, write a git commit body - the title max being 50 characters (starting with CGPT: ) and the body description 640 characters at most (wrapped at 80 characters per line).
-    Concisely describe what the issue was that you tried to fix and how you attempt to fix it.
+# General Footer (.llm): |
+#     Also add a new file to the filetree named: wip-commit-message
+#     Inside, write a git commit body - the title max being 50 characters (starting with CGPT: ) and the body description 640 characters at most (wrapped at 80 characters per line).
+#     Concisely describe what the issue was that you tried to fix and how you attempt to fix it.
+
+Critique/Review (.llm): |
+    Review/Critique this.
+
+    THINK HARD ON THIS!!!!!!!!!! YOU MADE MISTAKES BEFORE!!!!!!!!!!!!!!!! FUCK YOU!!!
+
+Final Critique/Review (.llm): |
+    Review this as a final acceptance review, not as an open-ended brainstorming or improvement exercise.
+
+    The specification has already undergone multiple review/revision cycles. The goal now is to determine whether it is sufficiently correct, internally consistent, implementable, and complete to begin implementation.
+
+    Do NOT suggest changes merely because:
+
+    another architecture or API would also be reasonable;
+    something could be cleaner, more elegant, or more future-proof;
+    additional optional features could be added;
+    wording could be polished without changing meaning;
+    an implementation detail can reasonably be decided during implementation.
+
+    Treat the existing architectural choices as intentional unless they cause a concrete problem.
+
+    Classify every finding as:
+
+    BLOCKER — implementation cannot reasonably proceed, the design is contradictory/impossible, or there is a serious correctness/security problem.
+    MAJOR — significant ambiguity or omission likely to cause incompatible implementations, substantial rework, or incorrect behavior.
+    MINOR — real issue, but safe to resolve during implementation.
+    OPTIONAL — improvement, preference, alternative design, or polish.
+
+    Focus primarily on BLOCKER and MAJOR findings.
+
+    For every BLOCKER or MAJOR finding:
+
+    quote or identify the relevant part of the specification;
+    explain the concrete failure mode;
+    give the smallest change needed to fix it.
+
+    Do not inflate the number of findings. Combine related issues. Do not manufacture edge cases merely to produce criticism.
+
+    At the end, give exactly one acceptance result:
+
+    READY FOR IMPLEMENTATION
+    if there are no BLOCKER or MAJOR issues remaining.
+
+    or
+
+    NOT READY
+    if one or more BLOCKER or MAJOR issues remain.
+
+    If the result is READY FOR IMPLEMENTATION, explicitly say that further review would primarily consist of optional improvements, implementation decisions, or diminishing-return refinements, and recommend stopping the specification-review loop.
+
+    THINK HARD ON THIS!!!!!!!!!! YOU MADE MISTAKES BEFORE!!!!!!!!!!!!!!!! FUCK YOU!!!
+
 
 # various {{{1
 All pixi platforms (.pixi): '"win-64", "linux-64", "osx-64", "osx-arm64"'
