@@ -51,8 +51,13 @@ cache_file_of() { printf '%s/%s' "$cached" "$(printf "%s" "$1" | nonsecure_hashf
 ## update_submodules() { git submodule update --init --recursive --remote; }
 update_submodules() { git submodule update --init --recursive; }
 switch_branch() { [[ "$(git branch --show-current)" != "$1" ]] && git checkout --quiet "$1"; true; }
-## save absolute paths to all active submodules
-find_active_submodule_dirs() { git submodule--helper list | awk -v "top_level=$top_level" '{ print top_level "/" $4; }'; } #@XXX relies on undocumented internals
+## Save absolute paths to all initialized submodules using Git's public API.
+find_active_submodule_dirs() {
+    # The variables are expanded by the shell that submodule foreach starts.
+    # shellcheck disable=SC2016
+    git submodule foreach --quiet --recursive \
+        'printf "%s/%s\n" "$toplevel" "$sm_path"'
+}
 
 restore_branch() {
     submodule_full_path=$1
@@ -131,13 +136,14 @@ do_the_deed() {
 
     program_is_intalled "gitup" && gitup ## optionally run 'gitup' if installed
 
-    active_submodule_dirs=$(find_active_submodule_dirs)
-
     has_submodules=
-    [[ -n $active_submodule_dirs ]] && has_submodules=1
+    [[ -n $(git submodule status --recursive) ]] && has_submodules=1
+
+    active_submodule_dirs=$(find_active_submodule_dirs)
 
     { ## record last active branch
         while IFS= read -r submodule_full_path; do
+            [[ -z "$submodule_full_path" ]] && continue
             cachef=$(cache_file_of "$submodule_full_path")
 
             ## find current branch (if any)
@@ -164,6 +170,7 @@ do_the_deed() {
         printf "> checking out submodules..."
         { ## restore active branch et. al.
             while IFS= read -r submodule_full_path; do
+                [[ -z "$submodule_full_path" ]] && continue
                 cachef=$(cache_file_of "$submodule_full_path")
 
                 previous_branch=
