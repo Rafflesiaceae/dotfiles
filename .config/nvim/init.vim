@@ -418,7 +418,7 @@ if has('python3')
     " Starting the Python provider dominated startup (~100 ms). Load snippets
     " on the first insert instead; no snippet functionality is lost.
     Plug 'SirVer/ultisnips',          { 'on': [] }
-    Plug 'Rafflesiaceae/vim-snippets', { 'on': [] }
+    Plug '~/workspace/vim-snippets'
 endif
 
 " Plug 'rhysd/vim-grammarous'
