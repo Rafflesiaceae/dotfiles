@@ -5,14 +5,6 @@
 
 set -euo pipefail
 
-# 0) Sanity checks
-for cmd in git fzf gitusers git-initial-commit; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    echo "Error: required command '$cmd' not found in PATH." >&2
-    exit 1
-  fi
-done
-
 # 1) Refuse to run inside an existing Git repo
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Error: $(pwd) is already an initialized Git repository." >&2

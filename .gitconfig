@@ -1,53 +1,51 @@
 [svn]
-  pushmergeinfo = true
+    pushmergeinfo = true
 [fetch]
-  prune = true
+    prune = true
 [push]
-  autoSetupRemote = true
+    autoSetupRemote = true
 [commit]
-  verbose = true
+    verbose = true
 [pull]
-  rebase = true
+    rebase = true
 [merge]
-  tool = nvimdiff
+    tool = nvimdiff
 [mergetool]
-  keepBackup = false
+    keepBackup = false
 [init]
-  defaultBranch = main
+    defaultBranch = main
 [alias]
-  au   = add -u
-  br   = branch
-  ci   = commit
-  cl   = clone
-  co   = checkout
-  cp   = cherry-pick
-  dc   = diff --cached
-  diff = diff --word-diff
-  r    = review
-  st   = status -s
-  gud = log --oneline --decorate --graph --simplify-by-decoration
-  unpushed = "!f() { git log \"$1/$2..$2\"; }; f"
+    au   = add -u
+    br   = branch
+    ci   = commit
+    cl   = clone
+    co   = checkout
+    cp   = cherry-pick
+    dc   = diff --cached
+    diff = diff --word-diff
+    r    = review
+    st   = status -s
+    gud = log --oneline --decorate --graph --simplify-by-decoration
+    unpushed = "!f() { git log \"$1/$2..$2\"; }; f"
 
-  xxx = "!git commit -am \"@SQUASHME - XXX commit - committed an intermediate state for likely testing reasons\" && git push"
+    xxx = "!git commit -am \"@SQUASHME - XXX commit - committed an intermediate state for likely testing reasons\" && git push"
 
-  suburr = submodule update --init --recursive --remote
-  subur = submodule update --init --recursive
-  subu = submodule update --init
-  tag-creation-dates = "log --tags --simplify-by-decoration --pretty=\"format:%ai %d\""
-  diffeol = diff --ignore-cr-at-eol
+    suburr = submodule update --init --recursive --remote
+    subur = submodule update --init --recursive
+    subu = submodule update --init
+    tag-creation-dates = "log --tags --simplify-by-decoration --pretty=\"format:%ai %d\""
+    diffeol = diff --ignore-cr-at-eol
 [color.diff]
-  whitespace = red reverse
+    whitespace = red reverse
 [safe]
-  directory = *
+    directory = *
 [advice]
-  skippedCherryPicks = false
-  detachedHead = false
+    skippedCherryPicks = false
+    detachedHead = false
 
-  statusHints = false
-  waitingForEditor = false
-  addEmptyPathspec = false
-  diverging = false
+    statusHints = false
+    waitingForEditor = false
+    addEmptyPathspec = false
+    diverging = false
 [include]
-  path = :(optional)~/.config/git/local
-
-# vim: set ts=2 sw=2 et:
+    path = ~/.config/git/local
