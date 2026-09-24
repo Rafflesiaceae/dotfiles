@@ -1,0 +1,251 @@
+#!/usr/bin/env luajit
+
+local ffi = require("ffi")
+local bit = require("bit")
+
+ffi.cdef[[
+typedef int pid_t;
+typedef long ssize_t;
+typedef unsigned long size_t;
+
+int pipe(int pipefd[2]);
+pid_t fork(void);
+int dup2(int oldfd, int newfd);
+int close(int fd);
+
+ssize_t read(int fd, void *buf, size_t count);
+ssize_t write(int fd, const void *buf, size_t count);
+
+int execvp(const char *file, char *const argv[]);
+pid_t waitpid(pid_t pid, int *status, int options);
+
+void _exit(int status);
+]]
+
+local C = ffi.C
+
+local STDIN_FILENO  = 0
+local STDOUT_FILENO = 1
+local EINTR = 4
+
+local function die(msg)
+    io.stderr:write("Error: ", msg, "\n")
+    os.exit(1)
+end
+
+local function close_fd(fd)
+    if fd >= 0 then
+        C.close(fd)
+    end
+end
+
+local function make_pipe()
+    local fds = ffi.new("int[2]")
+
+    if C.pipe(fds) ~= 0 then
+        die("pipe() failed: errno " .. ffi.errno())
+    end
+
+    return tonumber(fds[0]), tonumber(fds[1])
+end
+
+local function wait_child(pid)
+    local status = ffi.new("int[1]")
+
+    while true do
+        local rc = C.waitpid(pid, status, 0)
+
+        if rc >= 0 then
+            break
+        end
+
+        if ffi.errno() ~= EINTR then
+            die("waitpid() failed: errno " .. ffi.errno())
+        end
+    end
+
+    local s = tonumber(status[0])
+
+    -- Linux/POSIX wait status:
+    -- low 7 bits == 0 means normal exit.
+    if bit.band(s, 0x7f) == 0 then
+        return bit.band(bit.rshift(s, 8), 0xff)
+    end
+
+    return 128 + bit.band(s, 0x7f)
+end
+
+local function exec(argv)
+    local cargv = ffi.new("const char *[?]", #argv + 1)
+
+    for i = 1, #argv do
+        cargv[i - 1] = argv[i]
+    end
+
+    cargv[#argv] = nil
+
+    C.execvp(argv[1], ffi.cast("char *const *", cargv))
+
+    io.stderr:write(
+        "execvp(",
+        argv[1],
+        ") failed: errno ",
+        ffi.errno(),
+        "\n"
+    )
+
+    C._exit(127)
+end
+
+local function read_all(fd)
+    local chunks = {}
+    local buf = ffi.new("uint8_t[?]", 65536)
+
+    while true do
+        local n = C.read(fd, buf, 65536)
+
+        if n > 0 then
+            chunks[#chunks + 1] = ffi.string(buf, n)
+        elseif n == 0 then
+            break
+        elseif ffi.errno() ~= EINTR then
+            close_fd(fd)
+            die("read() failed: errno " .. ffi.errno())
+        end
+    end
+
+    close_fd(fd)
+
+    return table.concat(chunks)
+end
+
+local function write_all(fd, data)
+    local len = #data
+    local pos = 0
+    local ptr = ffi.cast("const uint8_t *", data)
+
+    while pos < len do
+        local n = C.write(fd, ptr + pos, len - pos)
+
+        if n > 0 then
+            pos = pos + tonumber(n)
+        elseif n < 0 and ffi.errno() == EINTR then
+            -- retry
+        else
+            close_fd(fd)
+            die("write() failed: errno " .. ffi.errno())
+        end
+    end
+
+    close_fd(fd)
+end
+
+local function capture(argv)
+    local rd, wr = make_pipe()
+    local pid = C.fork()
+
+    if pid < 0 then
+        close_fd(rd)
+        close_fd(wr)
+        die("fork() failed: errno " .. ffi.errno())
+    end
+
+    if pid == 0 then
+        close_fd(rd)
+
+        if C.dup2(wr, STDOUT_FILENO) < 0 then
+            C._exit(127)
+        end
+
+        close_fd(wr)
+        exec(argv)
+    end
+
+    close_fd(wr)
+
+    local output = read_all(rd)
+    local status = wait_child(pid)
+
+    return output, status
+end
+
+local function run_filter(argv, input)
+    local in_rd, in_wr = make_pipe()
+    local out_rd, out_wr = make_pipe()
+
+    local pid = C.fork()
+
+    if pid < 0 then
+        close_fd(in_rd)
+        close_fd(in_wr)
+        close_fd(out_rd)
+        close_fd(out_wr)
+        die("fork() failed: errno " .. ffi.errno())
+    end
+
+    if pid == 0 then
+        close_fd(in_wr)
+        close_fd(out_rd)
+
+        if C.dup2(in_rd, STDIN_FILENO) < 0 then
+            C._exit(127)
+        end
+
+        if C.dup2(out_wr, STDOUT_FILENO) < 0 then
+            C._exit(127)
+        end
+
+        close_fd(in_rd)
+        close_fd(out_wr)
+
+        exec(argv)
+    end
+
+    close_fd(in_rd)
+    close_fd(out_wr)
+
+    write_all(in_wr, input)
+
+    local output = read_all(out_rd)
+    local status = wait_child(pid)
+
+    return output, status
+end
+
+-- Run gitusers directly, without a shell.
+local users_out, status = capture({ "gitusers" })
+
+if status ~= 0 then
+    die("'gitusers' exited with status " .. status)
+end
+
+-- Equivalent to: tail -n +2
+users_out = users_out:match("^[^\n]*\n(.*)$") or ""
+
+if not users_out:find("%S") then
+    die("'gitusers' returned no selectable rows.")
+end
+
+local selection, fzf_status = run_filter({
+    "fzf",
+    "--prompt=Pick user > ",
+}, users_out)
+
+if fzf_status ~= 0 then
+    io.stderr:write("Aborted: no selection made.\n")
+    os.exit(1)
+end
+
+selection = selection:gsub("[\r\n]+$", "")
+
+local first_col = selection:match("^%s*(%S+)")
+
+if not first_col then
+    die(
+        "could not parse the first column from your selection: '"
+        .. selection
+        .. "'"
+    )
+end
+
+print(first_col)

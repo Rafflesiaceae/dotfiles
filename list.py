@@ -266,6 +266,7 @@ sources = {
     "./.local/bin/gitsta": "",
     "./.local/bin/gitsup": "",
     "./.local/bin/gitup": "",
+    "./.local/bin/gitusers-prompt": "",
     "./.local/bin/gr": "",
     "./.local/bin/grr": "",
     "./.local/bin/gru": "",
