@@ -1,9 +1,1 @@
-changeps1: false
-auto_activate_base: false
-channel_priority: strict
 channels: []
-pkgs_dirs:
-    - '/home/MYUSER/.conda/pkgs'
-envs_dirs:
-    - '/home/MYUSER/.conda/envs'
-# vim: set ft=yaml syn=yaml:
