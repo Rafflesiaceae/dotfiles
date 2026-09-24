@@ -66,8 +66,6 @@ local function wait_child(pid)
 
     local s = tonumber(status[0])
 
-    -- Linux/POSIX wait status:
-    -- low 7 bits == 0 means normal exit.
     if bit.band(s, 0x7f) == 0 then
         return bit.band(bit.rshift(s, 8), 0xff)
     end
@@ -99,7 +97,7 @@ end
 
 local function read_all(fd)
     local chunks = {}
-    local buf = ffi.new("uint8_t[?]", 65536)
+    local buf = ffi.new("uint8_t[65536]")
 
     while true do
         local n = C.read(fd, buf, 65536)
@@ -212,7 +210,96 @@ local function run_filter(argv, input)
     return output, status
 end
 
--- Run gitusers directly, without a shell.
+local function match_user(uri)
+    local cjson = require("cjson")
+    local rex = require("rex_pcre2")
+
+    local home = os.getenv("HOME")
+    if not home or home == "" then
+        die("$HOME is not set")
+    end
+
+    local path = home .. "/.config/gitusers.json"
+    local file, err = io.open(path, "rb")
+
+    if not file then
+        die("could not open " .. path .. ": " .. tostring(err))
+    end
+
+    local json = file:read("*a")
+    file:close()
+
+    local ok, users = pcall(cjson.decode, json)
+
+    if not ok then
+        die("could not parse " .. path .. ": " .. tostring(users))
+    end
+
+    if type(users) ~= "table" then
+        die(path .. " must contain a JSON array")
+    end
+
+    for i, user in ipairs(users) do
+        if type(user) ~= "table" then
+            die("entry " .. i .. " in " .. path .. " is not an object")
+        end
+
+        if user.match ~= nil then
+            if type(user.match) ~= "string" then
+                die("entry " .. i .. " has a non-string 'match' field")
+            end
+
+            local matched, first = pcall(
+                rex.find,
+                uri,
+                user.match
+            )
+
+            if not matched then
+                die(
+                    "invalid regex in entry "
+                    .. i
+                    .. ": "
+                    .. tostring(first)
+                )
+            end
+
+            if first ~= nil then
+                if type(user.short) ~= "string"
+                    or user.short == ""
+                then
+                    die(
+                        "entry "
+                        .. i
+                        .. " matched but has no valid 'short' field"
+                    )
+                end
+
+                return user.short
+            end
+        end
+    end
+end
+
+--
+-- Fast path:
+--
+-- If a URI was supplied, try ~/.config/gitusers.json first.
+-- The first matching regex wins.
+--
+if arg[1] ~= nil then
+    local short = match_user(arg[1])
+
+    if short then
+        print(short)
+        os.exit(0)
+    end
+end
+
+--
+-- No URI match, or no URI supplied:
+-- fall back to the interactive fzf picker.
+--
 local users_out, status = capture({ "gitusers" })
 
 if status ~= 0 then

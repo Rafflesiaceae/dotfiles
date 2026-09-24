@@ -82,18 +82,25 @@ f() {
 }
 
 gcl() {
-    if [[ "$#" -lt 1 ]]; then
-        url="$(cb)"
-    else
-        url="$1"
-    fi
-    dir="${url##*/}"  # -> somerepo.git
-    dir="${dir%.git}" # -> somerepo
+    url="${1:-$(cb)}"
+    dir="${url##*/}"
+    dir="${dir%.git}"
+
+    user="$(gitusers-prompt "$url")" || return
+
+    [[ -n "${user// }" ]] || {
+        echo "Error: gitusers-prompt returned no user." >&2
+        return 1
+    }
 
     if [[ ! -d "$dir" ]]; then
-        git clone "$url"
+        git clone \
+            -c core.sshCommand="$(gitusers -sshc "$user")" \
+            "$url"
     fi
+
     cd "$dir"
+    gitusers "$user"
 }
 
 nh() {
