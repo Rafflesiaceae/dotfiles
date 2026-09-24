@@ -50,13 +50,15 @@ repos-config.py contract:
     before either the default or a custom command runs.
   - may define pre_update_hook(repo: dict) -> None and
     post_update_hook(repo: dict) -> None: called by the "update"/"upd"
-    subcommand for each selected repo, immediately before and immediately
-    after its clone-or-pull step. post_update_hook always runs once
-    pre_update_hook has run, even if pre_update_hook, the clone/pull step,
-    or both raised/failed, so a hook pair that e.g. stops and restarts a
-    service around the update stays paired. An exception from either hook
-    is reported like any other per-repo failure (that repo counts as
-    failed) and does not stop other repos from being processed.
+    subcommand only for an existing checkout that has remote changes to
+    pull, immediately before and immediately after its pull step. They are
+    not called for clones, dirty/skipped repos, or repos that are already
+    up to date. post_update_hook always runs once pre_update_hook has run,
+    even if pre_update_hook, the pull step, or both raised/failed, so a hook
+    pair that e.g. stops and restarts a service around the update stays
+    paired. An exception from either hook is reported like any other
+    per-repo failure (that repo counts as failed) and does not stop other
+    repos from being processed.
   - `repo` has keys: id, host, path (list[str]), remote (str | None), tags
     (list[str]), sourceloc (str, "<abspath>:<linenr>" of the repos.conf
     line); repo also gains workdir (str) once remap_workdir has run, so
@@ -416,7 +418,7 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
     docstring's startup-cost note).
 
     If config_module defines pre_update_hook/post_update_hook, they're
-    called around each repo's clone-or-pull step (see the module docstring's
+    called around pulls that have remote changes to integrate (see the module docstring's
     repos-config.py contract for pairing/failure semantics). If it defines
     custom_clone_cmd, it's called lazily -- only for a repo that's actually
     about to be cloned, never precomputed for the rest -- to get the argv to
@@ -644,15 +646,39 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
             )
             return False
 
-        # Compared against HEAD after the pull below to decide whether to
-        # print anything: --quiet doesn't reliably suppress git's "Already
-        # up to date." (it depends on the git version), so we check the
-        # actual ref movement instead of trying to parse pull's output.
-        before = run(["git", "rev-parse", "HEAD"], cwd=workdir).stdout.strip()
-
-        p = run(["git", "pull", "--quiet"], cwd=workdir)
+        # Fetch first so we can tell whether there is anything to integrate
+        # before running hooks. This keeps service-stop/start style hooks
+        # completely out of the already-up-to-date path. `git pull` below
+        # still performs its normal fetch+merge/rebase so existing Git pull
+        # configuration/semantics are preserved.
+        p = run(["git", "fetch", "--quiet"], cwd=workdir)
         if p.returncode != 0:
-            report_failure(workdir, f"ERROR in {workdir}: git pull failed:\n{(p.stderr or p.stdout or '').strip()}")
+            report_failure(workdir, f"ERROR in {workdir}: git fetch failed:\n{(p.stderr or p.stdout or '').strip()}")
+            return False
+
+        before = run(["git", "rev-parse", "HEAD"], cwd=workdir).stdout.strip()
+        upstream_p = run(["git", "rev-parse", "--verify", "@{upstream}"], cwd=workdir)
+        upstream = (upstream_p.stdout or "").strip()
+        if upstream_p.returncode == 0 and upstream == before:
+            return True
+
+        ok = True
+        if pre_update_hook is not None:
+            ok = run_hook(pre_update_hook, repo, "pre_update_hook")
+        try:
+            if ok:
+                p = run(["git", "pull", "--quiet"], cwd=workdir)
+                if p.returncode != 0:
+                    report_failure(
+                        workdir,
+                        f"ERROR in {workdir}: git pull failed:\n{(p.stderr or p.stdout or '').strip()}",
+                    )
+                    ok = False
+        finally:
+            if post_update_hook is not None:
+                ok = run_hook(post_update_hook, repo, "post_update_hook") and ok
+
+        if not ok:
             return False
 
         after = run(["git", "rev-parse", "HEAD"], cwd=workdir).stdout.strip()
@@ -669,19 +695,7 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
             return False
 
     def update_one(repo: dict) -> bool:
-        # post_update_hook always runs once pre_update_hook has run (even if
-        # pre_update_hook or do_update raised/failed), so a hook pair that
-        # e.g. stops and restarts a service around the update stays paired.
-        ok = True
-        if pre_update_hook is not None:
-            ok = run_hook(pre_update_hook, repo, "pre_update_hook")
-        try:
-            if ok:
-                ok = do_update(repo)
-        finally:
-            if post_update_hook is not None:
-                ok = run_hook(post_update_hook, repo, "post_update_hook") and ok
-        return ok
+        return do_update(repo)
 
     any_failed = False
     with ThreadPoolExecutor(max_workers=jobs) as ex:

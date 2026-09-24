@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 workdir_root = "~/workspace"
 
 repo_files = [
@@ -29,3 +32,14 @@ def remap_workdir(repo):
 # optional
 def custom_clone_cmd(repo):
     return ["gitusers-clone", repo["remote"], repo["workdir"]]
+
+
+def post_update_hook(repo):
+    build_sh = os.path.join(repo["workdir"], "build.sh")
+
+    if os.path.isfile(build_sh):
+        subprocess.run(
+            ["./build.sh"],
+            cwd=repo["workdir"],
+            check=True,
+        )
