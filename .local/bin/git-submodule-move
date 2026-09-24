@@ -1,0 +1,315 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+prog=${0##*/}
+
+usage() {
+    cat <<EOF
+Usage:
+  $prog <submodule> <new-path>
+  $prog -l | --list
+  $prog -h | --help
+
+Move a Git submodule to a new path while preserving its Git metadata,
+history, configuration, and nested submodule setup.
+
+Arguments:
+  <submodule>   Current path of the submodule.
+  <new-path>    New path for the submodule.
+
+Options:
+  -l, --list    List submodules declared in this repository.
+  -h, --help    Show this help.
+
+Examples:
+  $prog libs/foo vendor/foo
+  $prog --list
+  $prog --help
+
+If installed as "git-submodule-move", it can also be invoked as:
+
+  git submodule-move libs/foo vendor/foo
+  git submodule-move --list
+EOF
+}
+
+die() {
+    printf 'error: %s\n' "$*" >&2
+    exit 1
+}
+
+command -v git      >/dev/null 2>&1 || die "git not found"
+command -v realpath >/dev/null 2>&1 || die "realpath not found"
+
+git rev-parse --is-inside-work-tree >/dev/null 2>&1 ||
+    die "not inside a Git working tree"
+
+top=$(realpath -m -- "$(git rev-parse --show-toplevel)")
+git_dir=$(realpath -m -- "$(git rev-parse --git-dir)")
+start_pwd=$(realpath -m -- "$PWD")
+
+list_submodules() {
+    cd "$top"
+
+    if [[ ! -f .gitmodules ]]; then
+        printf 'No submodules.\n'
+        return 0
+    fi
+
+    local records=()
+    local record key name path
+
+    mapfile -d '' -t records < <(
+        git config -z -f .gitmodules \
+            --get-regexp '^submodule\..*\.path$' 2>/dev/null || true
+    )
+
+    if ((${#records[@]} == 0)); then
+        printf 'No submodules.\n'
+        return 0
+    fi
+
+    printf '%-30s %s\n' 'NAME' 'PATH'
+    printf '%-30s %s\n' '----' '----'
+
+    for record in "${records[@]}"; do
+        # With --null + --get-regexp, each record is:
+        #
+        #   key<newline>value<NUL>
+        #
+        key=${record%%$'\n'*}
+        path=${record#*$'\n'}
+
+        name=${key#submodule.}
+        name=${name%.path}
+
+        printf '%-30s %s\n' "$name" "$path"
+    done
+}
+
+repo_path() {
+    local p=$1
+    local abs
+
+    if [[ $p == /* ]]; then
+        abs=$(realpath -m -- "$p")
+    else
+        abs=$(realpath -m -- "$start_pwd/$p")
+    fi
+
+    case $abs in
+        "$top")
+            die "path resolves to the repository root: $p"
+            ;;
+
+        "$top"/*)
+            printf '%s\n' "${abs#"$top"/}"
+            ;;
+
+        *)
+            die "path is outside the repository: $p"
+            ;;
+    esac
+}
+
+# Print the index mode for an exact path, or fail if the exact path
+# is not present in the index.
+index_mode_at() {
+    local path=$1
+    local entries=()
+    local entry meta entry_path
+
+    mapfile -d '' -t entries < <(
+        git ls-files --stage -z -- "$path"
+    )
+
+    for entry in "${entries[@]}"; do
+        meta=${entry%%$'\t'*}
+        entry_path=${entry#*$'\t'}
+
+        if [[ $entry_path == "$path" ]]; then
+            printf '%s\n' "${meta%% *}"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+#
+# CLI
+#
+
+case ${1:-} in
+    -h|--help)
+        [[ $# -eq 1 ]] ||
+            die "$1 does not accept arguments"
+        usage
+        exit 0
+        ;;
+
+    -l|--list)
+        [[ $# -eq 1 ]] ||
+            die "$1 does not accept arguments"
+        list_submodules
+        exit 0
+        ;;
+
+    --)
+        shift
+        ;;
+
+    -*)
+        die "unknown option: $1 (try '$prog --help')"
+        ;;
+esac
+
+[[ $# -eq 2 ]] || {
+    usage >&2
+    exit 2
+}
+
+src=$(repo_path "$1")
+dst=$(repo_path "$2")
+
+[[ $src != "$dst" ]] ||
+    die "source and destination are the same path"
+
+[[ $dst != "$src"/* ]] ||
+    die "destination cannot be inside the source submodule"
+
+cd "$top"
+
+[[ -f .gitmodules ]] ||
+    die "repository has no .gitmodules file"
+
+git ls-files --error-unmatch -- .gitmodules >/dev/null 2>&1 ||
+    die ".gitmodules is not tracked"
+
+# git mv stages .gitmodules. Refuse to accidentally stage unrelated
+# unstaged edits the user already has in that file.
+git diff --quiet -- .gitmodules ||
+    die ".gitmodules has unstaged changes; stage/commit/stash them first"
+
+# Don't touch conflicted state.
+if [[ -n $(git ls-files -u -- .gitmodules "$src" "$dst") ]]; then
+    die "source, destination, or .gitmodules has unresolved merge conflicts"
+fi
+
+# Source must be exactly a gitlink. Mode 160000 is a Git submodule.
+src_mode=$(index_mode_at "$src") ||
+    die "'$src' is not tracked"
+
+[[ $src_mode == 160000 ]] ||
+    die "'$src' is not a Git submodule gitlink"
+
+# Require a valid .gitmodules mapping for this submodule.
+git submodule status --cached -- "$src" >/dev/null 2>&1 ||
+    die "'$src' has no valid .gitmodules submodule mapping"
+
+# git mv expects the source working-tree path to exist.
+[[ -e $src || -L $src ]] ||
+    die "submodule working-tree path does not exist: '$src'"
+
+# Reject an existing target completely. Otherwise:
+#
+#     git mv foo existing-dir
+#
+# means:
+#
+#     existing-dir/foo
+#
+# instead of moving exactly to the requested path.
+if [[ -e $dst || -L $dst ]]; then
+    die "destination already exists: '$dst'"
+fi
+
+# Also reject tracked content at/below the requested destination.
+if [[ -n $(git ls-files --stage -- "$dst") ]]; then
+    die "destination already contains tracked content: '$dst'"
+fi
+
+# A gitlink cannot be placed underneath another gitlink.
+parent=$(dirname -- "$dst")
+
+while [[ $parent != "." && $parent != "/" ]]; do
+    if mode=$(index_mode_at "$parent" 2>/dev/null); then
+        if [[ $mode == 160000 ]]; then
+            die "destination is inside another submodule: '$parent'"
+        fi
+    fi
+
+    parent=$(dirname -- "$parent")
+done
+
+# Never allow the destination to point into this repository's own
+# Git metadata directory.
+dst_abs=$(realpath -m -- "$top/$dst")
+
+case $dst_abs in
+    "$git_dir"|"$git_dir"/*)
+        die "destination is inside the repository's Git metadata directory"
+        ;;
+esac
+
+#
+# Convert old-style submodules whose .git directory lives inside the
+# submodule into modern gitfile-based submodules first.
+#
+# absorbgitdirs is recursive by default, which matters if this
+# submodule itself contains populated submodules.
+#
+git submodule absorbgitdirs -- "$src"
+
+# git mv does not create missing destination parents.
+mkdir -p -- "$(dirname -- "$dst")"
+
+#
+# Perform the actual move.
+#
+# For a gitfile-based submodule, Git handles:
+#
+#   - the gitlink in the superproject index
+#   - .gitmodules
+#   - the submodule .git file
+#   - core.worktree
+#
+git mv -- "$src" "$dst"
+
+#
+# Post-move verification.
+#
+
+dst_mode=$(index_mode_at "$dst") ||
+    die "post-move verification failed: '$dst' is not tracked"
+
+[[ $dst_mode == 160000 ]] ||
+    die "post-move verification failed: '$dst' is not a gitlink"
+
+if index_mode_at "$src" >/dev/null 2>&1; then
+    die "post-move verification failed: old path '$src' is still tracked"
+fi
+
+git submodule status --cached -- "$dst" >/dev/null 2>&1 ||
+    die "post-move verification failed: .gitmodules does not map '$dst' correctly"
+
+# If populated, ensure the moved submodule repository itself still works.
+if [[ -e $dst/.git || -d $dst/.git ]]; then
+    actual_top=$(
+        git -C "$dst" rev-parse --show-toplevel 2>/dev/null
+    ) || die "post-move verification failed: relocated submodule is unusable"
+
+    actual_top=$(realpath -m -- "$actual_top")
+
+    [[ $actual_top == "$dst_abs" ]] ||
+        die "post-move verification failed: submodule worktree points to '$actual_top'"
+
+    # Exercise populated nested submodules too. This catches broken
+    # relative gitfile paths after moving to a different directory depth.
+    git -C "$dst" submodule status --recursive >/dev/null 2>&1 ||
+        die "post-move verification failed: nested submodule metadata is broken"
+fi
+
+printf 'moved submodule: %s -> %s\n' "$src" "$dst"
+printf 'staged changes:\n'
+git status --short -- .gitmodules "$src" "$dst"

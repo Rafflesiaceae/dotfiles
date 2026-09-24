@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   weather-temp "48.206349, 16.352691"
+
+# [[ $# -eq 1 ]] || {
+#     echo "usage: $0 'LATITUDE, LONGITUDE'" >&2
+#     exit 2
+# }
+
+latlon="48.206349, 16.352691"
+
+IFS=',' read -r lat lon <<< "$latlon"
+
+lat=${lat//[[:space:]]/}
+lon=${lon//[[:space:]]/}
+
+curl -fsS --get \
+    'https://api.open-meteo.com/v1/forecast' \
+    --data-urlencode "latitude=$lat" \
+    --data-urlencode "longitude=$lon" \
+    --data-urlencode 'current=temperature_2m' \
+    --data-urlencode 'temperature_unit=celsius' |
+    jq -er '.current.temperature_2m'

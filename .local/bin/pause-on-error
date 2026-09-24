@@ -1,0 +1,57 @@
+#!/usr/bin/luajit
+local ffi = require("ffi")
+
+ffi.cdef([[
+int fork(void);
+int execvp(const char *file, const char *const argv[]);
+int waitpid(int pid, int *status, int options);
+void _exit(int status);
+void perror(const char *s);
+]])
+
+local C = ffi.C
+local n = #arg
+
+if n == 0 then
+	io.stderr:write("usage: pause-on-error COMMAND [ARGS...]\n")
+	os.exit(2)
+end
+
+local argv = ffi.new("const char *[?]", n + 1)
+for i = 1, n do
+	argv[i - 1] = arg[i]
+end
+
+local pid = C.fork()
+
+if pid == 0 then
+	C.execvp(argv[0], argv)
+	C.perror(argv[0])
+	C._exit(127)
+elseif pid < 0 then
+	C.perror("fork")
+	os.exit(127)
+end
+
+local status = ffi.new("int[1]")
+if C.waitpid(pid, status, 0) < 0 then
+	C.perror("waitpid")
+	os.exit(127)
+end
+
+local s = status[0]
+local rc
+
+if bit.band(s, 0x7f) == 0 then
+	rc = bit.band(bit.rshift(s, 8), 0xff)
+else
+	rc = 128 + bit.band(s, 0x7f)
+end
+
+if rc ~= 0 then
+	io.stderr:write("\nCommand failed with exit code ", rc, ". Press Enter to continue...")
+	io.stderr:flush()
+	io.read("*l")
+end
+
+os.exit(rc)
