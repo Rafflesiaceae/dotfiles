@@ -1764,8 +1764,18 @@ function ExchangeBufferWithClipboard()
   local buf_content = vim.api.nvim_buf_get_lines(0, 0, -1, false)
   local buf_text = table.concat(buf_content, "\n")
 
+  local raw_clipboard = vim.fn.getreg('+')
+  -- A genuinely empty '+' register almost always means the system clipboard
+  -- bridge didn't carry the earlier yank over (e.g. two separate nvim
+  -- processes with no working clipboard provider), not that the user wants
+  -- to wipe the buffer. Bail out instead of overwriting and saving.
+  if raw_clipboard == "" then
+    vim.api.nvim_echo({{"'+' register is empty, refusing to overwrite buffer.", "ErrorMsg"}}, false, {})
+    return
+  end
+
   -- Get clipboard content and normalize it
-  local clipboard_lines = vim.split(vim.fn.getreg('+'), "\n")
+  local clipboard_lines = vim.split(raw_clipboard, "\n")
   if clipboard_lines[#clipboard_lines] == "" then
     table.remove(clipboard_lines, #clipboard_lines)
   end
@@ -1777,10 +1787,10 @@ function ExchangeBufferWithClipboard()
   else
     -- Replace buffer with normalized clipboard content
     vim.api.nvim_buf_set_lines(0, 0, -1, false, clipboard_lines)
+    vim.cmd('write')
     msg = "Buffer was replaced with clipboard content."
   end
 
-  vim.cmd('write')
   vim.api.nvim_echo({{msg, "None"}}, false, {})
 end
 
