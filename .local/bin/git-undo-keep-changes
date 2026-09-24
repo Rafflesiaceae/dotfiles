@@ -1,2 +1,37 @@
 #!/usr/bin/env bash
-git reset --soft HEAD~
+set -euo pipefail
+
+if [[ $# -eq 0 ]]; then
+    git reset --soft HEAD~
+    exit
+fi
+
+commit="$(git rev-parse --verify "$1^{commit}")"
+
+# Only makes sense for a commit contained in the current branch.
+git merge-base --is-ancestor "$commit" HEAD || {
+    echo "error: '$1' is not an ancestor of HEAD" >&2
+    exit 1
+}
+
+# HEAD itself can use the simple/robust soft-reset path.
+if [[ "$commit" == "$(git rev-parse HEAD)" ]]; then
+    git reset --soft HEAD~
+    exit
+fi
+
+# Rebasing requires a clean worktree/index.
+git diff --quiet &&
+git diff --cached --quiet || {
+    echo "error: working tree/index must be clean" >&2
+    exit 1
+}
+
+parent="$(git rev-parse "$commit^")"
+
+# Remove only $commit and replay everything after it.
+git rebase --onto "$parent" "$commit" HEAD
+
+# Put the removed commit's changes back into the index/worktree,
+# without recreating the commit.
+git cherry-pick --no-commit "$commit"
