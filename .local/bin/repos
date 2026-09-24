@@ -1,0 +1,1015 @@
+#!/usr/bin/env python3
+"""
+Parses one or more repos.conf-style files into repository objects, then loads
+~/.config/repos.py (or --config PATH) to map each repository onto a unique
+workdir (and optionally rewrite its remote).
+
+repos.conf grammar:
+  - blank lines are ignored
+  - a line starting with exactly one "#" is a comment and is ignored
+  - a line starting with two or more "#" is a tag line: the number of leading
+    "#" characters (minus one) is the tag "layer". A tag line may name one or
+    more space-separated tags (e.g. "## foo bar baz"); all of them are set at
+    layer L together. Setting layer L replaces whatever tag(s) were active at
+    layer L and drops all tags at layers deeper than L. Every repository line
+    below inherits the currently active tags, ordered from shallowest to
+    deepest layer and, within a layer, in the order they were written. Tag
+    layers reset at the start of each file; repository ids must still be
+    unique across all files.
+  - every other non-empty line must have the form "<host>:<path>" and
+    uniquely identifies one repository.
+
+repos-config.py contract:
+  - must define workdir_root (str), the base directory repos live under
+  - may define repo_files (list[str]): the repos.conf-style file(s) to read
+    when --repos isn't given on the command line at all; each entry is
+    tilde-expanded independently, same as a --repos value. Only consulted
+    when --repos is absent (an explicit --repos, even a single one, always
+    wins outright); if --repos is absent and repo_files is missing or empty,
+    that's an error rather than falling back to some other default.
+  - may define remap_host(repo: dict) -> str | None: a host to use instead
+    of the one parsed from repos.conf; returning (or omitting the function
+    entirely) None keeps it
+  - may define remap_remote(repo: dict) -> str | None: a remote to use
+    instead of the one assembled from repos.conf; returning (or omitting
+    the function entirely) None keeps it
+  - may define remap_workdir(repo: dict) -> str | None: a directory name
+    (joined onto workdir_root) or a full path (e.g. "~/workspace/x") to use
+    instead of the default; returning (or omitting the function entirely)
+    None falls back to repo["path"][-1] joined onto workdir_root
+  - may define custom_clone_cmd(repo: dict) -> list[str] | None: a full
+    argv to run (via subprocess, cwd unset) instead of the default
+    ["git", "clone", "--quiet", repo["remote"], repo["workdir"]]. Unlike the
+    three remaps below, this is *not* part of "mapped" stage/~/.cache/repos.jsonl:
+    it's neither precomputed nor stored on the repo dict, since most repos
+    in a given run are already checked out and don't need cloning at all.
+    Instead the "update"/"upd" subcommand calls it lazily, once per repo,
+    only at the moment it's actually about to clone that repo (workdir
+    doesn't exist yet); returning (or omitting the function entirely) None
+    keeps the default. The parent directory of repo["workdir"] is created
+    before either the default or a custom command runs.
+  - may define pre_update_hook(repo: dict) -> None and
+    post_update_hook(repo: dict) -> None: called by the "update"/"upd"
+    subcommand for each selected repo, immediately before and immediately
+    after its clone-or-pull step. post_update_hook always runs once
+    pre_update_hook has run, even if pre_update_hook, the clone/pull step,
+    or both raised/failed, so a hook pair that e.g. stops and restarts a
+    service around the update stays paired. An exception from either hook
+    is reported like any other per-repo failure (that repo counts as
+    failed) and does not stop other repos from being processed.
+  - `repo` has keys: id, host, path (list[str]), remote (str | None), tags
+    (list[str]), sourceloc (str, "<abspath>:<linenr>" of the repos.conf
+    line); repo also gains workdir (str) once remap_workdir has run, so
+    custom_clone_cmd and both hooks see it too
+  - the three remaps are resolved in order, each seeing any overrides
+    already applied by the ones before it: remap_host -> remap_remote ->
+    remap_workdir. So remap_remote's `repo["host"]` reflects remap_host's
+    override (if any), and remap_workdir's `repo["host"]`/`repo["remote"]`
+    reflect both. `repo["id"]` never changes; it stays the raw
+    "<host>:<path>" from repos.conf regardless of what the remaps do.
+    custom_clone_cmd and the hooks run later still, at update time (see
+    above), and see the fully resolved repo.
+
+Invariants enforced by this script, checked immediately after mapping and
+before anything is printed: no two distinct repositories may resolve to the
+same workdir, and (unless --allow-multiple-clones is passed) no two distinct
+repositories may resolve to the same (non-None) remote. The first stops e.g.
+bb:COPS/heimdall-aws and bb:DOPS/heimdall-aws from silently colliding into
+the same checkout; the second stops the same repository from being cloned
+into two different workdirs under two different ids/remotes.
+
+"update"/"upd" subcommand: takes the freshly (re-)computed mapped set (so it
+always needs the "mapped" stage) and, up to --jobs at a time, clones any
+repository whose workdir doesn't exist yet, or otherwise checks out its
+default branch and pulls it (a workdir with local changes is left alone,
+same as the old repos-update.py). For every already-cloned repo, also
+reports (independently of the above, and without blocking the update) when
+the current branch has committed-but-unpushed commits ahead of its upstream
+tracking branch. --tags/--hosts/--id filter which repos get processed, same
+filters the default table view uses.
+
+--tags/--hosts/--id double as both filter and lister: given a value they
+narrow the selection (repeatable); given bare (no value) they instead print
+every distinct tag/host/id seen and skip everything else. With no
+subcommand and no filter/lister given at all, the run is silent on success
+(nothing to warn about, so nothing is printed) and only speaks up on
+ConfError/invariant violations -- that's the "--check-only" case, and it no
+longer needs its own flag since it's what a plain, argument-less run already
+does.
+
+Startup-cost note: this file deliberately avoids argparse, dataclasses and
+pathlib. All three are individually cheap on the wall clock but each drags
+in a chain of stdlib submodules (inspect/ast/dis/tokenize for dataclasses,
+re/shutil/gettext for argparse, urllib.parse for pathlib) that roughly
+quadruples cold-start time for a script this small. Plain dicts, os.path and
+a hand-rolled argv loop keep imports down to what's already resident
+(os, sys) plus json/importlib.util, loaded lazily only when actually needed.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+
+# Don't leave a __pycache__/*.pyc behind in the project dir from loading repos-config.py.
+sys.dont_write_bytecode = True
+
+# Computed once, before chdir'ing below: __file__ may be a relative path
+# (e.g. "./repos.py" or a bare "repos.py" found via PATH), so resolving it
+# again after the cwd has already changed could silently point elsewhere.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Run as if invoked from the script's own directory, regardless of the
+# caller's actual cwd, so any relative --repos/--config paths (and any
+# relative entries in repo_files) resolve the same way every time.
+os.chdir(SCRIPT_DIR)
+
+# Known "<host>" prefixes and how to turn "<host>:<path>" into a clone URL.
+# Hosts not listed here get remote=None; repos-config.py is then expected to
+# supply a remote via its "remote" override, or the repo is left without one.
+HOST_REMOTE_TEMPLATES: dict[str, str] = {
+    "bb": "ssh://git@bitbucket.lab.dynatrace.org/{path}.git",
+    "gh": "ssh://git@github.com/{path}.git",
+}
+
+USAGE = """\
+Usage: repoman.py [update|upd] [-r|--repos PATH]... [--config PATH]
+                   [--stage parsed|mapped] [-t|--tags [TAG]]... [--hosts [HOST]]...
+                   [-i|--id [ID]]...
+                   [--allow-multiple-clones] [-j|--jobs N] [-d|--debug]
+                   [-h|--help]
+
+Parse repos.conf-style file(s) and (optionally) map them through repos-config.py.
+
+Every successful run writes the full (unfiltered) result set as JSONL to
+~/.cache/repos.jsonl, whether or not any other option is given. Nothing is
+ever printed as JSON. With no subcommand and no --tags/--hosts/--id filter
+given, a plain run is silent on success and only prints on ConfError/invariant
+violations; pass a filter to print a filtered table instead.
+
+  update, upd     Clone (or, if already checked out, check out the default
+                  branch and pull) every selected repository, up to --jobs
+                  at a time. Requires the 'mapped' stage. A repo with local
+                  changes is left alone rather than treated as an error.
+  -r, --repos PATH
+                  Path to a repos.conf-style file (default: the repo_files
+                  list defined in repos-config.py). Repeatable: pass --repos
+                  more than once to merge multiple files; repository ids
+                  must stay unique across all of them.
+  --config PATH   Path to repos-config.py (default: ~/.config/repos.py)
+  --stage STAGE   'parsed' shows only what the repos file(s) assemble (no
+                  repos-config.py needed if --repos is given explicitly);
+                  'mapped' additionally loads repos-config.py to compute
+                  workdir/remote (default: mapped)
+  -t, --tags [TAG]
+                  With TAG: only select repos with this tag (repeatable =
+                  AND). Bare, with no TAG: print every distinct tag seen
+                  across all repos, one per line, sorted, and ignore any
+                  other filters; no table is printed.
+  --hosts [HOST]  With HOST: only select repos with this host (repeatable =
+                  OR, since a repo has exactly one host). Bare, with no
+                  HOST: print every distinct host seen across all repos, one
+                  per line, sorted, and ignore any other filters; no table
+                  is printed.
+  -i, --id [ID]   With ID: only select the repo with this exact id
+                  (repeatable). Bare, with no ID: print every repo id, one
+                  per line, sorted, and ignore any other filters; no table
+                  is printed.
+  --allow-multiple-clones
+                  Disable only the remote-uniqueness invariant (two repos
+                  mapping to the same remote and thus getting cloned into
+                  different workdirs); the workdir-uniqueness invariant is
+                  still enforced
+  -j, --jobs N    Number of repos the 'update'/'upd' subcommand processes in
+                  parallel (default: 8)
+  -d, --debug     Print to stderr whenever repos-config.py's remap_host/
+                  remap_remote/remap_workdir changes a value from what it
+                  would otherwise have been, or custom_clone_cmd sets one;
+                  a remap that returns the same value prints nothing
+  -h, --help      Show this help message and exit
+"""
+
+
+_ANSI_STYLES = {"red": "31", "green": "32", "yellow": "33", "cyan": "36", "grey": "90", "bold": "1"}
+
+
+def colorize(text: str, *styles: str, stream=sys.stdout) -> str:
+    """Wraps text in ANSI escapes for the named style(s) (e.g. "red",
+    "bold"); returns text unchanged when stream isn't a terminal or NO_COLOR
+    is set, so piping/redirecting output never sees escape codes."""
+    if not styles or os.environ.get("NO_COLOR") is not None or not (hasattr(stream, "isatty") and stream.isatty()):
+        return text
+    prefix = "".join(f"\033[{_ANSI_STYLES[s]}m" for s in styles)
+    return f"{prefix}{text}\033[0m"
+
+
+class ConfError(Exception):
+    """Raised for malformed repos.conf content; carries the offending line number."""
+
+    def __init__(self, line_no: int, message: str) -> None:
+        super().__init__(f"line {line_no}: {message}")
+        self.line_no = line_no
+
+
+class UsageError(Exception):
+    """Raised for a bad CLI invocation."""
+
+
+def assemble_remote(host: str, path_str: str) -> str | None:
+    template = HOST_REMOTE_TEMPLATES.get(host)
+    return template.format(path=path_str) if template else None
+
+
+def parse_conf(conf_path: str, seen_ids: dict[str, str]) -> list[dict]:
+    # seen_ids maps repo id -> "<abspath>:<linenr>" of its first occurrence,
+    # shared across all --repos files so duplicates are caught across files
+    # too, not just within one.
+    abspath = os.path.abspath(conf_path)
+
+    # tag_stack maps layer -> active tag names at that layer (a tag line can
+    # name more than one, space-separated); a repo line's tags are the
+    # stack's values flattened in increasing layer order. Reset per file:
+    # tags don't carry over from one --repos file to the next.
+    tag_stack: dict[int, list[str]] = {}
+    repos: list[dict] = []
+
+    with open(conf_path, "r", encoding="utf-8") as f:
+        for line_no, raw_line in enumerate(f, start=1):
+            line = raw_line.strip()
+            if not line:
+                continue
+
+            if line[0] == "#":
+                hashes = len(line) - len(line.lstrip("#"))
+                if hashes == 1:
+                    continue  # plain comment, ignored entirely
+
+                layer = hashes - 1
+                names = line[hashes:].split()
+                if not names:
+                    raise ConfError(line_no, "tag line has no name after the '#'s")
+                tag_stack[layer] = names
+                for deeper in [l for l in tag_stack if l > layer]:
+                    del tag_stack[deeper]
+                continue
+
+            if ":" not in line:
+                raise ConfError(line_no, f"expected '<host>:<path>', got {line!r}")
+            host, _, path_str = line.partition(":")
+            host = host.strip()
+            path_str = path_str.strip()
+            if not host or not path_str:
+                raise ConfError(line_no, f"expected '<host>:<path>', got {line!r}")
+
+            repo_id = f"{host}:{path_str}"
+            sourceloc = f"{abspath}:{line_no}"
+            if repo_id in seen_ids:
+                raise ConfError(
+                    line_no,
+                    f"duplicate repository id {repo_id!r} "
+                    f"(first seen at {seen_ids[repo_id]})",
+                )
+            seen_ids[repo_id] = sourceloc
+
+            repos.append(
+                {
+                    "id": repo_id,
+                    "host": host,
+                    "path": path_str.split("/"),
+                    "remote": assemble_remote(host, path_str),
+                    "tags": [tag for l in sorted(tag_stack) for tag in tag_stack[l]],
+                    "sourceloc": sourceloc,
+                }
+            )
+
+    return repos
+
+
+def load_config_module(config_path: str):
+    # Imported lazily: only needed when --repos is absent (to read
+    # repo_files) or for the "mapped" stage, and importlib.util is not free
+    # to import.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("repoman_config", config_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load config module from {config_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    if not isinstance(getattr(module, "workdir_root", None), str):
+        raise RuntimeError(f"{config_path} must define workdir_root (str)")
+    # repo_files is optional, but if present it must be a list[str]; it's
+    # only ever consulted when --repos is absent (see main()).
+    repo_files = getattr(module, "repo_files", None)
+    if repo_files is not None and (
+        not isinstance(repo_files, list) or not all(isinstance(p, str) for p in repo_files)
+    ):
+        raise RuntimeError(f"{config_path}'s repo_files, if defined, must be a list[str]")
+    # remap_host/remap_remote/remap_workdir/custom_clone_cmd and the
+    # pre_update_hook/post_update_hook pair are all optional; if present
+    # they must be callable, but a config that omits one just means "no
+    # override"/"no hook" for that step.
+    for optional_fn in (
+        "remap_host",
+        "remap_remote",
+        "remap_workdir",
+        "custom_clone_cmd",
+        "pre_update_hook",
+        "post_update_hook",
+    ):
+        attr = getattr(module, optional_fn, None)
+        if attr is not None and not callable(attr):
+            raise RuntimeError(f"{config_path}'s {optional_fn}, if defined, must be a function")
+    return module
+
+
+def apply_mapping(repos: list[dict], config_module, *, debug: bool = False) -> list[dict]:
+    workdir_root = os.path.expanduser(config_module.workdir_root)
+    remap_host = getattr(config_module, "remap_host", None)
+    remap_remote = getattr(config_module, "remap_remote", None)
+    remap_workdir = getattr(config_module, "remap_workdir", None)
+    mapped: list[dict] = []
+    for repo in repos:
+        # Resolved in order -- host, then remote, then workdir -- so each
+        # step's callback sees any override already applied by the ones
+        # before it (e.g. remap_remote's repo["host"] reflects remap_host's
+        # override). repo["id"] is never touched: it stays the raw
+        # "<host>:<path>" from repos.conf throughout.
+        working = dict(repo)
+
+        host_override = remap_host(dict(working)) if remap_host else None
+        final_host = working["host"] if host_override is None else host_override
+        if debug and final_host != working["host"]:
+            print(
+                f"DEBUG: host rewritten for {repo['id']}: "
+                f"{working['host']!r} -> {final_host!r}",
+                file=sys.stderr,
+            )
+        working["host"] = final_host
+
+        remote_override = remap_remote(dict(working)) if remap_remote else None
+        final_remote = working["remote"] if remote_override is None else remote_override
+        if debug and final_remote != working["remote"]:
+            print(
+                f"DEBUG: remote rewritten for {repo['id']}: "
+                f"{working['remote']!r} -> {final_remote!r}",
+                file=sys.stderr,
+            )
+        working["remote"] = final_remote
+
+        default_workdir = os.path.join(workdir_root, working["path"][-1])
+        workdir_override = remap_workdir(dict(working)) if remap_workdir else None
+        if workdir_override is None:
+            workdir = default_workdir
+        else:
+            expanded = os.path.expanduser(str(workdir_override))
+            # A bare directory name is joined onto workdir_root; anything
+            # that already looks like a full path (e.g. "~/workspace/x",
+            # now expanded) is used as-is.
+            workdir = expanded if os.path.isabs(expanded) else os.path.join(workdir_root, expanded)
+        # realpath() normalizes relative paths, "..", and symlinks so that
+        # two spellings of the same directory can't slip past the
+        # uniqueness check below.
+        final_workdir = os.path.realpath(workdir)
+        if debug and final_workdir != os.path.realpath(default_workdir):
+            print(
+                f"DEBUG: workdir rewritten for {repo['id']}: "
+                f"{os.path.realpath(default_workdir)!r} -> {final_workdir!r}",
+                file=sys.stderr,
+            )
+        working["workdir"] = final_workdir
+
+        mapped.append(working)
+    return mapped
+
+
+def check_invariants(mapped: list[dict], *, allow_multiple_clones: bool = False) -> list[str]:
+    """Every workdir must be claimed by exactly one repository, and (unless
+    allow_multiple_clones is set) every remote must be cloned into exactly
+    one workdir (a repo with no remote can't be cloned at all, so None is
+    always exempt from this second check)."""
+    by_workdir: dict[str, list[dict]] = {}
+    by_remote: dict[str, list[dict]] = {}
+    for m in mapped:
+        by_workdir.setdefault(m["workdir"], []).append(m)
+        if m["remote"] is not None:
+            by_remote.setdefault(m["remote"], []).append(m)
+
+    violations: list[str] = []
+    for workdir, entries in by_workdir.items():
+        if len(entries) > 1:
+            claims = ", ".join(f"{m['id']} (remote={m['remote']})" for m in entries)
+            violations.append(f"workdir {workdir} is claimed by multiple repositories: {claims}")
+    if not allow_multiple_clones:
+        for remote, entries in by_remote.items():
+            if len(entries) > 1:
+                claims = ", ".join(f"{m['id']} (workdir={m['workdir']})" for m in entries)
+                violations.append(f"remote {remote} is claimed by multiple repositories: {claims}")
+    return violations
+
+
+def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool = False) -> int:
+    """Clones any repo whose workdir doesn't exist yet; otherwise checks out
+    its default branch and pulls it, leaving repos with local changes alone.
+    Processes up to `jobs` repos at a time. Ported from repos-update.py.
+    Imports are local to this function so a plain "print the table" run
+    doesn't pay for subprocess/threading it never uses (see the module
+    docstring's startup-cost note).
+
+    If config_module defines pre_update_hook/post_update_hook, they're
+    called around each repo's clone-or-pull step (see the module docstring's
+    repos-config.py contract for pairing/failure semantics). If it defines
+    custom_clone_cmd, it's called lazily -- only for a repo that's actually
+    about to be cloned, never precomputed for the rest -- to get the argv to
+    run instead of the default git clone."""
+    import signal
+    import subprocess
+    import threading
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if jobs < 1:
+        print(colorize("ERROR: --jobs must be >= 1", "red", stream=sys.stderr), file=sys.stderr)
+        return 1
+
+    pre_update_hook = getattr(config_module, "pre_update_hook", None) if config_module else None
+    post_update_hook = getattr(config_module, "post_update_hook", None) if config_module else None
+    custom_clone_cmd = getattr(config_module, "custom_clone_cmd", None) if config_module else None
+
+    print_lock = threading.Lock()
+    interrupted = threading.Event()
+
+    def safe_print(*a, **kw) -> None:
+        with print_lock:
+            print(*a, **kw, flush=True)
+
+    # Tracked separately from the ThreadPoolExecutor's own futures: on
+    # Ctrl-C we want to kill whatever git command is running right now
+    # rather than wait for it to notice on its own, since it may be blocked
+    # on slow network I/O for a while yet.
+    active_procs: set[subprocess.Popen] = set()
+    active_procs_lock = threading.Lock()
+
+    def run(cmd: list[str], cwd: str | None = None) -> "subprocess.CompletedProcess[str]":
+        # start_new_session=True puts each git command in its own process
+        # group (pgid == its pid) so kill_active_procs() below can take out
+        # the whole tree -- git itself plus any child it spawns (e.g. ssh
+        # for the transport) -- in one shot. Without this, killing only the
+        # immediate child leaves a grandchild holding the stdout/stderr pipe
+        # open, and communicate() then blocks until *that* one exits on its
+        # own instead of returning right away.
+        proc = subprocess.Popen(
+            cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True
+        )
+        with active_procs_lock:
+            active_procs.add(proc)
+        try:
+            stdout, stderr = proc.communicate()
+        finally:
+            with active_procs_lock:
+                active_procs.discard(proc)
+        return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+    def kill_active_procs() -> None:
+        with active_procs_lock:
+            procs = list(active_procs)
+        for proc in procs:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass  # already exited between the snapshot above and here
+
+    def is_git_repo(workdir: str) -> bool:
+        p = run(["git", "rev-parse", "--is-inside-work-tree"], cwd=workdir)
+        return p.returncode == 0 and (p.stdout or "").strip() == "true"
+
+    def has_local_changes(workdir: str) -> bool:
+        # Unmerged paths, unstaged changes, or staged changes: any of these
+        # means "leave it alone", not "this update failed".
+        for cmd in (
+            ["git", "diff", "--name-only", "--diff-filter=U", "--quiet"],
+            ["git", "diff", "--quiet"],
+            ["git", "diff", "--cached", "--quiet"],
+        ):
+            if run(cmd, cwd=workdir).returncode != 0:
+                return True
+        return False
+
+    def commits_ahead_of_upstream(workdir: str) -> tuple[int, str] | None:
+        # None means "nothing to report": either the current branch has no
+        # upstream tracking branch configured (e.g. never pushed), or it has
+        # one but isn't ahead of it. @{u} is git's shorthand for "the
+        # upstream of the current branch".
+        p = run(["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"], cwd=workdir)
+        if p.returncode != 0:
+            return None
+        upstream = (p.stdout or "").strip()
+        p = run(["git", "rev-list", "--count", "@{u}..HEAD"], cwd=workdir)
+        if p.returncode != 0:
+            return None
+        try:
+            ahead = int((p.stdout or "").strip())
+        except ValueError:
+            return None
+        return (ahead, upstream) if ahead > 0 else None
+
+    def pick_remote_name(workdir: str) -> str | None:
+        p = run(["git", "remote"], cwd=workdir)
+        names = [n for n in (p.stdout or "").splitlines() if n.strip()]
+        return "origin" if "origin" in names else (names[0] if names else None)
+
+    def remote_head_branch(workdir: str, remote_name: str) -> str | None:
+        p = run(["git", "symbolic-ref", "-q", f"refs/remotes/{remote_name}/HEAD"], cwd=workdir)
+        ref = (p.stdout or "").strip()
+        return ref[len(f"refs/remotes/{remote_name}/") :] if p.returncode == 0 and ref else None
+
+    def default_branch(workdir: str) -> str:
+        remote_name = pick_remote_name(workdir)
+        if remote_name is not None:
+            # 1) The remote's symbolic HEAD, usually set after clone/fetch.
+            branch = remote_head_branch(workdir, remote_name)
+            if branch:
+                return branch
+
+            # 2) Resolve it with a lightweight ls-remote (no full fetch, just
+            # asks the remote which branch HEAD points at) and retry.
+            run(["git", "remote", "set-head", remote_name, "--auto"], cwd=workdir)
+            branch = remote_head_branch(workdir, remote_name)
+            if branch:
+                return branch
+
+            # 3) Fallback: parse cached remote info, rejecting placeholder
+            # values like "(not queried)" that show up when nothing was ever
+            # cached and step 2 couldn't reach the network either.
+            p = run(["git", "remote", "show", "-n", remote_name], cwd=workdir)
+            for line in (p.stdout or "").splitlines():
+                line = line.strip()
+                if line.startswith("HEAD branch:"):
+                    branch = line.split(":", 1)[1].strip()
+                    if branch and not branch.startswith("("):
+                        return branch
+                    break
+
+        # 4) Local-only / no remote info: reasonable guesses.
+        cfg = run(["git", "config", "--get", "init.defaultBranch"], cwd=workdir)
+        for candidate in filter(None, [(cfg.stdout or "").strip(), "main", "master"]):
+            p = run(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{candidate}"], cwd=workdir)
+            if p.returncode == 0:
+                return candidate
+
+        # Last resort: current branch (better than failing outright).
+        p = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], cwd=workdir)
+        current = (p.stdout or "").strip()
+        if current:
+            return current
+
+        raise RuntimeError("could not determine default branch (detached HEAD and no remote HEAD info)")
+
+    def report_failure(label: str, detail: str) -> None:
+        # A failure while we're busy tearing down for Ctrl-C is expected
+        # (we just killed the process ourselves) and not a real error, so
+        # don't cry "ERROR" about our own doing.
+        if interrupted.is_set():
+            safe_print(colorize(f"Cancelled                  : {label}", "grey"))
+        else:
+            safe_print(colorize(detail, "red"))
+
+    def do_update(repo: dict) -> bool:
+        workdir = repo["workdir"]
+        remote = repo["remote"]
+
+        if not os.path.isdir(workdir):
+            # custom_clone_cmd is only ever invoked here -- lazily, for the
+            # one repo actually about to be cloned -- never precomputed for
+            # the whole selection (most repos already exist and never need it).
+            cmd = None
+            if custom_clone_cmd is not None:
+                try:
+                    cmd = custom_clone_cmd(dict(repo))
+                except Exception as e:
+                    report_failure(repo["id"], f"ERROR in custom_clone_cmd for {repo['id']}: {e}")
+                    return False
+                if cmd is not None and (not isinstance(cmd, list) or not all(isinstance(a, str) for a in cmd)):
+                    report_failure(
+                        repo["id"],
+                        f"ERROR: custom_clone_cmd for {repo['id']} must return a list[str] or None, got {cmd!r}",
+                    )
+                    return False
+                if debug and cmd is not None:
+                    safe_print(f"DEBUG: clone command overridden for {repo['id']}: {cmd!r}", file=sys.stderr)
+
+            if cmd is None:
+                if remote is None:
+                    safe_print(colorize(f"No remote, cannot clone, skipping : {repo['id']} ({workdir})", "yellow"))
+                    return False
+                cmd = ["git", "clone", "--quiet", remote, workdir]
+
+            os.makedirs(os.path.dirname(workdir), exist_ok=True)
+            safe_print(colorize(f"Cloning                    : {repo['id']} -> {workdir}", "cyan"))
+            p = run(cmd)
+            if p.returncode != 0:
+                report_failure(repo["id"], f"ERROR cloning {repo['id']}: {(p.stderr or p.stdout or '').strip()}")
+                return False
+            return True
+
+        if not is_git_repo(workdir):
+            safe_print(colorize(f"Not a git repo, skipping   : {workdir}", "yellow"))
+            return False
+
+        # Reported independently of the dirty-state/pull logic below: a
+        # clean working tree can still sit on committed-but-unpushed work.
+        ahead_info = commits_ahead_of_upstream(workdir)
+        if ahead_info is not None:
+            ahead, upstream = ahead_info
+            safe_print(
+                colorize(
+                    f"Unpushed commits           : {workdir} "
+                    f"({ahead} commit{'s' if ahead != 1 else ''} ahead of {upstream})",
+                    "yellow",
+                )
+            )
+
+        if has_local_changes(workdir):
+            safe_print(colorize(f"Dirty state, not updating  : {workdir}", "yellow"))
+            return True
+
+        try:
+            branch = default_branch(workdir)
+        except RuntimeError as e:
+            report_failure(workdir, f"ERROR in {workdir}: {e}")
+            return False
+
+        p = run(["git", "checkout", branch], cwd=workdir)
+        if p.returncode != 0:
+            report_failure(
+                workdir, f"ERROR in {workdir}: git checkout {branch} failed:\n{(p.stderr or p.stdout or '').strip()}"
+            )
+            return False
+
+        # Compared against HEAD after the pull below to decide whether to
+        # print anything: --quiet doesn't reliably suppress git's "Already
+        # up to date." (it depends on the git version), so we check the
+        # actual ref movement instead of trying to parse pull's output.
+        before = run(["git", "rev-parse", "HEAD"], cwd=workdir).stdout.strip()
+
+        p = run(["git", "pull", "--quiet"], cwd=workdir)
+        if p.returncode != 0:
+            report_failure(workdir, f"ERROR in {workdir}: git pull failed:\n{(p.stderr or p.stdout or '').strip()}")
+            return False
+
+        after = run(["git", "rev-parse", "HEAD"], cwd=workdir).stdout.strip()
+        if after != before:
+            safe_print(colorize(f"Updated                    : {workdir}", "green"))
+        return True
+
+    def run_hook(hook, repo: dict, which: str) -> bool:
+        try:
+            hook(dict(repo))
+            return True
+        except Exception as e:
+            report_failure(repo["id"], f"ERROR in {which} for {repo['id']}: {e}")
+            return False
+
+    def update_one(repo: dict) -> bool:
+        # post_update_hook always runs once pre_update_hook has run (even if
+        # pre_update_hook or do_update raised/failed), so a hook pair that
+        # e.g. stops and restarts a service around the update stays paired.
+        ok = True
+        if pre_update_hook is not None:
+            ok = run_hook(pre_update_hook, repo, "pre_update_hook")
+        try:
+            if ok:
+                ok = do_update(repo)
+        finally:
+            if post_update_hook is not None:
+                ok = run_hook(post_update_hook, repo, "post_update_hook") and ok
+        return ok
+
+    any_failed = False
+    with ThreadPoolExecutor(max_workers=jobs) as ex:
+        futures = {ex.submit(update_one, r): r for r in repos}
+        try:
+            for fut in as_completed(futures):
+                if not fut.result():
+                    any_failed = True
+        except KeyboardInterrupt:
+            # Ctrl-C: drop every repo whose git command hasn't started yet
+            # (cancel_futures), and kill the handful of git processes
+            # already in flight ourselves rather than wait on them to
+            # notice the terminal's own SIGINT on their own schedule (which,
+            # mid network I/O, can take a while) -- so this returns almost
+            # immediately regardless of what those in-flight commands were
+            # doing. "\n" first because the terminal's own "^C" echo doesn't
+            # end the line for us.
+            interrupted.set()
+            safe_print(
+                "\n" + colorize("Interrupted, killing in-flight git commands and dropping the rest...", "yellow", "bold")
+            )
+            kill_active_procs()
+            ex.shutdown(wait=True, cancel_futures=True)
+            return 130
+
+    return 1 if any_failed else 0
+
+
+def all_tags(rows: list[dict]) -> list[str]:
+    seen: set[str] = set()
+    for r in rows:
+        seen.update(r["tags"])
+    return sorted(seen)
+
+
+def all_hosts(rows: list[dict]) -> list[str]:
+    return sorted({r["host"] for r in rows})
+
+
+def all_ids(rows: list[dict]) -> list[str]:
+    return sorted(r["id"] for r in rows)
+
+
+def matches_filters(repo: dict, *, ids: set[str], tags: set[str], hosts: set[str] = frozenset()) -> bool:
+    if ids and repo["id"] not in ids:
+        return False
+    if tags and not tags.issubset(repo["tags"]):
+        return False
+    if hosts and repo["host"] not in hosts:
+        return False
+    return True
+
+
+def format_table(rows: list[dict], columns: list[str]) -> str:
+    def cell(value: object) -> str:
+        return ",".join(value) if isinstance(value, list) else str(value)
+
+    widths = {c: len(c) for c in columns}
+    for r in rows:
+        for c in columns:
+            widths[c] = max(widths[c], len(cell(r.get(c, ""))))
+
+    lines = ["  ".join(c.ljust(widths[c]) for c in columns)]
+    lines.append("  ".join("-" * widths[c] for c in columns))
+    for r in rows:
+        lines.append("  ".join(cell(r.get(c, "")).ljust(widths[c]) for c in columns))
+    return "\n".join(lines)
+
+
+def emit(rows: list[dict], columns: list[str]) -> None:
+    print(format_table(rows, columns))
+
+
+def write_jsonl(path: str, rows: list[dict]) -> None:
+    import json
+
+    # One compact JSON object per line, regardless of any --tag/--id filtering.
+    with open(path, "w", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row) + "\n")
+
+
+def parse_args(argv: list[str]) -> dict:
+    args = {
+        "command": None,
+        "repos": [],
+        "config": None,
+        "stage": "mapped",
+        "tags": [],
+        "hosts": [],
+        "ids": [],
+        "list_tags": False,
+        "list_hosts": False,
+        "list_ids": False,
+        "allow_multiple_clones": False,
+        "jobs": 8,
+        "debug": False,
+    }
+
+    # A subcommand, if present, must be the very first token (like git).
+    if argv and argv[0] in ("update", "upd"):
+        args["command"] = "update"
+        argv = argv[1:]
+
+    def take_value(flag: str, i: int) -> tuple[str, int]:
+        if i + 1 >= len(argv):
+            raise UsageError(f"{flag} requires a value")
+        return argv[i + 1], i + 2
+
+    def take_optional_value(i: int) -> tuple[str | None, int]:
+        # A value is consumed only if there's a next token and it doesn't
+        # look like another flag; this is what lets "--tags" (bare, lister)
+        # and "--tags foo" (filter) share one flag.
+        if i + 1 < len(argv) and not argv[i + 1].startswith("-"):
+            return argv[i + 1], i + 2
+        return None, i + 1
+
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        if arg in ("-h", "--help"):
+            print(USAGE, end="")
+            raise SystemExit(0)
+        elif arg in ("-r", "--repos"):
+            value, i = take_value(arg, i)
+            args["repos"].append(value)
+        elif arg == "--config":
+            args["config"], i = take_value(arg, i)
+        elif arg == "--stage":
+            value, i = take_value(arg, i)
+            if value not in ("parsed", "mapped"):
+                raise UsageError(f"--stage must be 'parsed' or 'mapped', got {value!r}")
+            args["stage"] = value
+        elif arg in ("-t", "--tags"):
+            value, i = take_optional_value(i)
+            if value is None:
+                args["list_tags"] = True
+            else:
+                args["tags"].append(value)
+        elif arg == "--hosts":
+            value, i = take_optional_value(i)
+            if value is None:
+                args["list_hosts"] = True
+            else:
+                args["hosts"].append(value)
+        elif arg in ("-i", "--id"):
+            value, i = take_optional_value(i)
+            if value is None:
+                args["list_ids"] = True
+            else:
+                args["ids"].append(value)
+        elif arg == "--allow-multiple-clones":
+            args["allow_multiple_clones"] = True
+            i += 1
+        elif arg in ("-j", "--jobs"):
+            value, i = take_value(arg, i)
+            try:
+                args["jobs"] = int(value)
+            except ValueError:
+                raise UsageError(f"--jobs must be an integer, got {value!r}")
+        elif arg in ("-d", "--debug"):
+            args["debug"] = True
+            i += 1
+        else:
+            raise UsageError(f"unknown argument: {arg}")
+
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    try:
+        args = parse_args(sys.argv[1:] if argv is None else argv)
+    except UsageError as e:
+        print(f"{colorize(f'ERROR: {e}', 'red', stream=sys.stderr)}\n\n{USAGE}", end="", file=sys.stderr)
+        return 2
+
+    if args["command"] == "update" and args["stage"] != "mapped":
+        print(
+            colorize(
+                "ERROR: `update`/`upd` needs workdir/remote data, so --stage parsed is not supported",
+                "red",
+                stream=sys.stderr,
+            ),
+            file=sys.stderr,
+        )
+        return 2
+
+    config_path = os.path.expanduser(args["config"]) if args["config"] else os.path.expanduser("~/.config/repos.py")
+
+    # The config module is needed early -- before repos.conf is even parsed
+    # -- whenever --repos wasn't given explicitly, since the default set of
+    # repos.conf-style files (repo_files) lives in the config rather than
+    # being hardcoded. It's also needed for the "mapped" stage regardless,
+    # to compute workdir/remote. Load it at most once either way.
+    config_module = None
+    if not args["repos"] or args["stage"] == "mapped":
+        if not os.path.exists(config_path):
+            print(colorize(f"ERROR: repos-config.py not found: {config_path}", "red", stream=sys.stderr), file=sys.stderr)
+            return 1
+        try:
+            config_module = load_config_module(config_path)
+        except Exception as e:
+            print(colorize(f"ERROR loading {config_path}: {e}", "red", stream=sys.stderr), file=sys.stderr)
+            return 1
+
+    if args["repos"]:
+        conf_paths = [os.path.expanduser(p) for p in args["repos"]]
+    else:
+        repo_files = getattr(config_module, "repo_files", None)
+        if not repo_files:
+            print(
+                colorize(
+                    f"ERROR: no --repos given and {config_path} defines no (non-empty) repo_files",
+                    "red",
+                    stream=sys.stderr,
+                ),
+                file=sys.stderr,
+            )
+            return 1
+        conf_paths = [os.path.expanduser(p) for p in repo_files]
+
+    for p in conf_paths:
+        if not os.path.exists(p):
+            print(colorize(f"ERROR: repos file not found: {p}", "red", stream=sys.stderr), file=sys.stderr)
+            return 1
+
+    seen_ids: dict[str, str] = {}
+    repos: list[dict] = []
+    for p in conf_paths:
+        try:
+            repos.extend(parse_conf(p, seen_ids))
+        except ConfError as e:
+            print(colorize(f"ERROR: {p}: {e}", "red", stream=sys.stderr), file=sys.stderr)
+            return 1
+
+    ids = set(args["ids"])
+    tags = set(args["tags"])
+    hosts = set(args["hosts"])
+    result_path = os.path.expanduser("~/.cache/repos.jsonl")
+    os.makedirs(os.path.dirname(result_path), exist_ok=True)
+
+    if args["stage"] == "parsed":
+        # ~/.cache/repos.jsonl always reflects the full, unfiltered result of
+        # the last run, regardless of --tags/--hosts/--id.
+        write_jsonl(result_path, repos)
+        if args["list_tags"]:
+            for tag in all_tags(repos):
+                print(tag)
+            return 0
+        if args["list_hosts"]:
+            for host in all_hosts(repos):
+                print(host)
+            return 0
+        if args["list_ids"]:
+            for repo_id in all_ids(repos):
+                print(repo_id)
+            return 0
+        if ids or tags or hosts:
+            selected = sorted(
+                (r for r in repos if matches_filters(r, ids=ids, tags=tags, hosts=hosts)),
+                key=lambda r: r["id"],
+            )
+            emit(selected, ["id", "host", "path", "remote", "tags"])
+        # else: a plain, filter-less run is silent on success; ConfError
+        # (the only "parsed"-stage failure mode) is already reported above.
+        return 0
+
+    # stage == "mapped": config_module was already loaded above.
+    try:
+        mapped = apply_mapping(repos, config_module, debug=args["debug"])
+    except Exception as e:
+        print(colorize(f"ERROR: {e}", "red", stream=sys.stderr), file=sys.stderr)
+        return 1
+
+    # Checked on the FULL mapped set, before any --tag/--id filtering and
+    # before any output is produced, per the uniqueness invariant.
+    violations = check_invariants(mapped, allow_multiple_clones=args["allow_multiple_clones"])
+    if violations:
+        print(colorize("ERROR: workdir uniqueness invariant violated:", "red", stream=sys.stderr), file=sys.stderr)
+        for v in violations:
+            print(colorize(f"  - {v}", "red", stream=sys.stderr), file=sys.stderr)
+        return 1
+
+    # ~/.cache/repos.jsonl always reflects the full, unfiltered result of the
+    # last run, regardless of --tags/--hosts/--id.
+    write_jsonl(result_path, mapped)
+
+    if args["list_tags"]:
+        for tag in all_tags(mapped):
+            print(tag)
+        return 0
+
+    if args["list_hosts"]:
+        for host in all_hosts(mapped):
+            print(host)
+        return 0
+
+    if args["list_ids"]:
+        for repo_id in all_ids(mapped):
+            print(repo_id)
+        return 0
+
+    selected = sorted(
+        (m for m in mapped if matches_filters(m, ids=ids, tags=tags, hosts=hosts)),
+        key=lambda m: m["id"],
+    )
+
+    if args["command"] == "update":
+        # A filter typo (bad --tags/--hosts/--id value) would otherwise
+        # silently "succeed" by updating nothing; treat 0 matches as an error.
+        if not selected:
+            print(colorize("ERROR: update/upd matched 0 repositories", "red", stream=sys.stderr), file=sys.stderr)
+            return 1
+        return run_update(selected, jobs=args["jobs"], config_module=config_module, debug=args["debug"])
+
+    if ids or tags or hosts:
+        emit(selected, ["id", "tags", "remote", "workdir"])
+    # else: a plain, filter-less run is silent on success; invariant
+    # violations (the only "mapped"-stage failure mode) are already
+    # reported above.
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        # Ctrl-C outside of run_update's own handling (e.g. mid-parse or
+        # mid-config-load): exit fast with the conventional 128+SIGINT code
+        # instead of a KeyboardInterrupt traceback.
+        raise SystemExit(130)
