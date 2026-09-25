@@ -1,0 +1,709 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# system-stability-test
+#
+# Quick whole-system stability check for Arch Linux.
+#
+# CPU + RAM + disk run concurrently for the whole test.
+#
+# GPU lane:
+#   1. vkmark           -> GPU core/rendering/driver stress
+#   2. memtest_vulkan   -> verified VRAM stress
+#
+# Disk testing is NON-DESTRUCTIVE:
+#   - creates a temporary file on the selected filesystem
+#   - writes + checksum-verifies it once
+#   - spends remaining time doing verified random reads
+#   - removes the file afterwards
+#
+# Default runtime: 5 minutes
+#
+# Exit status:
+#   0 = PASS
+#   1 = FAIL
+#   2 = usage/preflight error
+#   3 = PASS WITH WARNINGS
+
+DURATION=300   # seconds, 60..600
+RAM_PERCENT=70 # % of available RAM
+DISK_DIR="$PWD"
+DISK_MAX_MIB=4096
+DISK_MIN_MIB=512
+LOG_DIR=""
+
+usage() {
+    cat <<'EOF'
+Usage: system-stability-test [options]
+
+Options:
+  -t, --time SECONDS       Total runtime, 60..600 (default: 300)
+  -d, --disk-dir DIR       Filesystem/disk to test (default: current directory)
+      --ram PERCENT        RAM pressure, 40..85 (default: 70)
+      --disk-max MIB       Maximum temporary disk-test file (default: 4096 MiB)
+      --log-dir DIR        Log directory
+                           default: /tmp/system-stability-test-...
+  -h, --help               Show this help
+
+Examples:
+
+  # Recommended quick test: five minutes
+  system-stability-test -t 300
+
+  # Stronger quick test
+  system-stability-test -t 600
+
+  # Test a particular filesystem/disk
+  system-stability-test -t 300 -d /mnt/nvme
+
+EOF
+}
+
+die() {
+    printf 'ERROR: %s\n' "$*" >&2
+    exit 2
+}
+
+have() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+while (($#)); do
+    case "$1" in
+    -t | --time)
+        (($# >= 2)) || die "$1 requires an argument"
+        DURATION=$2
+        shift 2
+        ;;
+    -d | --disk-dir)
+        (($# >= 2)) || die "$1 requires an argument"
+        DISK_DIR=$2
+        shift 2
+        ;;
+    --ram)
+        (($# >= 2)) || die "$1 requires an argument"
+        RAM_PERCENT=$2
+        shift 2
+        ;;
+    --disk-max)
+        (($# >= 2)) || die "$1 requires an argument"
+        DISK_MAX_MIB=$2
+        shift 2
+        ;;
+    --log-dir)
+        (($# >= 2)) || die "$1 requires an argument"
+        LOG_DIR=$2
+        shift 2
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    *)
+        die "unknown option: $1"
+        ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# Validate arguments
+# ---------------------------------------------------------------------------
+
+[[ $DURATION =~ ^[0-9]+$ ]] ||
+    die "--time must be an integer number of seconds"
+
+((DURATION >= 60 && DURATION <= 600)) ||
+    die "--time must be between 60 and 600 seconds"
+
+[[ $RAM_PERCENT =~ ^[0-9]+$ ]] ||
+    die "--ram must be an integer"
+
+((RAM_PERCENT >= 40 && RAM_PERCENT <= 85)) ||
+    die "--ram must be between 40 and 85"
+
+[[ $DISK_MAX_MIB =~ ^[0-9]+$ ]] ||
+    die "--disk-max must be an integer MiB value"
+
+((DISK_MAX_MIB >= DISK_MIN_MIB)) ||
+    die "--disk-max must be at least ${DISK_MIN_MIB} MiB"
+
+# ---------------------------------------------------------------------------
+# Dependencies
+# ---------------------------------------------------------------------------
+
+for cmd in stress-ng fio memtest_vulkan vkmark findmnt realpath timeout; do
+    have "$cmd" ||
+        die "$cmd not found; install: sudo pacman -S --needed stress-ng fio memtest_vulkan vkmark"
+done
+
+# ---------------------------------------------------------------------------
+# GPU detection
+# ---------------------------------------------------------------------------
+
+# Vulkan does the actual testing. NVIDIA detection is only used to:
+#
+#   - force the NVIDIA Vulkan ICD, avoiding accidental llvmpipe/iGPU selection
+#   - provide temperature/power/load telemetry
+#
+# This makes the script still usable on non-NVIDIA Vulkan systems.
+
+NVIDIA=0
+NVIDIA_ICD=""
+GPU_NAME="Vulkan GPU selected by the test"
+
+if have nvidia-smi; then
+    gpu_name_nvidia=$(
+        nvidia-smi \
+            --query-gpu=name \
+            --format=csv,noheader \
+            2>/dev/null |
+            head -n1 || true
+    )
+
+    if [[ -n $gpu_name_nvidia ]]; then
+        NVIDIA=1
+        GPU_NAME=$gpu_name_nvidia
+
+        for candidate in \
+            /usr/share/vulkan/icd.d/nvidia_icd.json \
+            /etc/vulkan/icd.d/nvidia_icd.json; do
+            if [[ -r $candidate ]]; then
+                NVIDIA_ICD=$candidate
+                break
+            fi
+        done
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Disk target
+# ---------------------------------------------------------------------------
+
+DISK_DIR=$(realpath -e -- "$DISK_DIR")
+
+[[ -d $DISK_DIR && -w $DISK_DIR ]] ||
+    die "disk-test directory is not writable: $DISK_DIR"
+
+FSTYPE=$(
+    findmnt -T "$DISK_DIR" -n -o FSTYPE 2>/dev/null ||
+        true
+)
+
+case "$FSTYPE" in
+tmpfs | ramfs)
+    die "$DISK_DIR is on $FSTYPE; use --disk-dir with an actual disk filesystem"
+    ;;
+esac
+
+AVAILABLE_BYTES=$(
+    df -B1 --output=avail "$DISK_DIR" |
+        tail -n1 |
+        tr -d ' '
+)
+
+[[ $AVAILABLE_BYTES =~ ^[0-9]+$ ]] ||
+    die "could not determine free space for $DISK_DIR"
+
+# We do not want a short stability test writing hundreds of gigabytes.
+#
+# Limit temporary file to:
+#
+#   - --disk-max
+#   - 1/8 of currently available filesystem space
+#   - a runtime-dependent size
+#
+# DURATION*25 MiB means that a disk capable of only ~50 MiB/s can
+# approximately complete the initial write+verify pair inside the test
+# budget.
+
+max_bytes=$((DISK_MAX_MIB * 1024 * 1024))
+space_bytes=$((AVAILABLE_BYTES / 8))
+time_bytes=$((DURATION * 25 * 1024 * 1024))
+
+DISK_BYTES=$max_bytes
+
+((space_bytes < DISK_BYTES)) &&
+    DISK_BYTES=$space_bytes
+
+((time_bytes < DISK_BYTES)) &&
+    DISK_BYTES=$time_bytes
+
+# fio block size below is 256 KiB.
+DISK_BYTES=$((DISK_BYTES / 262144 * 262144))
+
+((DISK_BYTES >= DISK_MIN_MIB * 1024 * 1024)) ||
+    die "not enough free space: need roughly $((DISK_MIN_MIB * 8)) MiB free in $DISK_DIR"
+
+# ---------------------------------------------------------------------------
+# CPU / RAM parameters
+# ---------------------------------------------------------------------------
+
+CPU_THREADS=$(nproc)
+
+# Multiple VM workers give better memory-controller/bandwidth pressure than
+# one giant allocation, without going insane with process count.
+
+VM_WORKERS=$((CPU_THREADS / 4))
+
+((VM_WORKERS < 2)) &&
+    VM_WORKERS=2
+
+((VM_WORKERS > 8)) &&
+    VM_WORKERS=8
+
+# ---------------------------------------------------------------------------
+# GPU phase split
+# ---------------------------------------------------------------------------
+
+# Use up to one minute for a rendering/core-heavy workload.
+# Give the majority of GPU time to VRAM verification.
+
+GPU_CORE_SECONDS=$((DURATION / 5))
+
+((GPU_CORE_SECONDS < 20)) &&
+    GPU_CORE_SECONDS=20
+
+((GPU_CORE_SECONDS > 60)) &&
+    GPU_CORE_SECONDS=60
+
+GPU_VRAM_SECONDS=$((DURATION - GPU_CORE_SECONDS))
+
+# ---------------------------------------------------------------------------
+# Logs / state
+# ---------------------------------------------------------------------------
+
+if [[ -z $LOG_DIR ]]; then
+    LOG_DIR="/tmp/system-stability-test-$(date +%Y%m%d-%H%M%S)-$$"
+fi
+
+mkdir -p -- "$LOG_DIR"
+LOG_DIR=$(realpath -e -- "$LOG_DIR")
+
+DISK_TEST_FILE="$DISK_DIR/.system-stability-fio-$$-$RANDOM.dat"
+
+START_EPOCH=$(date +%s)
+START_MONO=$SECONDS
+
+declare -A PIDS=()
+declare -A RCS=()
+
+cleanup() {
+    local pid
+
+    for pid in "${PIDS[@]:-}"; do
+        if [[ -n $pid ]] && kill -0 "$pid" 2>/dev/null; then
+            kill -TERM "$pid" 2>/dev/null || true
+        fi
+    done
+
+    rm -f -- "$DISK_TEST_FILE" 2>/dev/null || true
+}
+
+on_signal() {
+    printf '\nInterrupted; stopping stressors...\n' >&2
+    exit 130
+}
+
+trap cleanup EXIT
+trap on_signal INT TERM HUP
+
+# ---------------------------------------------------------------------------
+# CPU + RAM
+# ---------------------------------------------------------------------------
+
+cpu_ram_lane() {
+    stress-ng \
+        --cpu 0 \
+        --cpu-load 100 \
+        --cpu-method all \
+        --vm "$VM_WORKERS" \
+        --vm-bytes "${RAM_PERCENT}%" \
+        --vm-method all \
+        --vm-keep \
+        --verify \
+        --timeout "${DURATION}s" \
+        --metrics-brief
+}
+
+# ---------------------------------------------------------------------------
+# GPU + VRAM
+# ---------------------------------------------------------------------------
+
+gpu_lane() {
+    local vk_rc
+    local mt_rc
+
+    local -a env_prefix=()
+
+    if [[ -n $NVIDIA_ICD ]]; then
+        env_prefix=(
+            env
+            "VK_DRIVER_FILES=$NVIDIA_ICD"
+        )
+    fi
+
+    printf '%s\n' \
+        '=== GPU core/rendering phase: vkmark ==='
+
+    set +e
+
+    "${env_prefix[@]}" \
+        timeout \
+        --signal=TERM \
+        --kill-after=5s \
+        "${GPU_CORE_SECONDS}s" \
+        vkmark \
+        --winsys headless \
+        --size 1920x1080 \
+        --run-forever
+
+    vk_rc=$?
+
+    set -e
+
+    # 124 = timeout intentionally ended our endless vkmark loop.
+    # 0   = vkmark happened to terminate cleanly.
+    #
+    # Any other return code means it died unexpectedly.
+
+    if ((vk_rc != 0 && vk_rc != 124)); then
+        printf 'vkmark failed with exit code %d\n' "$vk_rc" >&2
+        return 10
+    fi
+
+    printf '\n%s\n' \
+        '=== VRAM verification phase: memtest_vulkan ==='
+
+    set +e
+
+    # memtest_vulkan normally runs until Ctrl-C.
+    #
+    # A newline selects its default/only Vulkan device immediately rather
+    # than waiting for its device-selection timeout.
+    #
+    # SIGINT is used because memtest_vulkan handles Ctrl-C and prints its
+    # final PASS/error result before terminating.
+
+    printf '\n' |
+        "${env_prefix[@]}" \
+            timeout \
+            --preserve-status \
+            --signal=INT \
+            --kill-after=10s \
+            "${GPU_VRAM_SECONDS}s" \
+            memtest_vulkan
+
+    mt_rc=${PIPESTATUS[1]}
+
+    set -e
+
+    if ((mt_rc != 0)); then
+        printf 'memtest_vulkan failed with exit code %d\n' "$mt_rc" >&2
+        return 11
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Disk
+# ---------------------------------------------------------------------------
+
+disk_lane() {
+    local begin=$SECONDS
+    local elapsed
+    local remaining
+
+    # Phase 1:
+    #
+    # Write the file and read it back with CRC32C verification.
+    #
+    # This catches actual silent write/read corruption rather than merely
+    # proving that the kernel accepted some I/O requests.
+
+    fio \
+        --name=write-verify \
+        --filename="$DISK_TEST_FILE" \
+        --size="$DISK_BYTES" \
+        --ioengine=io_uring \
+        --direct=1 \
+        --rw=write \
+        --bs=256k \
+        --iodepth=16 \
+        --verify=crc32c \
+        --verify_fatal=1 \
+        --do_verify=1 \
+        --verify_async=2 \
+        --fsync_on_close=1 \
+        --group_reporting
+
+    elapsed=$((SECONDS - begin))
+    remaining=$((DURATION - elapsed))
+
+    # Phase 2:
+    #
+    # Avoid hammering SSD write endurance for the remainder of the test.
+    # Randomly read the verified file instead, while continuing to check
+    # CRCs.
+
+    if ((remaining >= 5)); then
+        fio \
+            --name=verified-random-read \
+            --filename="$DISK_TEST_FILE" \
+            --size="$DISK_BYTES" \
+            --ioengine=io_uring \
+            --direct=1 \
+            --rw=randread \
+            --bs=256k \
+            --iodepth=32 \
+            --time_based=1 \
+            --runtime="${remaining}s" \
+            --verify=crc32c \
+            --verify_fatal=1 \
+            --verify_header_seed=0 \
+            --group_reporting
+    fi
+
+    rm -f -- "$DISK_TEST_FILE"
+}
+
+# ---------------------------------------------------------------------------
+# Launch
+# ---------------------------------------------------------------------------
+
+launch() {
+    local name=$1
+    shift
+
+    printf 'Starting %-8s -> %s/%s.log\n' \
+        "$name" "$LOG_DIR" "$name"
+
+    (
+        "$@"
+    ) >"$LOG_DIR/$name.log" 2>&1 &
+
+    PIDS["$name"]=$!
+}
+
+printf 'System stability test\n'
+printf '  duration : %ss\n' "$DURATION"
+printf '  CPU      : %s logical CPUs; cpu-method=all + verification\n' \
+    "$CPU_THREADS"
+printf '  RAM      : %s%% available RAM; %s VM workers; vm-method=all + verification\n' \
+    "$RAM_PERCENT" "$VM_WORKERS"
+printf '  GPU      : %s\n' "$GPU_NAME"
+printf '             %ss vkmark core load + %ss memtest_vulkan VRAM test\n' \
+    "$GPU_CORE_SECONDS" "$GPU_VRAM_SECONDS"
+printf '  disk     : %s (%s), %.1f GiB temporary test file\n' \
+    "$DISK_DIR" \
+    "${FSTYPE:-unknown fs}" \
+    "$(awk -v b="$DISK_BYTES" 'BEGIN { printf b / 1073741824 }')"
+printf '  logs     : %s\n\n' "$LOG_DIR"
+
+launch cpu_ram cpu_ram_lane
+launch gpu gpu_lane
+launch disk disk_lane
+
+# ---------------------------------------------------------------------------
+# Progress
+# ---------------------------------------------------------------------------
+
+while :; do
+    running=()
+
+    for name in cpu_ram gpu disk; do
+        pid=${PIDS[$name]}
+
+        if kill -0 "$pid" 2>/dev/null; then
+            running+=("$name")
+        fi
+    done
+
+    ((${#running[@]})) ||
+        break
+
+    elapsed=$((SECONDS - START_MONO))
+
+    printf '[%3ds/%ss] running: %-16s' \
+        "$elapsed" \
+        "$DURATION" \
+        "${running[*]}"
+
+    if ((NVIDIA)); then
+        gpu_stats=$(
+            nvidia-smi \
+                --query-gpu=temperature.gpu,power.draw,utilization.gpu,memory.used,memory.total \
+                --format=csv,noheader,nounits \
+                2>/dev/null |
+                head -n1 ||
+                true
+        )
+
+        if [[ -n $gpu_stats ]]; then
+            printf ' | GPU temp,power,util,VRAM: %s' \
+                "$gpu_stats"
+        fi
+    fi
+
+    printf '\n'
+
+    sleep 10
+done
+
+# Retrieve actual child exit statuses.
+
+for name in cpu_ram gpu disk; do
+    if wait "${PIDS[$name]}"; then
+        RCS["$name"]=0
+    else
+        RCS["$name"]=$?
+    fi
+done
+
+# ---------------------------------------------------------------------------
+# Kernel log
+# ---------------------------------------------------------------------------
+
+KERNEL_LOG="$LOG_DIR/kernel.log"
+KERNEL_CRITICAL="$LOG_DIR/kernel-critical.log"
+KERNEL_WARNINGS="$LOG_DIR/kernel-warnings.log"
+
+KERNEL_ACCESS=0
+
+: >"$KERNEL_LOG"
+: >"$KERNEL_CRITICAL"
+: >"$KERNEL_WARNINGS"
+
+if have journalctl &&
+    journalctl \
+        -k \
+        --since "@$START_EPOCH" \
+        --no-pager \
+        -q \
+        >"$KERNEL_LOG" \
+        2>/dev/null; then
+    KERNEL_ACCESS=1
+fi
+
+if ((KERNEL_ACCESS)) && [[ -s $KERNEL_LOG ]]; then
+
+    # Things that should turn the run into a failure.
+
+    grep -Eai \
+        'machine check|hardware error|mce:|edac.*(error|uncorrect)|nvrm:.*xid|xid.*nvrm|pcie.*(fatal|uncorrect)|nvme.*(timeout|reset|abort|i/o error)|ata[0-9].*(error|failed command|hard resetting)|buffer i/o error|blk_update_request|ext4-fs error|btrfs.*(error|corrupt)|xfs.*(corrupt|metadata error)|watchdog:.*(soft|hard) lockup|rcu.*stall|BUG: unable to handle|general protection fault' \
+        "$KERNEL_LOG" \
+        >"$KERNEL_CRITICAL" ||
+        true
+
+    # Interesting, but not automatically proof of bad hardware.
+
+    grep -Eai \
+        'edac.*corrected|pcie.*aer.*corrected|out of memory|oom-kill|segfault' \
+        "$KERNEL_LOG" \
+        >"$KERNEL_WARNINGS" ||
+        true
+fi
+
+# ---------------------------------------------------------------------------
+# Results
+# ---------------------------------------------------------------------------
+
+fail=0
+warn=0
+
+printf '\nResults\n'
+
+if ((RCS[cpu_ram] == 0)); then
+    printf '  PASS  CPU + RAM   stress-ng completed with verification enabled\n'
+else
+    printf '  FAIL  CPU + RAM   stress-ng exit code %s; see cpu_ram.log\n' \
+        "${RCS[cpu_ram]}"
+    fail=1
+fi
+
+GPU_BAD=0
+
+if ((RCS[gpu] != 0)); then
+    GPU_BAD=1
+fi
+
+# Look for GPU errors, but exclude memtest_vulkan's success text
+# ("no any errors").
+
+if grep -Eaiq \
+    'error|FAULT|FAIL(ed)?|device lost|segmentation|core dumped' \
+    "$LOG_DIR/gpu.log"; then
+    if grep -Eaiv \
+        'no any errors|0 errors|errors:[[:space:]]*0' \
+        "$LOG_DIR/gpu.log" |
+        grep -Eaiq \
+            'error|FAULT|FAIL(ed)?|device lost|segmentation|core dumped'; then
+        GPU_BAD=1
+    fi
+fi
+
+if ((GPU_BAD)); then
+
+    printf '  FAIL  GPU + VRAM  GPU test reported or returned an error; see gpu.log\n'
+    fail=1
+
+elif grep -Fq \
+    'memtest_vulkan: no any errors, testing PASSed.' \
+    "$LOG_DIR/gpu.log"; then
+
+    printf '  PASS  GPU + VRAM  vkmark survived; memtest_vulkan found no VRAM errors\n'
+
+else
+
+    printf '  WARN  GPU + VRAM  tests exited cleanly but VRAM PASS marker was not found\n'
+    warn=1
+
+fi
+
+if ((RCS[disk] == 0)); then
+    printf '  PASS  disk         fio write/read checksum verification completed\n'
+else
+    printf '  FAIL  disk         fio exit code %s; see disk.log\n' \
+        "${RCS[disk]}"
+    fail=1
+fi
+
+if ((! KERNEL_ACCESS)); then
+
+    printf '  WARN  kernel       kernel journal was not readable as this user\n'
+    warn=1
+
+elif [[ -s $KERNEL_CRITICAL ]]; then
+
+    printf '  FAIL  kernel       serious errors appeared during the test:\n'
+
+    sed 's/^/                      /' \
+        "$KERNEL_CRITICAL"
+
+    fail=1
+
+elif [[ -s $KERNEL_WARNINGS ]]; then
+
+    printf '  WARN  kernel       potentially relevant messages appeared:\n'
+
+    sed 's/^/                      /' \
+        "$KERNEL_WARNINGS"
+
+    warn=1
+
+else
+
+    printf '  PASS  kernel       no obvious hardware/GPU/storage/lockup/OOM errors seen\n'
+
+fi
+
+printf '\nLogs: %s\n' "$LOG_DIR"
+
+if ((fail)); then
+    printf 'OVERALL: FAIL\n'
+    exit 1
+elif ((warn)); then
+    printf 'OVERALL: PASS WITH WARNINGS\n'
+    exit 3
+else
+    printf 'OVERALL: PASS\n'
+    exit 0
+fi
