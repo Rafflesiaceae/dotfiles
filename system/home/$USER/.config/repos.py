@@ -35,11 +35,16 @@ def custom_clone_cmd(repo):
 
 
 def post_update_hook(repo):
-    build_sh = os.path.join(repo["workdir"], "build.sh")
+    def process_optional_file(name):
+        build_sh = os.path.join(repo["workdir"], name)
 
-    if os.path.isfile(build_sh):
-        subprocess.run(
-            ["./build.sh"],
-            cwd=repo["workdir"],
-            check=True,
-        )
+        if os.path.isfile(build_sh):
+            subprocess.run(
+                [f"./{name}"],
+                cwd=repo["workdir"],
+                check=True,
+            )
+
+    process_optional_file("build.sh")
+    process_optional_file("install.sh")
+    process_optional_file("bootstrap.py")
