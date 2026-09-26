@@ -170,16 +170,13 @@ local function skip_auto_enable_countdown()
     update_status_overlay()
 end
 
-local function install_auto_enable_skip_bindings()
-    -- Forced bindings ensure these inputs take precedence while the countdown
-    -- is active. They are removed as soon as the countdown finishes/cancels.
+ local function install_auto_enable_skip_bindings()
     mp.add_forced_key_binding(
         "ENTER",
         AUTO_ENABLE_ENTER_BINDING,
         skip_auto_enable_countdown
     )
 
-    -- Also handle the Enter key on the numeric keypad.
     mp.add_forced_key_binding(
         "KP_ENTER",
         AUTO_ENABLE_KP_ENTER_BINDING,
@@ -189,7 +186,12 @@ local function install_auto_enable_skip_bindings()
     mp.add_forced_key_binding(
         "MBTN_LEFT",
         AUTO_ENABLE_MOUSE_BINDING,
-        skip_auto_enable_countdown
+        function(event)
+            if event.event == "down" then
+                skip_auto_enable_countdown()
+            end
+        end,
+        { complex = true }
     )
 end
 
