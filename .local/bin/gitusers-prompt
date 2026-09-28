@@ -20,17 +20,167 @@ int execvp(const char *file, char *const argv[]);
 pid_t waitpid(pid_t pid, int *status, int options);
 
 void _exit(int status);
+
+
+typedef struct pcre2_real_code_8 pcre2_code_8;
+typedef struct pcre2_real_match_data_8 pcre2_match_data_8;
+
+pcre2_code_8 *pcre2_compile_8(
+    const unsigned char *pattern,
+    size_t length,
+    unsigned int options,
+    int *errorcode,
+    size_t *erroroffset,
+    void *ccontext
+);
+
+void pcre2_code_free_8(
+    pcre2_code_8 *code
+);
+
+pcre2_match_data_8 *pcre2_match_data_create_from_pattern_8(
+    const pcre2_code_8 *code,
+    void *gcontext
+);
+
+void pcre2_match_data_free_8(
+    pcre2_match_data_8 *match_data
+);
+
+int pcre2_match_8(
+    const pcre2_code_8 *code,
+    const unsigned char *subject,
+    size_t length,
+    size_t startoffset,
+    unsigned int options,
+    pcre2_match_data_8 *match_data,
+    void *mcontext
+);
+
+int pcre2_get_error_message_8(
+    int errorcode,
+    unsigned char *buffer,
+    size_t bufflen
+);
 ]]
 
 local C = ffi.C
 
-local STDIN_FILENO  = 0
+local STDIN_FILENO = 0
 local STDOUT_FILENO = 1
 local EINTR = 4
+
+local PCRE2_ERROR_NOMATCH = -1
+
+local pcre2
 
 local function die(msg)
     io.stderr:write("Error: ", msg, "\n")
     os.exit(1)
+end
+
+local function get_pcre2()
+    if pcre2 then
+        return pcre2
+    end
+
+    local ok, lib = pcall(ffi.load, "pcre2-8")
+
+    if not ok then
+        die(
+            "could not load libpcre2-8.so: "
+            .. tostring(lib)
+            .. "\nInstall it with: sudo pacman -S pcre2"
+        )
+    end
+
+    pcre2 = lib
+    return pcre2
+end
+
+local function pcre2_error_message(lib, errorcode)
+    local buf = ffi.new("unsigned char[256]")
+
+    local len = lib.pcre2_get_error_message_8(
+        errorcode,
+        buf,
+        256
+    )
+
+    if len >= 0 then
+        return ffi.string(buf, len)
+    end
+
+    return "PCRE2 error " .. errorcode
+end
+
+local function regex_find(subject, pattern)
+    local lib = get_pcre2()
+
+    local errorcode = ffi.new("int[1]")
+    local erroroffset = ffi.new("size_t[1]")
+
+    local code = lib.pcre2_compile_8(
+        ffi.cast("const unsigned char *", pattern),
+        #pattern,
+        0,
+        errorcode,
+        erroroffset,
+        nil
+    )
+
+    if code == nil then
+        error(
+            (
+                "PCRE2 compile error at byte offset %d: %s"
+            ):format(
+                tonumber(erroroffset[0]),
+                pcre2_error_message(
+                    lib,
+                    tonumber(errorcode[0])
+                )
+            ),
+            0
+        )
+    end
+
+    local match_data =
+        lib.pcre2_match_data_create_from_pattern_8(
+            code,
+            nil
+        )
+
+    if match_data == nil then
+        lib.pcre2_code_free_8(code)
+        error("PCRE2 could not allocate match data", 0)
+    end
+
+    local rc = lib.pcre2_match_8(
+        code,
+        ffi.cast("const unsigned char *", subject),
+        #subject,
+        0,
+        0,
+        match_data,
+        nil
+    )
+
+    lib.pcre2_match_data_free_8(match_data)
+    lib.pcre2_code_free_8(code)
+
+    if rc >= 0 then
+        return true
+    end
+
+    if rc == PCRE2_ERROR_NOMATCH then
+        return false
+    end
+
+    error(
+        "PCRE2 match error: "
+        .. pcre2_error_message(lib, tonumber(rc)),
+        0
+    )
 end
 
 local function close_fd(fd)
@@ -82,7 +232,10 @@ local function exec(argv)
 
     cargv[#argv] = nil
 
-    C.execvp(argv[1], ffi.cast("char *const *", cargv))
+    C.execvp(
+        argv[1],
+        ffi.cast("char *const *", cargv)
+    )
 
     io.stderr:write(
         "execvp(",
@@ -97,7 +250,7 @@ end
 
 local function read_all(fd)
     local chunks = {}
-    local buf = ffi.new("uint8_t[65536]")
+    local buf = ffi.new("unsigned char[65536]")
 
     while true do
         local n = C.read(fd, buf, 65536)
@@ -120,10 +273,18 @@ end
 local function write_all(fd, data)
     local len = #data
     local pos = 0
-    local ptr = ffi.cast("const uint8_t *", data)
+
+    local ptr = ffi.cast(
+        "const unsigned char *",
+        data
+    )
 
     while pos < len do
-        local n = C.write(fd, ptr + pos, len - pos)
+        local n = C.write(
+            fd,
+            ptr + pos,
+            len - pos
+        )
 
         if n > 0 then
             pos = pos + tonumber(n)
@@ -131,7 +292,10 @@ local function write_all(fd, data)
             -- retry
         else
             close_fd(fd)
-            die("write() failed: errno " .. ffi.errno())
+            die(
+                "write() failed: errno "
+                .. ffi.errno()
+            )
         end
     end
 
@@ -145,7 +309,11 @@ local function capture(argv)
     if pid < 0 then
         close_fd(rd)
         close_fd(wr)
-        die("fork() failed: errno " .. ffi.errno())
+
+        die(
+            "fork() failed: errno "
+            .. ffi.errno()
+        )
     end
 
     if pid == 0 then
@@ -178,7 +346,11 @@ local function run_filter(argv, input)
         close_fd(in_wr)
         close_fd(out_rd)
         close_fd(out_wr)
-        die("fork() failed: errno " .. ffi.errno())
+
+        die(
+            "fork() failed: errno "
+            .. ffi.errno()
+        )
     end
 
     if pid == 0 then
@@ -212,9 +384,9 @@ end
 
 local function match_user(uri)
     local cjson = require("cjson")
-    local rex = require("rex_pcre2")
 
     local home = os.getenv("HOME")
+
     if not home or home == "" then
         die("$HOME is not set")
     end
@@ -223,7 +395,12 @@ local function match_user(uri)
     local file, err = io.open(path, "rb")
 
     if not file then
-        die("could not open " .. path .. ": " .. tostring(err))
+        die(
+            "could not open "
+            .. path
+            .. ": "
+            .. tostring(err)
+        )
     end
 
     local json = file:read("*a")
@@ -232,39 +409,57 @@ local function match_user(uri)
     local ok, users = pcall(cjson.decode, json)
 
     if not ok then
-        die("could not parse " .. path .. ": " .. tostring(users))
+        die(
+            "could not parse "
+            .. path
+            .. ": "
+            .. tostring(users)
+        )
     end
 
     if type(users) ~= "table" then
-        die(path .. " must contain a JSON array")
+        die(
+            path
+            .. " must contain a JSON array"
+        )
     end
 
     for i, user in ipairs(users) do
         if type(user) ~= "table" then
-            die("entry " .. i .. " in " .. path .. " is not an object")
+            die(
+                "entry "
+                .. i
+                .. " in "
+                .. path
+                .. " is not an object"
+            )
         end
 
         if user.match ~= nil then
             if type(user.match) ~= "string" then
-                die("entry " .. i .. " has a non-string 'match' field")
+                die(
+                    "entry "
+                    .. i
+                    .. " has a non-string 'match' field"
+                )
             end
 
-            local matched, first = pcall(
-                rex.find,
+            local ok_match, found = pcall(
+                regex_find,
                 uri,
                 user.match
             )
 
-            if not matched then
+            if not ok_match then
                 die(
-                    "invalid regex in entry "
+                    "regex error in entry "
                     .. i
                     .. ": "
-                    .. tostring(first)
+                    .. tostring(found)
                 )
             end
 
-            if first ~= nil then
+            if found then
                 if type(user.short) ~= "string"
                     or user.short == ""
                 then
@@ -303,14 +498,21 @@ end
 local users_out, status = capture({ "gitusers" })
 
 if status ~= 0 then
-    die("'gitusers' exited with status " .. status)
+    die(
+        "'gitusers' exited with status "
+        .. status
+    )
 end
 
 -- Equivalent to: tail -n +2
-users_out = users_out:match("^[^\n]*\n(.*)$") or ""
+users_out =
+    users_out:match("^[^\n]*\n(.*)$")
+    or ""
 
 if not users_out:find("%S") then
-    die("'gitusers' returned no selectable rows.")
+    die(
+        "'gitusers' returned no selectable rows."
+    )
 end
 
 local selection, fzf_status = run_filter({
@@ -319,13 +521,19 @@ local selection, fzf_status = run_filter({
 }, users_out)
 
 if fzf_status ~= 0 then
-    io.stderr:write("Aborted: no selection made.\n")
+    io.stderr:write(
+        "Aborted: no selection made.\n"
+    )
     os.exit(1)
 end
 
-selection = selection:gsub("[\r\n]+$", "")
+selection = selection:gsub(
+    "[\r\n]+$",
+    ""
+)
 
-local first_col = selection:match("^%s*(%S+)")
+local first_col =
+    selection:match("^%s*(%S+)")
 
 if not first_col then
     die(
