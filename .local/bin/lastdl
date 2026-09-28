@@ -54,7 +54,14 @@ elif [[ $cli_edit ]]; then
     "$EDITOR" "$latest"
 elif [[ $cli_move ]]; then
     if [[ -n "$1" ]]; then
+        execbit=
+        if [[ -x "$1" ]]; then
+            execbit=1
+        fi
         ( set -x; mv "$latest" "$1" )
+        if [[ "$execbit" ]]; then
+            chmod +x "$1"
+        fi
     else
         ( set -x; mv "$latest" "$PWD" )
     fi
