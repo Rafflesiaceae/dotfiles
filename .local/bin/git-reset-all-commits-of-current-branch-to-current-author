@@ -1,18 +1,29 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-git rebase -r --root \
-    --exec 'git commit --amend --no-edit --reset-author --allow-empty'
+if [[ $# -gt 0 ]]; then
+    target="$(git rev-parse "$1")"
+    short_target="$(git rev-parse --short "$target")"
 
-# if [[ "$1" == "initial" ]]; then
-#     git rebase -i --root
-#     git commit --amend --edit --reset-author --allow-empty
-#     git-continue
-# else
-#     git rebase -r "$(git-first-commit)" --exec 'git commit --amend --no-edit --reset-author'
-# fi
+    sequence_editor="$(
+        mktemp
+    )"
+    trap 'rm -f "$sequence_editor"' EXIT
 
-# rebase initial commit (manual for now)
-# git rebase -i --root
-# git commit --amend --no-edit --reset-author --allow-empty
-# git-continue
+    cat >"$sequence_editor" <<EOF
+#!/usr/bin/env bash
+set -e
+
+sed -i \
+    '/^pick $short_target /a exec git commit --amend --no-edit --reset-author --allow-empty' \
+    "\$1"
+EOF
+
+    chmod +x "$sequence_editor"
+
+    GIT_SEQUENCE_EDITOR="$sequence_editor" \
+        git rebase -r -i --root
+else
+    git rebase -r --root \
+        --exec 'git commit --amend --no-edit --reset-author --allow-empty'
+fi
