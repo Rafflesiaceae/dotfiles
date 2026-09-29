@@ -1,4 +1,4 @@
-#!/usr/bin/env luajit
+#!/usr/bin/luajit
 -- Prints the last shell command & output of a terminal buffer.
 -- Prompt is matched towards my own hard-coded customized format, see below.
 --

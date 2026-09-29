@@ -1,4 +1,4 @@
-#!/usr/bin/env luajit
+#!/usr/bin/luajit
 -- syncfs.lua: push/pull a directory marked by .syncfs to/from a fixed rsync remote.
 --
 -- Remote dir   = ${SYNCFS_REMOTE}/${md5(stable_sync_key)}
