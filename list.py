@@ -352,6 +352,7 @@ sources = {
     "./.local/bin/show-term-colors": "",
     "./.local/bin/showcqt": "",
     "./.local/bin/smart-context": {"linux": ""},
+    "./.local/bin/socky": "",
     "./.local/bin/ssh-add-all": "",
     "./.local/bin/sshhost": "",
     "./.local/bin/steam-big-screen-set-blank-startup-movie": "",

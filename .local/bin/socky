@@ -1,0 +1,489 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Socky the sockiest
+#
+#
+# Example ~/.ssh/config entry ↓
+#
+# Host socky
+#     HostName XXX
+#     User     root
+#     Port 22
+#     IdentityFile ~/.ssh/TODO
+#     IdentitiesOnly yes
+#     ServerAliveInterval 30
+#     ServerAliveCountMax 3
+#     ExitOnForwardFailure yes
+#     # Don’t expose anything server-side; we only need client SOCKS
+#     TCPKeepAlive yes
+
+HOST="${HOST:-socky}"
+SOCKS_PORT="${SOCKS_PORT:-1080}"
+CTRL="${CTRL:-$HOME/.ssh/cm-$HOST.sock}"
+USER_DATA_DIR="${USER_DATA_DIR:-$HOME/.config/chromium-socky}"
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [OPTIONS] [CHROMIUM_ARGS...]
+
+Start Chromium using an SSH SOCKS5 tunnel through '$HOST'.
+
+Options:
+  -h, --help    Show this help and exit
+  -k, --kill    Stop managed or stale SSH tunnel state and exit
+  -s, --status  Show current SSH SOCKS tunnel status and exit
+  --            Pass all following arguments to Chromium
+
+Environment:
+  HOST           SSH config host (default: socky)
+  SOCKS_PORT     Local SOCKS5 port (default: 1080)
+  CTRL           SSH ControlMaster socket
+                 (default: ~/.ssh/cm-\$HOST.sock)
+  USER_DATA_DIR  Chromium profile directory
+                 (default: ~/.config/chromium-socky)
+  BROWSER_BIN    Chromium/Chrome executable
+
+The SSH tunnel is kept running after Chromium exits. Use --kill to
+explicitly stop it, including stale tunnels left by older versions.
+EOF
+}
+
+port_is_open() {
+    (exec 3<>"/dev/tcp/127.0.0.1/$SOCKS_PORT") 2>/dev/null
+}
+
+master_is_running() {
+    ssh -S "$CTRL" -O check "$HOST" >/dev/null 2>&1
+}
+
+wait_for_port() {
+    local i
+
+    for ((i = 0; i < 50; ++i)); do
+        if port_is_open; then
+            return 0
+        fi
+        sleep 0.1
+    done
+
+    return 1
+}
+
+is_our_ssh_socks_process() {
+    local pid="$1"
+    local exe arg previous=
+    local -a argv=()
+
+    [[ -r "/proc/$pid/cmdline" ]] || return 1
+    [[ "$(stat -c '%u' "/proc/$pid" 2>/dev/null || true)" == "$UID" ]] ||
+        return 1
+
+    exe="$(readlink -f "/proc/$pid/exe" 2>/dev/null || true)"
+    [[ "${exe##*/}" == "ssh" ]] || return 1
+
+    mapfile -d '' -t argv <"/proc/$pid/cmdline" || true
+
+    for arg in "${argv[@]}"; do
+        if [[ "$previous" == "-D" ]]; then
+            case "$arg" in
+                "$SOCKS_PORT"|"127.0.0.1:$SOCKS_PORT"|"localhost:$SOCKS_PORT"|"[::1]:$SOCKS_PORT")
+                    return 0
+                    ;;
+            esac
+        fi
+
+        case "$arg" in
+            "-D$SOCKS_PORT"|"-D127.0.0.1:$SOCKS_PORT"|"-Dlocalhost:$SOCKS_PORT"|"-D[::1]:$SOCKS_PORT")
+                return 0
+                ;;
+        esac
+
+        previous="$arg"
+    done
+
+    return 1
+}
+
+stale_ssh_pids() {
+    local proc pid
+
+    for proc in /proc/[0-9]*; do
+        [[ -d "$proc" ]] || continue
+        pid="${proc##*/}"
+
+        if is_our_ssh_socks_process "$pid"; then
+            printf '%s\n' "$pid"
+        fi
+    done
+}
+
+kill_stale_ssh_tunnels() {
+    local pid
+    local alive
+    local -a pids=()
+
+    mapfile -t pids < <(stale_ssh_pids)
+    ((${#pids[@]})) || return 0
+
+    for pid in "${pids[@]}"; do
+        echo "Stopping stale SSH SOCKS tunnel on port $SOCKS_PORT (PID $pid)"
+        kill "$pid" 2>/dev/null || true
+    done
+
+    for _ in {1..20}; do
+        alive=false
+
+        for pid in "${pids[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                alive=true
+                break
+            fi
+        done
+
+        if ! "$alive"; then
+            return 0
+        fi
+
+        sleep 0.1
+    done
+
+    for pid in "${pids[@]}"; do
+        if kill -0 "$pid" 2>/dev/null; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+}
+
+show_port_owner() {
+    if command -v ss >/dev/null 2>&1; then
+        ss -H -ltnp "sport = :$SOCKS_PORT" 2>/dev/null || true
+    elif command -v lsof >/dev/null 2>&1; then
+        lsof -nP -iTCP:"$SOCKS_PORT" -sTCP:LISTEN 2>/dev/null || true
+    fi
+}
+
+show_status() {
+    local master=false
+    local port=false
+    local -a pids=()
+
+    if master_is_running; then
+        master=true
+    fi
+
+    if port_is_open; then
+        port=true
+    fi
+
+    mapfile -t pids < <(stale_ssh_pids)
+
+    echo "Host:          $HOST"
+    echo "Control path:  $CTRL"
+    echo "SOCKS address: 127.0.0.1:$SOCKS_PORT"
+
+    if "$master"; then
+        echo "SSH master:    running"
+    else
+        echo "SSH master:    stopped"
+    fi
+
+    if "$port"; then
+        echo "SOCKS port:    listening"
+    else
+        echo "SOCKS port:    not listening"
+    fi
+
+    if ((${#pids[@]})); then
+        echo "SSH PID(s):    ${pids[*]}"
+    else
+        echo "SSH PID(s):    none"
+    fi
+
+    echo
+
+    if "$master" && "$port"; then
+        echo "Status: healthy"
+        return 0
+    fi
+
+    if "$master" && ! "$port"; then
+        echo "Status: broken -- SSH master is running but the SOCKS port is unavailable"
+        return 1
+    fi
+
+    if ! "$master" && "$port"; then
+        if ((${#pids[@]})); then
+            echo "Status: stale/unmanaged SSH SOCKS tunnel"
+        else
+            echo "Status: port is occupied by another process"
+        fi
+
+        echo
+        show_port_owner
+        return 1
+    fi
+
+    if ((${#pids[@]})); then
+        echo "Status: stale SSH SOCKS process exists, but the SOCKS port is unavailable"
+        return 1
+    fi
+
+    echo "Status: stopped"
+    return 0
+}
+
+ensure_tunnel() {
+    mkdir -p "$(dirname "$CTRL")"
+
+    if master_is_running; then
+        if ! port_is_open; then
+            echo \
+                "SSH master is running but SOCKS port $SOCKS_PORT is missing; repairing forward." \
+                >&2
+
+            if ! ssh \
+                -S "$CTRL" \
+                -O forward \
+                -D "127.0.0.1:$SOCKS_PORT" \
+                "$HOST" >/dev/null
+            then
+                echo \
+                    "Error: could not add SOCKS forward on 127.0.0.1:$SOCKS_PORT." \
+                    >&2
+                exit 1
+            fi
+        fi
+
+        if ! wait_for_port; then
+            echo \
+                "Error: SSH master is running, but 127.0.0.1:$SOCKS_PORT is unavailable." \
+                >&2
+            exit 1
+        fi
+
+        echo "Tunnel OK on 127.0.0.1:$SOCKS_PORT"
+        return
+    fi
+
+    if [[ -e "$CTRL" || -L "$CTRL" ]]; then
+        rm -f -- "$CTRL"
+    fi
+
+    if port_is_open; then
+        echo \
+            "Error: 127.0.0.1:$SOCKS_PORT is already in use, but no managed SSH tunnel exists." \
+            >&2
+        echo \
+            "Run $(basename "$0") --kill to remove stale SSH SOCKS tunnels." \
+            >&2
+        show_port_owner >&2
+        exit 1
+    fi
+
+    ssh -fN "$HOST" \
+        -D "127.0.0.1:$SOCKS_PORT" \
+        -o ControlMaster=yes \
+        -o ControlPersist=yes \
+        -o ControlPath="$CTRL" \
+        -o ExitOnForwardFailure=yes \
+        -o ServerAliveInterval=30 \
+        -o ServerAliveCountMax=3
+
+    if ! master_is_running; then
+        echo "Error: SSH ControlMaster failed to start." >&2
+        exit 1
+    fi
+
+    if ! wait_for_port; then
+        echo \
+            "Error: SSH tunnel started, but 127.0.0.1:$SOCKS_PORT did not become available." \
+            >&2
+        ssh -S "$CTRL" -O exit "$HOST" >/dev/null 2>&1 || true
+        exit 1
+    fi
+
+    echo "Tunnel started on 127.0.0.1:$SOCKS_PORT"
+}
+
+stop_tunnel() {
+    local had_tunnel=false
+
+    if master_is_running; then
+        had_tunnel=true
+        ssh -S "$CTRL" -O exit "$HOST" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -n "$(stale_ssh_pids)" ]]; then
+        had_tunnel=true
+        kill_stale_ssh_tunnels
+    fi
+
+    if [[ -e "$CTRL" || -L "$CTRL" ]]; then
+        rm -f -- "$CTRL"
+    fi
+
+    for _ in {1..20}; do
+        port_is_open || break
+        sleep 0.1
+    done
+
+    if port_is_open; then
+        echo \
+            "Error: 127.0.0.1:$SOCKS_PORT is still in use after removing SSH tunnel state:" \
+            >&2
+        show_port_owner >&2
+        return 1
+    fi
+
+    if "$had_tunnel"; then
+        echo "Tunnel stopped"
+    else
+        echo "No SSH tunnel running"
+    fi
+}
+
+kill_tunnel=false
+status_tunnel=false
+browser_args=()
+
+while (($#)); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -k|--kill)
+            kill_tunnel=true
+            shift
+            ;;
+        -s|--status)
+            status_tunnel=true
+            shift
+            ;;
+        --)
+            shift
+            browser_args+=("$@")
+            break
+            ;;
+        *)
+            browser_args+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if "$kill_tunnel" && "$status_tunnel"; then
+    echo "Error: --kill and --status cannot be used together." >&2
+    exit 2
+fi
+
+if "$kill_tunnel"; then
+    stop_tunnel
+    exit 0
+fi
+
+if "$status_tunnel"; then
+    if show_status; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+BROWSER_BIN="${BROWSER_BIN:-}"
+
+if [[ -z "$BROWSER_BIN" ]]; then
+    for cand in \
+        chromium \
+        chromium-browser \
+        google-chrome-stable \
+        google-chrome
+    do
+        if command -v "$cand" >/dev/null 2>&1; then
+            BROWSER_BIN="$(command -v "$cand")"
+            break
+        fi
+    done
+fi
+
+if [[ -z "$BROWSER_BIN" || ! -x "$BROWSER_BIN" ]]; then
+    echo \
+        "Error: could not find a Chromium/Chrome binary. Set \$BROWSER_BIN." \
+        >&2
+    exit 1
+fi
+
+ensure_tunnel
+
+mkdir -p "$USER_DATA_DIR" "$USER_DATA_DIR/cache"
+
+PROXY="socks5://127.0.0.1:$SOCKS_PORT"
+
+browser_pid=
+monitor_pid=
+
+cleanup() {
+    trap - EXIT INT TERM
+
+    if [[ -n "${monitor_pid:-}" ]] &&
+       kill -0 "$monitor_pid" 2>/dev/null
+    then
+        kill "$monitor_pid" 2>/dev/null || true
+        wait "$monitor_pid" 2>/dev/null || true
+    fi
+
+    if [[ -n "${browser_pid:-}" ]] &&
+       kill -0 "$browser_pid" 2>/dev/null
+    then
+        kill "$browser_pid" 2>/dev/null || true
+
+        for _ in {1..20}; do
+            if ! kill -0 "$browser_pid" 2>/dev/null; then
+                break
+            fi
+            sleep 0.1
+        done
+
+        if kill -0 "$browser_pid" 2>/dev/null; then
+            kill -9 "$browser_pid" 2>/dev/null || true
+        fi
+    fi
+}
+
+monitor_tunnel() {
+    trap - EXIT INT TERM
+
+    while sleep 1; do
+        if ! master_is_running || ! port_is_open; then
+            echo \
+                "SOCKS tunnel is down; terminating Chromium to prevent traffic leaks." \
+                >&2
+
+            if kill -0 "$browser_pid" 2>/dev/null; then
+                kill "$browser_pid" 2>/dev/null || true
+            fi
+
+            exit 1
+        fi
+    done
+}
+
+trap cleanup EXIT INT TERM
+
+"$BROWSER_BIN" \
+    --user-data-dir="$USER_DATA_DIR" \
+    --disk-cache-dir="$USER_DATA_DIR/cache" \
+    --proxy-server="$PROXY" \
+    --proxy-bypass-list="127.0.0.1;localhost;<-loopback>" \
+    --host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1" \
+    --force-webrtc-ip-handling-policy=disable_non_proxied_udp \
+    --disable-features=WebRtcHideLocalIpsWithMdns \
+    --disable-quic \
+    "${browser_args[@]}" &
+browser_pid=$!
+
+monitor_tunnel &
+monitor_pid=$!
+
+wait "$browser_pid"
