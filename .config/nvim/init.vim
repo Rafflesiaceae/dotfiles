@@ -545,25 +545,37 @@ endif
 " }}} 📦 Plugin declarations
 " {{{ 🧰 Commands and functions
 " {{{ Clipboard and selection helpers
-function! CopyLineToClipboard()
-    let l:line = getline('.')
+function! CopyLineToClipboard(...) abort
+    if a:0 && a:1 ==# 'mouse'
+        let l:pos = getmousepos()
 
-    " Try to match and extract using Vim regex
-    let l:matches = matchlist(l:line, '\v^([^:]+):\s*(.+)$')
-    let l:input = v:null
-    let l:msg = ""
-    if len(l:matches) >= 3
-        " Group 2 is at index 2
-        let l:input = l:matches[2]
-        let l:msg = "Line (key:val) copied to clipboard: '" . l:matches[2] . "'"
+        if l:pos.winid == 0 || l:pos.line == 0
+            echo ''
+            return
+        endif
+
+        let l:lines = getbufline(winbufnr(l:pos.winid), l:pos.line)
+        if empty(l:lines)
+            echo ''
+            return
+        endif
+
+        let l:line = trim(l:lines[0])
     else
-        let l:input = l:line
-        let l:msg = "Line copied to clipboard: '" . l:line . "'"
+        let l:line = trim(getline('.'))
     endif
 
+    let l:matches = matchlist(l:line, '\v^([^:]+):\s*(.+)$')
 
-    if l:input isnot v:null && l:input !=# '' && l:input =~# '\S'
-        " l:input is valid (not null, not empty, not just whitespace)
+    if len(l:matches) >= 3
+        let l:input = trim(l:matches[2])
+        let l:msg = "Line (key:val) copied to clipboard: '" . l:input . "'"
+    else
+        let l:input = l:line
+        let l:msg = "Copied to clipboard: '" . l:line . "'"
+    endif
+
+    if l:input !=# '' && l:input =~# '\S'
         let @+ = l:input
         echo l:msg
     else
@@ -571,6 +583,7 @@ function! CopyLineToClipboard()
     endif
 endfunction
 nnoremap <silent> <3-LeftMouse> :call CopyLineToClipboard()<cr>:set nohls<cr>
+nnoremap <silent> <RightMouse> :call CopyLineToClipboard('mouse')<CR>:set nohls<CR>
 
 function! s:ExpandAuto(...)
     silent exec ':redir @* | YcmCompleter GetType | redir END'
@@ -1302,10 +1315,10 @@ nmap gf gF
 " append to l-register TODO
 " vnoremap <leader>cl "Ayy
 
-nnoremap <silent> <RightMouse> :call ClipboardPasteAsNewline()<CR>
-inoremap <silent> <RightMouse> <C-o>:call ClipboardPasteInline()<CR>
+" nnoremap <silent> <RightMouse> :call ClipboardPasteAsNewline()<CR>
+" inoremap <silent> <RightMouse> <C-o>:call ClipboardPasteInline()<CR>
 
-vnoremap <silent> <RightMouse> "+y
+" vnoremap <silent> <RightMouse> "+y
 
 nmap <leader>gr <Plug>(grammarous-open-info-window)
 nmap <leader>grn <Plug>(grammarous-move-to-next-error)
