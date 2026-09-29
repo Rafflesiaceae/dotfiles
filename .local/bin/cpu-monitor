@@ -147,7 +147,7 @@ local function parse_options(arguments)
 		interval = 0.05,
 		window = 10,
 		limit = 15,
-		instances = 3,
+		instances = 0,
 		count = nil,
 		no_clear = false,
 	}
