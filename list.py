@@ -20,6 +20,7 @@ sources = {
     "./.config/i3/config.j2": {"linux": ""},
     "./.config/llm-configs/all.md": "",
     "./.config/llm-configs/claude.md": "",
+    "./.config/llm-configs/codex.md": "",
     "./.config/llpp.conf": {"linux": ""},
     "./.config/mpv/config": {
         "linux": "",
