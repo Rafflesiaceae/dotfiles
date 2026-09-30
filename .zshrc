@@ -347,8 +347,12 @@ bindkey '^d' pick_dir
 # }}}
 # {{{ fzf - edit file <C-x>
 edit_file() {
-    vim "$(xclip -o)"
-    zle .reset-prompt
+    local file="$(xclip -o)"
+
+    # Expand ~/ to $HOME/
+    [[ $file == '~/'* ]] && file="$HOME/${file#\~/}"
+
+    vim -- "$file"
 }
 zle      -N  edit_file{,}
 bindkey '^x' edit_file
