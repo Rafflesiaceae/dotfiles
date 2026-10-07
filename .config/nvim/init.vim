@@ -1570,6 +1570,7 @@ for entry in [
       \ ['lua'                        ,  'autoformat-lua'],
       \ ['nix'                        ,  'nixpkgs-fmt'],
       \ ['python'                     ,  'autoformat-python'],
+      \ ['siml'                       ,  'autoformat-siml'],
       \ ['star'                       ,  'autoformat-star'],
       \ ['starlark.python'            ,  'autoformat-star'],
       \ ['toml'                       ,  'autoformat-toml'],
@@ -1618,6 +1619,12 @@ augroup user_additional_filetypes
     autocmd FileType jinja setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
     autocmd FileType starlark setlocal filetype=starlark.python
     autocmd BufRead,BufNewFile * if empty(&filetype) | setlocal filetype=txt | endif
+augroup END
+
+augroup siml_filetype
+  autocmd!
+  autocmd BufRead,BufNewFile *.siml setfiletype siml
+  autocmd FileType siml setlocal syntax=yaml
 augroup END
 " }}} Additional filetype detection
 " }}} 📄 Filetypes and autocommands
