@@ -68,7 +68,7 @@ rm -f "$failedf"
 
 single_cycle() {
     {
-        printf "┏━━━━━━━━━━━━━━━━━━┓\n┗" >/dev/tty
+        printf "┏━━━━━━━━━━━━━━━━━━━━━━━━━┓\n┗" >/dev/tty
         if [[ ! "$nosource" ]]; then
             printf "Flatten " >/dev/tty
             echo "This is a flattened filetree represented as a YAML:"
@@ -131,7 +131,7 @@ EOF
 
                     touch "$failedf"
                 else
-                    printf "✓ " >/dev/tty
+                    printf "✓┛" >/dev/tty
                 fi
             else
                 printf "✘ " >/dev/tty
@@ -158,8 +158,8 @@ EOF
         if [[ "$edit" ]]; then
             echo "EDITME"
             echo ""
-            # echo "---"
-            # echo ""
+            echo "---"
+            echo ""
         fi
 
         # echo "Add additional debug prints in case they are necessary to confirm the fixes - if possible only when \$DEBUG env is set."

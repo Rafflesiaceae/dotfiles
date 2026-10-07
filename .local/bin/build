@@ -6,6 +6,9 @@ if [ -n "$build_path" ]; then
 elif find-upwards "Taskfile.yml" >/dev/null; then
     printf "+ go-task build %s\n" "$*"
     go-task build "$@"
+elif find-upwards "dev.py" >/dev/null; then
+    printf "+ ./dev.py build %s\n" "$*"
+    ./dev.py build "$@"
 else
     printf "No way to build found.\n" >&2
     exit 1
