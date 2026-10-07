@@ -28,7 +28,6 @@ export PATH="${PATH}:${HOME}/.nimble/bin"
 # - - -
 
 alias cr="container-run"
-alias d="docker"
 alias dco="docker-compose"
 alias dri="docker run -i --rm"
 alias drt="docker run -it --rm"
