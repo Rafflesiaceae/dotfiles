@@ -22,7 +22,36 @@ move() {
 
     echo "$from => $to"
     mv "$from" "$to"
-    echo "    \"./$file\": \"\"," >>./list.py
+    python3 - "$file" <<'PY'
+import ast
+import json
+import re
+import sys
+from pathlib import Path
+
+entry_key = "./" + sys.argv[1]
+list_path = Path("list.py")
+lines = list_path.read_text().splitlines(keepends=True)
+start = next(i for i, line in enumerate(lines) if line.strip() == "sources = {")
+end = next(i for i in range(start + 1, len(lines)) if lines[i].strip() == "}")
+
+# Match only four-space source entries, not nested platform targets.
+key_pattern = re.compile(r'^    ("(?:\\.|[^"\\])*")\s*:')
+existing_keys = []
+for i in range(start + 1, end):
+    match = key_pattern.match(lines[i])
+    if match:
+        existing_keys.append((ast.literal_eval(match.group(1)), i))
+
+if not any(key == entry_key for key, _ in existing_keys):
+    entry_line = f"    {json.dumps(entry_key)}: \"\",\n"
+    sort_key = entry_key.casefold()
+    insert_at = next(
+        (i for key, i in existing_keys if key.casefold() > sort_key), end
+    )
+    lines.insert(insert_at, entry_line)
+    list_path.write_text("".join(lines))
+PY
     git add "$file"
 }
 
