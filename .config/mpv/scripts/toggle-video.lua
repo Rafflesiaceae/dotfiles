@@ -32,6 +32,7 @@ local auto_enable_started_at = nil
 -- countdown is active.
 local AUTO_ENABLE_ENTER_BINDING = "auto-enable-video-enter"
 local AUTO_ENABLE_KP_ENTER_BINDING = "auto-enable-video-kp-enter"
+local AUTO_ENABLE_C_BINDING = "auto-enable-video-c"
 local AUTO_ENABLE_MOUSE_BINDING = "auto-enable-video-mouse"
 
 -- Create a persistent OSD overlay.
@@ -79,6 +80,7 @@ end
 local function remove_auto_enable_skip_bindings()
     mp.remove_key_binding(AUTO_ENABLE_ENTER_BINDING)
     mp.remove_key_binding(AUTO_ENABLE_KP_ENTER_BINDING)
+    mp.remove_key_binding(AUTO_ENABLE_C_BINDING)
     mp.remove_key_binding(AUTO_ENABLE_MOUSE_BINDING)
 end
 
@@ -170,7 +172,7 @@ local function skip_auto_enable_countdown()
     update_status_overlay()
 end
 
- local function install_auto_enable_skip_bindings()
+local function install_auto_enable_skip_bindings()
     mp.add_forced_key_binding(
         "ENTER",
         AUTO_ENABLE_ENTER_BINDING,
@@ -180,6 +182,12 @@ end
     mp.add_forced_key_binding(
         "KP_ENTER",
         AUTO_ENABLE_KP_ENTER_BINDING,
+        skip_auto_enable_countdown
+    )
+
+    mp.add_forced_key_binding(
+        "c",
+        AUTO_ENABLE_C_BINDING,
         skip_auto_enable_countdown
     )
 
@@ -242,7 +250,7 @@ local function start_auto_enable_countdown()
         update_status_overlay()
     end)
 
-    -- ENTER/KP_ENTER or a left click can now bypass the countdown.
+    -- ENTER/KP_ENTER, c, or a left click can now bypass the countdown.
     install_auto_enable_skip_bindings()
 
     update_status_overlay()
