@@ -1,0 +1,59 @@
+#!/usr/bin/luajit
+
+local ffi = require("ffi")
+
+ffi.cdef[[
+int execvp(const char *file, char *const argv[]);
+]]
+
+local function get_current_output()
+    local p = assert(io.popen("xrandr --listactivemonitors 2>/dev/null", "r"))
+
+    local first = true
+    for line in p:lines() do
+        if first then
+            first = false -- skip "Monitors: N"
+        else
+            -- Typical line:
+            -- 0: +*DP-0 1920/527x1080/296+0+0  DP-0
+            local output = line:match("%s([^%s]+)%s*$")
+            if output and output ~= "" then
+                p:close()
+                return output
+            end
+        end
+    end
+
+    p:close()
+    return nil
+end
+
+local output = get_current_output()
+
+if not output then
+    io.stderr:write("xrandr-current: no active output found\n")
+    os.exit(1)
+end
+
+local args = {
+    "xrandr",
+    "--output",
+    output,
+}
+
+for i = 1, #arg do
+    args[#args + 1] = arg[i]
+end
+
+local argv = ffi.new("char *[?]", #args + 1)
+
+for i, s in ipairs(args) do
+    argv[i - 1] = ffi.cast("char *", s)
+end
+
+argv[#args] = nil
+
+ffi.C.execvp("xrandr", argv)
+
+io.stderr:write("xrandr-current: failed to exec xrandr\n")
+os.exit(127)

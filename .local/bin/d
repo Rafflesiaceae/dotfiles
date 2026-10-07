@@ -1,0 +1,6 @@
+#!/bin/dash
+if [ "$#" -lt 1 ]; then
+    ./dev.py -h
+    exit 0
+fi
+./dev.py "$@"
