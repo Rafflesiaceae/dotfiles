@@ -1,6 +1,20 @@
 #!/bin/dash
-if [ "$#" -lt 1 ]; then
-    ./dev.py -h
-    exit 0
+die() {
+    # shellcheck disable=SC2059
+    printf "$@" >&2
+    printf "\n" >&2
+    exit "${exit_code:-1}"
+}
+if [ -e ./dev.py ]; then
+    if [ "$#" -lt 1 ]; then
+        ./dev.py -h
+        exit 0
+    fi
+    ./dev.py "$@"
+elif [ -e ./deploy.py ]; then
+    ./deploy.py "$@"
+elif [ -e ./deploy.sh ]; then
+    ./deploy.sh "$@"
+else
+    die "No entrypoint found"
 fi
-./dev.py "$@"

@@ -61,7 +61,7 @@ show_age_threshold = 60
 
 # Hide duplicate's count and stack them.
 stack_duplicates = yes
-hide_duplicates_count = yes
+hide_duplicate_count = yes
 
 # the geometry of the window
 # geometry [{width}]x{height}][+/-{x}+/-{y}]
