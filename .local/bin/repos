@@ -43,14 +43,14 @@ repos-config.py contract:
     three remaps below, this is *not* part of "mapped" stage/~/.cache/repos.jsonl:
     it's neither precomputed nor stored on the repo dict, since most repos
     in a given run are already checked out and don't need cloning at all.
-    Instead the "update"/"upd" subcommand calls it lazily, once per repo,
+    Instead the default update run calls it lazily, once per repo,
     only at the moment it's actually about to clone that repo (workdir
     doesn't exist yet); returning (or omitting the function entirely) None
     keeps the default. The parent directory of repo["workdir"] is created
     before either the default or a custom command runs.
   - may define pre_update_hook(repo: dict) -> None and
-    post_update_hook(repo: dict) -> None: called by the "update"/"upd"
-    subcommand only for an existing checkout that has remote changes to
+    post_update_hook(repo: dict) -> None: called by the default
+    update run only for an existing checkout that has remote changes to
     pull, immediately before and immediately after its pull step. They are
     not called for clones, dirty/skipped repos, or repos that are already
     up to date. post_update_hook always runs once pre_update_hook has run,
@@ -80,24 +80,30 @@ bb:COPS/heimdall-aws and bb:DOPS/heimdall-aws from silently colliding into
 the same checkout; the second stops the same repository from being cloned
 into two different workdirs under two different ids/remotes.
 
-"update"/"upd" subcommand: takes the freshly (re-)computed mapped set (so it
-always needs the "mapped" stage) and, up to --jobs at a time, clones any
-repository whose workdir doesn't exist yet, or otherwise checks out its
-default branch and pulls it (a workdir with local changes is left alone,
-same as the old repos-update.py). For every already-cloned repo, also
-reports (independently of the above, and without blocking the update) when
-the current branch has committed-but-unpushed commits ahead of its upstream
-tracking branch. --tags/--hosts/--id filter which repos get processed, same
-filters the default table view uses.
+Default (no subcommand) run, a.k.a. "update": takes the freshly
+(re-)computed mapped set (so it always needs the "mapped" stage) and, up to
+--jobs at a time, clones any repository whose workdir doesn't exist yet, or
+otherwise checks out its default branch and pulls it (a workdir with local
+changes is left alone, same as the old repos-update.py). For every
+already-cloned repo, also reports (independently of the above, and without
+blocking the update) when the current branch has committed-but-unpushed
+commits ahead of its upstream tracking branch. --tags/--hosts/--id filter
+which repos get processed, same filters the "upd" table view uses.
+
+"upd" subcommand: the non-modifying counterpart (what a plain run used to
+do before the two were swapped). It only parses/maps/validates and never
+touches any checkout. Note that "upd" is deliberately the *non*-updating
+mode; "update" is not accepted as an alias, since it would read as the
+opposite of what it does.
 
 --tags/--hosts/--id double as both filter and lister: given a value they
 narrow the selection (repeatable); given bare (no value) they instead print
-every distinct tag/host/id seen and skip everything else. With no
-subcommand and no filter/lister given at all, the run is silent on success
-(nothing to warn about, so nothing is printed) and only speaks up on
-ConfError/invariant violations -- that's the "--check-only" case, and it no
-longer needs its own flag since it's what a plain, argument-less run already
-does.
+every distinct tag/host/id seen and skip everything else (in either mode,
+without updating anything). With the "upd" subcommand and no filter/lister
+given at all, the run is silent on success (nothing to warn about, so
+nothing is printed) and only speaks up on ConfError/invariant violations --
+that's the "--check-only" case, and it doesn't need its own flag since it's
+what a plain "upd" already does.
 
 Startup-cost note: this file deliberately avoids argparse, dataclasses and
 pathlib. All three are individually cheap on the wall clock but each drags
@@ -134,7 +140,7 @@ HOST_REMOTE_TEMPLATES: dict[str, str] = {
 }
 
 USAGE = """\
-Usage: repoman.py [update|upd] [-r|--repos PATH]... [--config PATH]
+Usage: repoman.py [upd] [-r|--repos PATH]... [--config PATH]
                    [--stage parsed|mapped] [-t|--tags [TAG]]... [--hosts [HOST]]...
                    [-i|--id [ID]]...
                    [--allow-multiple-clones] [-j|--jobs N] [-d|--debug]
@@ -144,14 +150,18 @@ Parse repos.conf-style file(s) and (optionally) map them through repos-config.py
 
 Every successful run writes the full (unfiltered) result set as JSONL to
 ~/.cache/repos.jsonl, whether or not any other option is given. Nothing is
-ever printed as JSON. With no subcommand and no --tags/--hosts/--id filter
-given, a plain run is silent on success and only prints on ConfError/invariant
-violations; pass a filter to print a filtered table instead.
+ever printed as JSON. With no subcommand, every selected repository is
+cloned or updated (see below). With the 'upd' subcommand and no
+--tags/--hosts/--id filter given, the run only validates: it is silent on
+success and only prints on ConfError/invariant violations; pass a filter to
+print a filtered table instead.
 
-  update, upd     Clone (or, if already checked out, check out the default
+  (no subcommand) Clone (or, if already checked out, check out the default
                   branch and pull) every selected repository, up to --jobs
                   at a time. Requires the 'mapped' stage. A repo with local
                   changes is left alone rather than treated as an error.
+  upd             Don't touch any checkout: only parse/map/validate the
+                  repos files and, given a filter, print the matching table.
   -r, --repos PATH
                   Path to a repos.conf-style file (default: the repo_files
                   list defined in repos-config.py). Repeatable: pass --repos
@@ -181,7 +191,7 @@ violations; pass a filter to print a filtered table instead.
                   mapping to the same remote and thus getting cloned into
                   different workdirs); the workdir-uniqueness invariant is
                   still enforced
-  -j, --jobs N    Number of repos the 'update'/'upd' subcommand processes in
+  -j, --jobs N    Number of repos the default update run processes in
                   parallel (default: 8)
   -d, --debug     Print to stderr whenever repos-config.py's remap_host/
                   remap_remote/remap_workdir changes a value from what it
@@ -795,9 +805,12 @@ def parse_args(argv: list[str]) -> dict:
         "debug": False,
     }
 
-    # A subcommand, if present, must be the very first token (like git).
-    if argv and argv[0] in ("update", "upd"):
-        args["command"] = "update"
+    # Updating is the default; the "upd" subcommand (which must be the very
+    # first token, like git) selects the non-modifying parse/validate/list
+    # mode instead.
+    args["command"] = "update"
+    if argv and argv[0] == "upd":
+        args["command"] = "check"
         argv = argv[1:]
 
     def take_value(flag: str, i: int) -> tuple[str, int]:
@@ -875,7 +888,7 @@ def main(argv: list[str] | None = None) -> int:
     if args["command"] == "update" and args["stage"] != "mapped":
         print(
             colorize(
-                "ERROR: `update`/`upd` needs workdir/remote data, so --stage parsed is not supported",
+                "ERROR: updating needs workdir/remote data, so --stage parsed is only supported with `upd`",
                 "red",
                 stream=sys.stderr,
             ),
@@ -959,7 +972,7 @@ def main(argv: list[str] | None = None) -> int:
                 key=lambda r: r["id"],
             )
             emit(selected, ["id", "host", "path", "remote", "tags"])
-        # else: a plain, filter-less run is silent on success; ConfError
+        # else: a plain, filter-less "upd" run is silent on success; ConfError
         # (the only "parsed"-stage failure mode) is already reported above.
         return 0
 
@@ -1007,13 +1020,13 @@ def main(argv: list[str] | None = None) -> int:
         # A filter typo (bad --tags/--hosts/--id value) would otherwise
         # silently "succeed" by updating nothing; treat 0 matches as an error.
         if not selected:
-            print(colorize("ERROR: update/upd matched 0 repositories", "red", stream=sys.stderr), file=sys.stderr)
+            print(colorize("ERROR: update matched 0 repositories", "red", stream=sys.stderr), file=sys.stderr)
             return 1
         return run_update(selected, jobs=args["jobs"], config_module=config_module, debug=args["debug"])
 
     if ids or tags or hosts:
         emit(selected, ["id", "tags", "remote", "workdir"])
-    # else: a plain, filter-less run is silent on success; invariant
+    # else: a plain, filter-less "upd" run is silent on success; invariant
     # violations (the only "mapped"-stage failure mode) are already
     # reported above.
     return 0
