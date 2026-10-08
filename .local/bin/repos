@@ -160,6 +160,8 @@ print a filtered table instead.
                   branch and pull) every selected repository, up to --jobs
                   at a time. Requires the 'mapped' stage. A repo with local
                   changes is left alone rather than treated as an error.
+                  While running on a terminal, the last line shows a
+                  progress bar ("━━━───┤ ").
   upd             Don't touch any checkout: only parse/map/validate the
                   repos files and, given a filter, print the matching table.
   -r, --repos PATH
@@ -449,9 +451,60 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
     print_lock = threading.Lock()
     interrupted = threading.Event()
 
+    # Progress bar ("━━━───┤ ") kept on the terminal's last line.
+    # Only drawn when stdout is a terminal, so piped/redirected output never
+    # sees the \r/escape sequences. All access happens under print_lock.
+    total = len(repos)
+    done = 0
+    status_enabled = sys.stdout.isatty() and os.environ.get("TERM") != "dumb"
+    status_visible = False
+
+    def status_text() -> str:
+        # Looks like "━━━━━━────────┤ ": a 79-cell bar (80 characters with
+        # the closing cap), heavy (━) for the share of repos finished and
+        # light (─) for the rest, ended by ┤ (which becomes ┥ once everything
+        # is done), followed by a space so the cursor sits apart from the
+        # bar. It is shrunk to stay shorter than the terminal width: a
+        # wrapped line would break the "\r" based redraw.
+        try:
+            cols = os.get_terminal_size(sys.stdout.fileno()).columns
+        except OSError:
+            cols = 80
+        # Room is reserved for the end cap, the trailing space and one spare
+        # column so the cursor never lands on the last cell.
+        bar_width = max(0, min(79, cols - 3))
+        complete = done >= total
+        filled = bar_width if complete else bar_width * done // total
+        end_cap = "┥" if complete else "┤"
+        return f"{'━' * filled}{'─' * (bar_width - filled)}{end_cap} "
+
+    def draw_status() -> None:
+        # Caller holds print_lock.
+        nonlocal status_visible
+        if status_enabled:
+            # \r returns to column 0, \033[K erases the rest of the line, so
+            # a shorter redraw never leaves stale characters behind.
+            sys.stdout.write(f"\r\033[K{colorize(status_text(), 'bold')}")
+            sys.stdout.flush()
+            status_visible = True
+
+    def clear_status() -> None:
+        # Caller holds print_lock.
+        nonlocal status_visible
+        if status_visible:
+            sys.stdout.write("\r\033[K")
+            sys.stdout.flush()
+            status_visible = False
+
     def safe_print(*a, **kw) -> None:
         with print_lock:
+            # Wipe the progress line, emit the message as a normal line, then
+            # redraw the progress line below it so it stays the last line.
+            # status_enabled is turned off at shutdown, so no redraw happens
+            # once we've deliberately cleared it for good.
+            clear_status()
             print(*a, **kw, flush=True)
+            draw_status()
 
     # Tracked separately from the ThreadPoolExecutor's own futures: on
     # Ctrl-C we want to kill whatever git command is running right now
@@ -704,17 +757,37 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
             report_failure(repo["id"], f"ERROR in {which} for {repo['id']}: {e}")
             return False
 
+    def finish_status() -> None:
+        # Permanently removes the progress line (and stops any further
+        # redraws from late-running workers).
+        nonlocal status_enabled
+        with print_lock:
+            clear_status()
+            status_enabled = False
+
     def update_one(repo: dict) -> bool:
-        return do_update(repo)
+        try:
+            return do_update(repo)
+        finally:
+            # Counted whether the repo succeeded, was skipped or failed:
+            # the indicator shows how many have been dealt with.
+            nonlocal done
+            with print_lock:
+                done += 1
+                draw_status()
 
     any_failed = False
+    with print_lock:
+        draw_status()
     with ThreadPoolExecutor(max_workers=jobs) as ex:
         futures = {ex.submit(update_one, r): r for r in repos}
         try:
             for fut in as_completed(futures):
                 if not fut.result():
                     any_failed = True
+            finish_status()
         except KeyboardInterrupt:
+            finish_status()
             # Ctrl-C: drop every repo whose git command hasn't started yet
             # (cancel_futures), and kill the handful of git processes
             # already in flight ourselves rather than wait on them to
