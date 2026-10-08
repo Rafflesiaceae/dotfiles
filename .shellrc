@@ -7,6 +7,8 @@
 # *zsh) is_zsh=1 ;;
 # esac
 
+export ESCDELAY=3
+
 is_linux=
 is_windows=
 is_macos=

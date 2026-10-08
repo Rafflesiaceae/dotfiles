@@ -153,6 +153,13 @@ bind diff 7 !git diff %(commit)^ %(commit)
 # bind status i !sh -c 'git-ignore-add "%(file)"; exec tig status'
 bind status i +@sh -c 'git-ignore-add "%(file)"'
 
+# handling quit/escape routes
+# bind generic <Esc> view-close-no-quit
+# bind generic q quit
+# bind generic q view-close-no-quit
+bind generic q view-close
+bind generic <Esc> quit
+
 ## Shortcut reminders
 # bind generic ? :echo "C=commit | a=add -u | f=refresh | V=show | <C-c>=copy SHA | <Space>=append SHA | <C-b>=copy msg | <C-s>=stash"
 bind main    ? :echo "C=commit | S=create patch | A=amend | U=reset | c=checkout | v=copy msg | R=rebase | p=push | P=split | <C-p>=cherry-pick"
