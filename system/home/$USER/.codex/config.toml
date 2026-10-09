@@ -1,0 +1,35 @@
+model = "gpt-6-luna"
+model_reasoning_effort = "xhigh"
+personality = "pragmatic"
+
+approval_policy = "on-request"
+approvals_reviewer = "auto_review"
+
+check_for_update_on_startup = false
+
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+writable_roots = [
+    "~/workspace",
+]
+
+[features]
+daemon_auto_start = false
+
+[notice]
+hide_gpt5_1_migration_prompt = true
+"hide_gpt-5.1-codex-max_migration_prompt" = true
+hide_rate_limit_model_nudge = true
+
+[tui]
+theme = "two-dark"
+show_tooltips = false
+screen_reader_detection_done = true
+animations = false
+notifications = true
+notification_method = "bel"
+alternate_screen = "never"
+fullscreen_transcript = false
+terminal_title = []
+status_line = ["model-with-reasoning", "current-dir", "five-hour-limit", "weekly-limit"]
