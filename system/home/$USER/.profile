@@ -1,5 +1,6 @@
 export EDITOR=vim
 export BROWSER=chromium
+export PAGER=cat
 
 # ripgrep
 export RIPGREP_CONFIG_PATH="$HOME/.config/.ripgreprc"
