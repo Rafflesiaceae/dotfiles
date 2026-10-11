@@ -1,0 +1,212 @@
+#!/usr/bin/env luajit
+-- LuaJIT + Linux/X11. No shell, background services, caches, or Lua modules.
+-- rofi -dmenu is intentional: rofi script modes wait for their initial list;
+-- dmenu -async-pre-read 0 accepts lines after its window is displayed.
+--
+--   luajit rofi-path.lua                 # open launcher
+--   luajit rofi-path.lua -theme-str '...' # forward extra rofi arguments
+--   luajit rofi-path.lua --list          # show PATH candidates (diagnostics)
+
+local ffi = require('ffi')
+local bit = require('bit')
+
+ffi.cdef[[
+  typedef int pid_t;
+  typedef long ssize_t;
+  typedef unsigned long size_t;
+  typedef void (*sighandler_t)(int);
+  typedef struct __dirstream DIR;
+  struct dirent {
+    unsigned long d_ino;
+    long d_off;
+    unsigned short d_reclen;
+    unsigned char d_type;
+    char d_name[256];
+  };
+  struct timespec { long tv_sec; long tv_nsec; };
+  struct stat {
+    unsigned long st_dev, st_ino, st_nlink;
+    unsigned int st_mode, st_uid, st_gid, __pad0;
+    unsigned long st_rdev;
+    long st_size, st_blksize, st_blocks;
+    struct timespec st_atim, st_mtim, st_ctim;
+    long __glibc_reserved[3];
+  };
+  DIR *opendir(const char *name);
+  struct dirent *readdir(DIR *dirp);
+  int closedir(DIR *dirp);
+  int stat(const char *path, struct stat *buf);
+  int access(const char *pathname, int mode);
+  int pipe2(int pipefd[2], int flags);
+  pid_t fork(void);
+  int dup2(int oldfd, int newfd);
+  int close(int fd);
+  ssize_t read(int fd, void *buf, size_t count);
+  ssize_t write(int fd, const void *buf, size_t count);
+  pid_t waitpid(pid_t pid, int *wstatus, int options);
+  sighandler_t signal(int signum, sighandler_t handler);
+  int execvp(const char *file, char *const argv[]);
+  pid_t setsid(void);
+  void _exit(int status);
+]]
+
+local C = ffi.C
+local O_CLOEXEC, X_OK, EINTR = 0x80000, 1, 4
+local DT_UNKNOWN, DT_REG, DT_LNK = 0, 8, 10
+local S_IFMT, S_IFREG = 0xf000, 0x8000
+
+local function die(msg)
+  io.stderr:write('rofi-path: ', msg, ' (errno=', ffi.errno(), ')\n')
+  os.exit(1)
+end
+
+local function exec(args)
+  local argv = ffi.new('char *[?]', #args + 1)
+  for i = 1, #args do argv[i - 1] = ffi.cast('char *', args[i]) end
+  argv[#args] = nil
+  C.execvp(args[1], argv)
+end
+
+-- Write a full chunk, including when the kernel accepts only part of it.
+-- A closed rofi pipe is a normal occurrence (user selected/cancelled early).
+local function write_all(fd, chunk)
+  local ptr = ffi.cast('const char *', chunk)
+  local pos, len = 0, #chunk
+  while pos < len do
+    local n = tonumber(C.write(fd, ptr + pos, len - pos))
+    if n > 0 then
+      pos = pos + n
+    elseif n ~= -1 or ffi.errno() ~= EINTR then
+      return false
+    end
+  end
+  return true
+end
+
+local function scan_path(fd)
+  local seen, seen_dirs = {}, {}
+  local pending, pending_bytes = {}, 0
+  local st = ffi.new('struct stat[1]')
+
+  local function flush()
+    if pending_bytes == 0 then return true end
+    local chunk = table.concat(pending)
+    pending, pending_bytes = {}, 0
+    return write_all(fd, chunk)
+  end
+
+  local path = os.getenv('PATH') or ''
+  for rawdir in (path .. ':'):gmatch('([^:]*):') do
+    local dir = rawdir == '' and '.' or rawdir
+    if not seen_dirs[dir] then
+      seen_dirs[dir] = true
+      local stream = C.opendir(dir)
+      if stream ~= nil then
+        while true do
+          local ent = C.readdir(stream)
+          if ent == nil then break end
+          local name = ffi.string(ent.d_name)
+          local kind = tonumber(ent.d_type)
+
+          if name ~= '.' and name ~= '..'
+              and name:sub(-8) ~= '.desktop'
+              and not name:find('\n', 1, true)
+              and not seen[name] then
+            local fullpath = dir .. '/' .. name
+            local regular = kind == DT_REG
+            if kind == DT_LNK or kind == DT_UNKNOWN then
+              regular = C.stat(fullpath, st) == 0
+                        and bit.band(tonumber(st[0].st_mode), S_IFMT) == S_IFREG
+            end
+            if regular and C.access(fullpath, X_OK) == 0 then
+              seen[name] = true -- first executable in PATH wins
+              pending[#pending + 1] = name .. '\n'
+              pending_bytes = pending_bytes + #name + 1
+              if pending_bytes >= 4096 and not flush() then
+                C.closedir(stream)
+                return
+              end
+            end
+          end
+        end
+        C.closedir(stream)
+        -- Make the results of each PATH directory visible immediately.
+        if not flush() then return end
+      end
+    end
+  end
+  flush()
+end
+
+-- Test scanner independently of the GUI:
+if arg[1] == '--list' then
+  C.signal(13, ffi.cast('sighandler_t', 1)) -- ignore SIGPIPE
+  scan_path(1)
+  os.exit(0)
+end
+
+local to_rofi = ffi.new('int[2]')
+local from_rofi = ffi.new('int[2]')
+if C.pipe2(to_rofi, O_CLOEXEC) ~= 0 then die('pipe2(stdin) failed') end
+if C.pipe2(from_rofi, O_CLOEXEC) ~= 0 then die('pipe2(stdout) failed') end
+
+-- Rofi starts in a separate process *before* PATH scanning begins.
+local rofi_pid = tonumber(C.fork())
+if rofi_pid < 0 then die('fork(rofi) failed') end
+if rofi_pid == 0 then
+  if C.dup2(to_rofi[0], 0) < 0 or C.dup2(from_rofi[1], 1) < 0 then
+    C._exit(127)
+  end
+  C.close(to_rofi[0]); C.close(to_rofi[1])
+  C.close(from_rofi[0]); C.close(from_rofi[1])
+
+  local args = {
+    'rofi', '-dmenu', '-async-pre-read', '0',
+    '-p', 'run', '-no-custom', '-format', 's',
+  }
+  for i = 1, #arg do args[#args + 1] = arg[i] end
+  exec(args)
+  local msg = 'rofi-path: execvp(rofi) failed\n'
+  C.write(2, msg, #msg)
+  C._exit(127)
+end
+
+C.close(to_rofi[0]); C.close(from_rofi[1])
+-- Selecting a command before scanning finishes closes our pipe. Don't die
+-- from SIGPIPE: the launcher still has to execute the selected command.
+C.signal(13, ffi.cast('sighandler_t', 1))
+scan_path(to_rofi[1])
+C.close(to_rofi[1])
+
+local buf, parts = ffi.new('char[4096]'), {}
+while true do
+  local n = tonumber(C.read(from_rofi[0], buf, 4096))
+  if n == 0 then break end
+  if n < 0 then
+    if ffi.errno() ~= EINTR then break end
+  else
+    parts[#parts + 1] = ffi.string(buf, n)
+  end
+end
+C.close(from_rofi[0])
+
+local status = ffi.new('int[1]')
+while C.waitpid(rofi_pid, status, 0) == -1 and ffi.errno() == EINTR do end
+if bit.band(status[0], 0x7f) ~= 0 or bit.rshift(status[0], 8) ~= 0 then
+  os.exit(0) -- cancelled or error
+end
+
+local selected = table.concat(parts):gsub('[\r\n]+$', '')
+if selected == '' then os.exit(0) end
+
+-- Execute a selected command, not a shell command line. Detach so the i3
+-- binding returns immediately even if the selected application stays open.
+local launch_pid = tonumber(C.fork())
+if launch_pid < 0 then die('fork(command) failed') end
+if launch_pid == 0 then
+  C.setsid()
+  exec({ selected })
+  local msg = 'rofi-path: execvp failed for ' .. selected .. '\n'
+  C.write(2, msg, #msg)
+  C._exit(127)
+end

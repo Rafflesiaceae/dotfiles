@@ -329,6 +329,7 @@ sources = {
     "./.local/bin/riprep": "",
     "./.local/bin/ripsed": "",
     "./.local/bin/rnb": {"linux": ""},
+    "./.local/bin/rofi-fast-dmenu": "",
     "./.local/bin/rpm-list-file-contents": "",
     "./.local/bin/rsync-hosts": {"linux": ""},
     "./.local/bin/run-java": "",
