@@ -167,3 +167,9 @@ bind refs    ? :echo "c=checkout branch | 1=delete tag | D=delete remote branch 
 bind diff    ? :echo "R=rebase | 7=commit diff | C=commit | a=add -u | f=refresh"
 bind status  ? :echo "D=remove file | i=ignore file | T=stage all | C=commit | a=add -u | f=refresh"
 bind stage   ? :echo "U=stage file | I=stage all | C=commit | a=add -u | f=refresh"
+
+# Status view: stash the entire selected file (staged + unstaged + untracked)
+bind status <DoubleQuote> >git stash push --include-untracked -- %(file)
+
+# # TODO: Shift+2: stash only the hunk under the cursor
+# bind stage <DoubleQuote> >tig-stash-hunk "%(file)" "%(lineno)" "%(lineno_old)" "%(status)"
