@@ -124,7 +124,7 @@ bindsym »mod«+Shift+Return exec "SH_STARTOPTS=\\"autodir:$SH_STARTOPTS\\" urxv
 
 # launcher/dmenu
 # bindsym »mod«+r exec "bemenu-run --fn 'Consolas Bold 10' -p 'RUN' --fb '#383830' --nb '#383830' --nf '#F8F8F2' --hb '#A6E22E' --hf '#272822' --tb '#47473C' --tf '#33B9F3' --ff '#F8F8F2'"
-bindsym »mod«+r exec "rofi -show run -matching fuzzy -sort"
+bindsym »mod«+r exec --no-startup-id "pathpop"
 
 # locking screen
 bindsym »mod«+Ctrl+L exec "i3lock-dyn"
