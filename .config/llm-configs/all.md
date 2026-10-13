@@ -40,3 +40,6 @@
 - All local repository checkouts live under `~/workspace`. For repositories,
   projects, or codebases without giving a path, look for it under
   `~/workspace/<repo-name>` first.
+
+- Don't usually add casual changelogs as comments. Changelogs should be part of
+  the git commit message, but not part of code/data comments.
