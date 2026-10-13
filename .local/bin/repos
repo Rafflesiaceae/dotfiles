@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """
+Config File: ~/.config/repos.py
+
 Parses one or more repos.conf-style files into repository objects, then loads
 ~/.config/repos.py (or --config PATH) to map each repository onto a unique
 workdir (and optionally rewrite its remote).
