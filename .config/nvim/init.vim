@@ -1598,8 +1598,29 @@ augroup user_format_mappings
 augroup END
 " }}} Formatting and testing mappings
 " {{{ Quickfix behavior
+function! s:RestoreQuickfixFocus(origin, quickfix, timer) abort
+    " Leave subsequent user navigation alone, including switching tabs.
+    if win_getid() == a:quickfix && win_id2win(a:origin) > 0
+        call win_gotoid(a:origin)
+    endif
+endfunction
+
+function! s:KeepQuickfixFocus() abort
+    if &buftype !=# 'quickfix'
+        return
+    endif
+
+    let l:origin = win_getid(winnr('#'))
+    if l:origin > 0 && l:origin != win_getid()
+        " Let the opener finish sizing/configuring the list before returning.
+        " BufWinEnter also fires when :copen focuses an already visible list.
+        call timer_start(0, function('s:RestoreQuickfixFocus', [l:origin, win_getid()]))
+    endif
+endfunction
+
 augroup user_quickfix
     autocmd!
+    autocmd BufWinEnter * call s:KeepQuickfixFocus()
     " override :YcmComplete GoTo for QF
     au FileType qf nmap <buffer> <CR> <CR>
 augroup END
