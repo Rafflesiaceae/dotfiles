@@ -1,3 +1,6 @@
+# Search case-insensitively by default; use --case-sensitive to override.
+--ignore-case
+
 --no-ignore
 
 # limit long line output
