@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $(basename "$0") <file.bundle>" >&2
+    exit 1
+fi
+
+bundle="$(realpath -- "$1")"
+
+if [[ ! -f "$bundle" ]]; then
+    echo "Bundle not found: $bundle" >&2
+    exit 1
+fi
+
+git rev-parse --is-inside-work-tree >/dev/null
+
+# Verify bundle integrity and required history.
+git bundle verify "$bundle"
+
+# Import commits without modifying the current branch.
+git fetch --no-tags "$bundle" HEAD
+
+# Apply the imported history to the current branch.
+git merge FETCH_HEAD
+
+echo "Bundle applied successfully."

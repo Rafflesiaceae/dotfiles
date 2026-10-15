@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}')"
+branch="$(git branch --show-current)"
+range="${upstream}..HEAD"
+
+count="$(git rev-list --count "$range")"
+
+if (( count == 0 )); then
+    echo "No commits ahead of $upstream."
+    exit 0
+fi
+
+filename="${branch//\//-}-ahead-$(date +%Y%m%d-%H%M%S).bundle"
+
+if [[ -e "$filename" ]]; then
+    echo "File already exists: $filename" >&2
+    exit 1
+fi
+
+git bundle create "$filename" "$range"
+git bundle verify "$filename" >/dev/null 2>&1
+
+echo "Exported $count commits to $filename"
+echo "All commits, including merges, are preserved."
+echo "Local repository remains untouched."
