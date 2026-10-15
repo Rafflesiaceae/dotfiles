@@ -37,6 +37,9 @@
         + The rest of the git commit message must be thorough and smart wrap at 72
         characters
 
+    - If I prompt you to change something to an existing commit/previous commit you
+      just did - always default to ammend the commit instead of creating a new one.
+
 - All local repository checkouts live under `~/workspace`. For repositories,
   projects, or codebases without giving a path, look for it under
   `~/workspace/<repo-name>` first.
