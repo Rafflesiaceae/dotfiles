@@ -22,6 +22,8 @@
     - don't report differences between PR-title/description/Commit-Messages/etc.
       and actual PR contents - nobody cares about that
 
+    - if there is a PR number, reprint it at the very end of your response
+
 - never reference specific Jenkins builds/build-numbers in documentation or code, they
   are ephemeral - referencing Jobs is fine tho
 
