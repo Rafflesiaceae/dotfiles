@@ -1,29 +1,81 @@
 #!/usr/bin/env bash
-set -eo pipefail
+set -euo pipefail
 
-if [[ $# -gt 0 ]]; then
-    target="$(git rev-parse "$1")"
-    short_target="$(git rev-parse --short "$target")"
+# Usage:
+#   script.sh              Reset author/committer of all commits
+#   script.sh <commit>     Reset author/committer of one commit
 
-    sequence_editor="$(
-        mktemp
-    )"
-    trap 'rm -f "$sequence_editor"' EXIT
-
-    cat >"$sequence_editor" <<EOF
-#!/usr/bin/env bash
-set -e
-
-sed -i \
-    '/^pick $short_target /a exec git commit --amend --no-edit --reset-author --allow-empty' \
-    "\$1"
-EOF
-
-    chmod +x "$sequence_editor"
-
-    GIT_SEQUENCE_EDITOR="$sequence_editor" \
-        git rebase -r -i --root
-else
-    git rebase -r --root \
-        --exec 'git commit --amend --no-edit --reset-author --allow-empty'
+if (( $# > 1 )); then
+    echo "Usage: $0 [commit]" >&2
+    exit 1
 fi
+
+if ! command -v git-filter-repo >/dev/null 2>&1; then
+    echo "Error: git-filter-repo is not installed" >&2
+    exit 1
+fi
+
+branch="$(git symbolic-ref -q HEAD)" || {
+    echo "Error: detached HEAD; checkout a branch first" >&2
+    exit 1
+}
+
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Error: working tree must be clean" >&2
+    exit 1
+fi
+
+name="$(git config user.name)"
+email="$(git config user.email)"
+
+if [[ -z "$name" || -z "$email" ]]; then
+    echo "Error: git user.name and user.email must be configured" >&2
+    exit 1
+fi
+
+target=""
+
+if (( $# == 1 )); then
+    target="$(git rev-parse --verify --end-of-options "$1^{commit}")"
+
+    if ! git merge-base --is-ancestor "$target" HEAD; then
+        echo "Error: commit is not reachable from the current branch" >&2
+        exit 1
+    fi
+fi
+
+# Preserve the original branch history for recovery.
+backup="backup/author-rewrite-$(date +%Y%m%d%H%M%S)-$$"
+git branch "$backup" HEAD
+
+GIT_REWRITE_TARGET="$target" \
+GIT_REWRITE_NAME="$name" \
+GIT_REWRITE_EMAIL="$email" \
+GIT_REWRITE_DATE="$(date '+%s %z')" \
+git filter-repo \
+    --force \
+    --refs "$branch" \
+    --prune-empty never \
+    --prune-degenerate never \
+    --preserve-commit-hashes \
+    --preserve-commit-encoding \
+    --commit-callback '
+import os
+
+target = os.environ["GIT_REWRITE_TARGET"].encode()
+
+if not target or commit.original_id == target:
+    name = os.environ["GIT_REWRITE_NAME"].encode()
+    email = os.environ["GIT_REWRITE_EMAIL"].encode()
+    date = os.environ["GIT_REWRITE_DATE"].encode()
+
+    commit.author_name = name
+    commit.author_email = email
+    commit.author_date = date
+
+    commit.committer_name = name
+    commit.committer_email = email
+    commit.committer_date = date
+'
+
+echo "Done. Original history preserved in branch: $backup"
