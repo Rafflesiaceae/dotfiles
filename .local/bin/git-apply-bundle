@@ -15,13 +15,30 @@ fi
 
 git rev-parse --is-inside-work-tree >/dev/null
 
+# Require tracked files to be clean; ignore untracked files.
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+    echo "Error: Tracked files have uncommitted changes." >&2
+    exit 1
+fi
+
 # Verify bundle integrity and required history.
 git bundle verify "$bundle"
 
 # Import commits without modifying the current branch.
 git fetch --no-tags "$bundle" HEAD
 
-# Apply the imported history to the current branch.
-git merge FETCH_HEAD
+# Collect commits not yet present on the current branch.
+# Preserve dependency order while excluding merge commits.
+mapfile -t commits < <(
+    git rev-list --reverse --topo-order --no-merges HEAD..FETCH_HEAD
+)
 
-echo "Bundle applied successfully."
+if (( ${#commits[@]} == 0 )); then
+    echo "No new commits to apply."
+    exit 0
+fi
+
+# Replay commits onto the current branch, producing linear history.
+git cherry-pick "${commits[@]}"
+
+echo "Bundle applied successfully (${#commits[@]} commits, no merge commits)."
