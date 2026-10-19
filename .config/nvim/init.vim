@@ -1552,36 +1552,49 @@ autocmd BufReadPost,BufFilePost,StdinReadPost * call s:AttemptToCdToGitDir()
 augroup END
 " {{{ Formatting and testing mappings
 " <leader>j autoformatting/testing
+function! s:FormatFile(cmd) abort
+  let l:output = systemlist(a:cmd . ' ' . shellescape(expand('%:p')) . ' 2>&1')
+  let l:status = v:shell_error
+
+  if l:status != 0
+    echohl ErrorMsg
+    echomsg printf('%s failed (exit %d): %s', a:cmd, l:status, join(l:output, ' | '))
+    echohl None
+  else
+    checktime
+  endif
+endfunction
+
 augroup user_format_mappings
-autocmd!
-for entry in [
-      \ ['Jenkinsfile'                ,  'autoformat-groovy'],
-      \ ['bash,sh'                    ,  'autoformat-sh'],
-      \ ['c'                          ,  'autoformat-c'],
-      \ ['cpp'                        ,  'autoformat-c'],
-      \ ['css'                        ,  'autoformat-css'],
-      \ ['go'                         ,  'autoformat-go'],
-      \ ['groovy'                     ,  'autoformat-groovy'],
-      \ ['hcl'                        ,  'autoformat-hcl'],
-      \ ['html'                       ,  'autoformat-html'],
-      \ ['javascript'                 ,  'autoformat-js'],
-      \ ['json'                       ,  'autoformat-json'],
-      \ ['kotlin'                     ,  'autoformat-kotlin'],
-      \ ['lua'                        ,  'autoformat-lua'],
-      \ ['nix'                        ,  'nixpkgs-fmt'],
-      \ ['python'                     ,  'autoformat-python'],
-      \ ['siml'                       ,  'autoformat-siml'],
-      \ ['star'                       ,  'autoformat-star'],
-      \ ['starlark.python'            ,  'autoformat-star'],
-      \ ['toml'                       ,  'autoformat-toml'],
-      \ ['typescript,typescriptreact' ,  'autoformat-ts'],
-      \ ['xml'                        ,  'autoformat-xml'],
-      \ ['yaml,yaml.ansible'          ,  'autoformat-yml'],
-      \ ]
-  execute 'autocmd FileType ' . entry[0] .
-        \ ' nnoremap <buffer> <leader>j :silent! execute ''!' . entry[1] . ' '' . shellescape(expand(''%''))<CR>'
-endfor
-autocmd FileType yaml nnoremap <buffer> <leader>k :!actionlint %<CR>
+  autocmd!
+  for entry in [
+        \ ['Jenkinsfile'                ,  'autoformat-groovy'],
+        \ ['bash,sh'                    ,  'autoformat-sh'],
+        \ ['c'                          ,  'autoformat-c'],
+        \ ['cpp'                        ,  'autoformat-c'],
+        \ ['css'                        ,  'autoformat-css'],
+        \ ['go'                         ,  'autoformat-go'],
+        \ ['groovy'                     ,  'autoformat-groovy'],
+        \ ['hcl'                        ,  'autoformat-hcl'],
+        \ ['html'                       ,  'autoformat-html'],
+        \ ['javascript'                 ,  'autoformat-js'],
+        \ ['json'                       ,  'autoformat-json'],
+        \ ['kotlin'                     ,  'autoformat-kotlin'],
+        \ ['lua'                        ,  'autoformat-lua'],
+        \ ['nix'                        ,  'nixpkgs-fmt'],
+        \ ['python'                     ,  'autoformat-python'],
+        \ ['siml'                       ,  'autoformat-siml'],
+        \ ['star'                       ,  'autoformat-star'],
+        \ ['starlark.python'            ,  'autoformat-star'],
+        \ ['toml'                       ,  'autoformat-toml'],
+        \ ['typescript,typescriptreact' ,  'autoformat-ts'],
+        \ ['xml'                        ,  'autoformat-xml'],
+        \ ['yaml,yaml.ansible'          ,  'autoformat-yml'],
+        \ ]
+    execute 'autocmd FileType ' . entry[0]
+          \ . ' nnoremap <silent> <buffer> <leader>j :call <SID>FormatFile(' . string(entry[1]) . ')<CR>'
+  endfor
+  autocmd FileType yaml nnoremap <buffer> <leader>k :!actionlint %<CR>
 augroup END
 " }}} Formatting and testing mappings
 " {{{ Quickfix behavior
