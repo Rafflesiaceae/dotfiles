@@ -1,0 +1,537 @@
+#!/usr/bin/env luajit
+
+-- Show current resident memory by program, with optional proportional
+-- accounting for shared pages and per-process details.
+
+local ffi = require("ffi")
+local bit = require("bit")
+
+ffi.cdef([[
+typedef long ssize_t;
+typedef struct __dirstream DIR;
+struct dirent {
+    unsigned long d_ino;
+    long d_off;
+    unsigned short d_reclen;
+    unsigned char d_type;
+    char d_name[256];
+};
+DIR *opendir(const char *name);
+struct dirent *readdir(DIR *dirp);
+int closedir(DIR *dirp);
+ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
+int getpid(void);
+int usleep(unsigned int usec);
+int isatty(int fd);
+typedef unsigned char cc_t;
+typedef unsigned int speed_t;
+typedef unsigned int tcflag_t;
+struct termios {
+    tcflag_t c_iflag;
+    tcflag_t c_oflag;
+    tcflag_t c_cflag;
+    tcflag_t c_lflag;
+    cc_t c_line;
+    cc_t c_cc[32];
+    speed_t c_ispeed;
+    speed_t c_ospeed;
+};
+int tcgetattr(int fd, struct termios *termios_p);
+int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
+ssize_t read(int fd, void *buf, size_t count);
+]])
+
+local C = ffi.C
+local TCSANOW = 0
+local ISIG = 1
+local ICANON = 2
+local ECHO = 8
+local ECHONL = 64
+local VTIME = 5
+local VMIN = 6
+local terminal_state
+
+local function restore_terminal()
+	if terminal_state then
+		C.tcsetattr(0, TCSANOW, terminal_state)
+		terminal_state = nil
+	end
+end
+
+local function enable_terminal_input(options)
+	if options.no_clear or C.isatty(0) ~= 1 or C.isatty(1) ~= 1 then
+		return
+	end
+
+	local original = ffi.new("struct termios[1]")
+	if C.tcgetattr(0, original) ~= 0 then
+		return
+	end
+	local raw = ffi.new("struct termios[1]")
+	ffi.copy(raw, original, ffi.sizeof("struct termios"))
+	-- Keep input immediately readable and suppress echo. ISIG is disabled so
+	-- Ctrl-C arrives as a byte and follows the same clean restoration path as q.
+	raw[0].c_lflag = bit.band(raw[0].c_lflag, bit.bnot(bit.bor(ISIG, ICANON, ECHO, ECHONL)))
+	raw[0].c_cc[VMIN] = 0
+	raw[0].c_cc[VTIME] = 0
+	if C.tcsetattr(0, TCSANOW, raw) == 0 then
+		terminal_state = original
+	end
+end
+
+local function quit_requested()
+	if not terminal_state then
+		return false
+	end
+	local buffer = ffi.new("unsigned char[64]")
+	local length = C.read(0, buffer, 64)
+	for index = 0, tonumber(length) - 1 do
+		if buffer[index] == string.byte("q") or buffer[index] == string.byte("Q") or buffer[index] == 3 then
+			return true
+		end
+	end
+	return false
+end
+
+local function usage(stream)
+	stream:write([[
+Usage: ram-monitor [options]
+
+Continuously show the programs using the most RAM, grouped by executable
+(and by script/module for common interpreters).
+
+Options:
+  -i, --interval SECONDS   Refresh interval (default: 2)
+  -l, --limit COUNT        Maximum programs to display (default: 15)
+  -p, --instances COUNT    Instances per program (default: 0)
+  -n, --count COUNT        Stop after this many snapshots
+  -ss, --show-self         Include ram-monitor in the output
+      --pss               Rank by proportional RAM instead of resident RAM
+      --no-clear          Print every snapshot instead of refreshing the screen
+  -h, --help              Show this help
+
+RSS is resident RAM and can count shared pages in multiple processes. PSS
+splits shared pages among their users, but requires access to smaps_rollup.
+With --pss, groups marked * include RSS fallback for inaccessible processes.
+SWAP is per-process VmSwap and excludes swapped shared memory.
+All sizes use binary units. Press q or Ctrl-C to stop an interactive run.
+]])
+end
+
+local function die(message)
+	restore_terminal()
+	io.stderr:write("ram-monitor: ", message, "\n\n")
+	usage(io.stderr)
+	os.exit(2)
+end
+
+local function positive_number(value, option)
+	local number = tonumber(value)
+	if not number or number <= 0 or number ~= number or number == math.huge then
+		die(option .. " requires a number greater than zero")
+	end
+	return number
+end
+
+local function nonnegative_integer(value, option)
+	local number = tonumber(value)
+	if not number or number < 0 or number ~= number or number == math.huge or number ~= math.floor(number) then
+		die(option .. " requires a non-negative integer")
+	end
+	return number
+end
+
+local function parse_options(arguments)
+	local options = {
+		interval = 2,
+		limit = 15,
+		instances = 0,
+		count = nil,
+		no_clear = false,
+	}
+
+	local index = 1
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-h" or argument == "--help" then
+			usage(io.stdout)
+			os.exit(0)
+		elseif argument == "--pss" then
+			options.pss = true
+		elseif argument == "--no-clear" then
+			options.no_clear = true
+		elseif argument == "-ss" or argument == "--show-self" then
+			options.show_self = true
+		elseif argument == "-i" or argument == "--interval" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.interval = positive_number(arguments[index], argument)
+		elseif argument == "-l" or argument == "--limit" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.limit = nonnegative_integer(arguments[index], argument)
+			if options.limit == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		elseif argument == "-p" or argument == "--instances" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.instances = nonnegative_integer(arguments[index], argument)
+		elseif argument == "-n" or argument == "--count" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.count = nonnegative_integer(arguments[index], argument)
+			if options.count == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		else
+			die("unknown option: " .. argument)
+		end
+		index = index + 1
+	end
+
+	return options
+end
+
+local function read_file(path)
+	local file = io.open(path, "rb")
+	if not file then
+		return nil
+	end
+	local contents = file:read("*a")
+	file:close()
+	return contents
+end
+
+local function read_link(path)
+	local buffer_size = 4096
+	local buffer = ffi.new("char[?]", buffer_size)
+	local length = C.readlink(path, buffer, buffer_size)
+	if length < 0 then
+		return nil
+	end
+	return ffi.string(buffer, length)
+end
+
+local function process_ids()
+	local directory = C.opendir("/proc")
+	if directory == nil then
+		return nil, "cannot open /proc"
+	end
+
+	local ids = {}
+	while true do
+		local entry = C.readdir(directory)
+		if entry == nil then
+			break
+		end
+		local name = ffi.string(entry.d_name)
+		if name:match("^%d+$") then
+			ids[#ids + 1] = tonumber(name)
+		end
+	end
+	C.closedir(directory)
+	return ids
+end
+
+local function process_arguments(pid)
+	local contents = read_file("/proc/" .. pid .. "/cmdline")
+	local arguments = {}
+	if contents then
+		for argument in contents:gmatch("([^%z]+)") do
+			-- Avoid letting control characters in command lines corrupt the display.
+			arguments[#arguments + 1] = argument:gsub("[%c]", "?")
+		end
+	end
+	return arguments
+end
+
+local function basename(path)
+	return path:match("([^/]+)/*$") or path
+end
+
+local interpreters = {
+	bash = true,
+	dash = true,
+	fish = true,
+	lua = true,
+	luajit = true,
+	node = true,
+	perl = true,
+	ruby = true,
+	sh = true,
+	zsh = true,
+}
+
+local function is_interpreter(name)
+	return interpreters[name]
+		or name:match("^lua%d*%.?%d*$") ~= nil
+		or name:match("^luajit[%d%.%-]*$") ~= nil
+		or name:match("^python%d*%.?%d*$") ~= nil
+end
+
+local function interpreter_subject(arguments)
+	local index = 2
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-m" and arguments[index + 1] then
+			return "-m " .. arguments[index + 1]
+		elseif (argument == "-c" or argument == "-e") and arguments[index + 1] then
+			return argument .. " " .. arguments[index + 1]
+		elseif argument:sub(1, 1) ~= "-" then
+			return argument
+		end
+		index = index + 1
+	end
+	return nil
+end
+
+local function process_identity(pid, stat)
+	local executable = read_link("/proc/" .. pid .. "/exe")
+	local arguments = process_arguments(pid)
+	local executable_name = executable and basename(executable) or stat.command
+	executable_name = executable_name:gsub("[%c]", "?")
+	local key = executable or ("[" .. stat.command .. "]")
+	local label = executable_name
+
+	-- Separate scripts and modules that happen to share the same interpreter.
+	if is_interpreter(executable_name) then
+		local subject = interpreter_subject(arguments)
+		if subject then
+			key = key .. "\0" .. subject
+			label = executable_name .. " " .. subject
+		end
+	end
+
+	local command_line
+	if #arguments > 0 then
+		command_line = table.concat(arguments, " ")
+	else
+		command_line = "[" .. stat.command .. "]"
+	end
+	return key, label, command_line
+end
+
+local function truncate(value, maximum)
+	if #value <= maximum then
+		return value
+	end
+	if maximum <= 3 then
+		return value:sub(1, maximum)
+	end
+	return value:sub(1, maximum - 3) .. "..."
+end
+
+local function sleep_for(seconds)
+	-- Poll input between short sleeps so q stays responsive with long intervals.
+	while seconds > 0 do
+		local slice = math.min(seconds, 0.05)
+		C.usleep(math.floor(slice * 1000000))
+		if quit_requested() then
+			return true
+		end
+		seconds = seconds - slice
+	end
+	return false
+end
+
+-- Procfs reports these counters in KiB. Ignore textual fields and tolerate
+-- processes exiting or becoming unreadable between directory and file reads.
+local function memory_fields(contents)
+	local fields = {}
+	for name, value in contents:gmatch("([%w_()]+):%s*(%d+) kB") do
+		fields[name] = tonumber(value)
+	end
+	return fields
+end
+
+local function system_memory()
+	local contents = read_file("/proc/meminfo")
+	if not contents then
+		die("cannot read /proc/meminfo; this script requires Linux procfs")
+	end
+	local memory = memory_fields(contents)
+	if not memory.MemTotal or not memory.MemAvailable then
+		die("/proc/meminfo lacks MemTotal or MemAvailable")
+	end
+	return memory
+end
+
+local function process_memory(pid, options)
+	local contents = read_file("/proc/" .. pid .. "/status")
+	if not contents then
+		return nil
+	end
+	local memory = memory_fields(contents)
+	if not memory.VmRSS or memory.VmRSS == 0 then
+		return nil
+	end
+	local command = contents:match("^Name:%s*([^\n]+)") or tostring(pid)
+	command = command:gsub("[%c]", "?")
+	local ram = memory.VmRSS
+	local fallback = false
+	if options.pss then
+		local rollup = read_file("/proc/" .. pid .. "/smaps_rollup")
+		local proportional = rollup and memory_fields(rollup).Pss
+		if proportional then
+			ram = proportional
+		else
+			-- Keep inaccessible programs visible instead of silently hiding them.
+			fallback = true
+		end
+	end
+	return {
+		pid = pid,
+		command = command,
+		ram = ram,
+		swap = memory.VmSwap or 0,
+		fallback = fallback,
+	}
+end
+
+local function sample_programs(options, self_pid)
+	local ids, error_message = process_ids()
+	if not ids then
+		die(error_message)
+	end
+	local groups = {}
+	local fallbacks = 0
+	for _, pid in ipairs(ids) do
+		local instance = (pid ~= self_pid or options.show_self) and process_memory(pid, options)
+		if instance then
+			local key, label, command_line = process_identity(pid, instance)
+			local program = groups[key]
+			if not program then
+				program = { label = label, ram = 0, swap = 0, instances = {}, fallback = false }
+				groups[key] = program
+			end
+			instance.command_line = command_line
+			program.ram = program.ram + instance.ram
+			program.swap = program.swap + instance.swap
+			program.fallback = program.fallback or instance.fallback
+			program.instances[#program.instances + 1] = instance
+			if instance.fallback then
+				fallbacks = fallbacks + 1
+			end
+		end
+	end
+
+	-- Rebuild each snapshot so exited processes never retain stale RAM usage.
+	local programs = {}
+	for _, program in pairs(groups) do
+		programs[#programs + 1] = program
+		table.sort(program.instances, function(left, right)
+			if left.ram ~= right.ram then
+				return left.ram > right.ram
+			end
+			return left.pid < right.pid
+		end)
+	end
+	table.sort(programs, function(left, right)
+		if left.ram ~= right.ram then
+			return left.ram > right.ram
+		end
+		return left.label < right.label
+	end)
+	return programs, fallbacks
+end
+
+local function format_size(kib)
+	if kib >= 1024 * 1024 then
+		return string.format("%.2fGiB", kib / 1024 / 1024)
+	elseif kib >= 1024 then
+		return string.format("%.1fMiB", kib / 1024)
+	end
+	return string.format("%.0fKiB", kib)
+end
+
+local function render(state, programs, fallbacks, memory, options)
+	local used = memory.MemTotal - memory.MemAvailable
+	local lines = {
+		string.format("ram-monitor  RAM %s / %s (%.1f%%)  available %s  interval %.2fs",
+			format_size(used), format_size(memory.MemTotal), 100 * used / memory.MemTotal,
+			format_size(memory.MemAvailable), options.interval),
+		string.format("Swap %s / %s  cached %s  shared/tmpfs %s  kernel slab %s",
+			format_size((memory.SwapTotal or 0) - (memory.SwapFree or 0)),
+			format_size(memory.SwapTotal or 0), format_size(memory.Cached or 0),
+			format_size(memory.Shmem or 0), format_size(memory.Slab or 0)),
+		"System used = total - available; cached/shared/slab overlap and are not additive.",
+		string.format("%9s %9s %7s %4s  %s", options.pss and "PSS*" or "RSS", "SWAP", "%RAM", "RUN", "PROGRAM / INSTANCE"),
+	}
+	for index = 1, math.min(options.limit, #programs) do
+		local program = programs[index]
+		local marker = program.fallback and " *" or ""
+		lines[#lines + 1] = string.format("%9s %9s %6.1f%% %4d  %s%s",
+			format_size(program.ram), format_size(program.swap), 100 * program.ram / memory.MemTotal,
+			#program.instances, truncate(program.label, 96), marker)
+		for row = 1, math.min(options.instances, #program.instances) do
+			local instance = program.instances[row]
+			lines[#lines + 1] = string.format("%9s %9s %6.1f%% %4s    pid %-7d %s%s",
+				format_size(instance.ram), format_size(instance.swap), 100 * instance.ram / memory.MemTotal,
+				"", instance.pid, truncate(instance.command_line, 96), instance.fallback and " *" or "")
+		end
+	end
+	if #programs == 0 then
+		lines[#lines + 1] = "No readable processes with resident memory."
+	elseif #programs > options.limit then
+		lines[#lines + 1] = string.format("... %d more programs", #programs - options.limit)
+	end
+	if options.pss then
+		lines[#lines + 1] = string.format("* RSS fallback for %d processes with unreadable PSS; totals may include shared pages more than once.", fallbacks)
+	else
+		lines[#lines + 1] = "RSS counts shared pages in each process; --pss apportions them where readable."
+	end
+	lines[#lines + 1] = (terminal_state and "q quit | " or "") .. "Current RAM only; inaccessible processes and unmapped/kernel memory may be absent."
+
+	if not options.no_clear and C.isatty(1) == 1 then
+		-- Reuse the CPU monitor's overwrite strategy to avoid full-screen flashes.
+		if not state.rendered then
+			io.write("\27[2J\27[H")
+			state.rendered = true
+		else
+			io.write("\27[H")
+		end
+		io.write(table.concat(lines, "\27[K\n"), "\27[K\n\27[J")
+	else
+		io.write(table.concat(lines, "\n"), "\n")
+	end
+	io.flush()
+end
+
+local function main()
+	local options = parse_options(arg)
+	local self_pid = tonumber(C.getpid())
+	local state = {}
+	local snapshots = 0
+	enable_terminal_input(options)
+	while not options.count or snapshots < options.count do
+		if quit_requested() then
+			break
+		end
+		local memory = system_memory()
+		local programs, fallbacks = sample_programs(options, self_pid)
+		render(state, programs, fallbacks, memory, options)
+		snapshots = snapshots + 1
+		if options.count and snapshots >= options.count then
+			break
+		end
+		if sleep_for(options.interval) then
+			break
+		end
+	end
+end
+
+local succeeded, error_message = xpcall(main, debug.traceback)
+restore_terminal()
+if not succeeded then
+	io.stderr:write("ram-monitor: ", error_message, "\n")
+	os.exit(1)
+end
