@@ -10,3 +10,7 @@
 
 - An implementation obstacle is not permission to expand scope! Ask before
   making changes beyond the request.
+
+- IMPORTANT: do NOT keep a history/log via comments or otherwise in files unless
+  they are specifically made to keep a history like a separate changelog file ;
+  keep history/log to the git commit message only
