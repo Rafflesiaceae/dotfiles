@@ -1573,6 +1573,7 @@ augroup user_format_mappings
         \ ['c'                          ,  'autoformat-c'],
         \ ['cpp'                        ,  'autoformat-c'],
         \ ['css'                        ,  'autoformat-css'],
+        \ ['cmake'                      ,  'autoformat-cmake'],
         \ ['go'                         ,  'autoformat-go'],
         \ ['groovy'                     ,  'autoformat-groovy'],
         \ ['hcl'                        ,  'autoformat-hcl'],

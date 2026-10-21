@@ -70,6 +70,7 @@ sources = {
     "./.local/bin/autoformat": "",
     "./.local/bin/autoformat-bash": "",
     "./.local/bin/autoformat-c": "",
+    "./.local/bin/autoformat-cmake": "",
     "./.local/bin/autoformat-css": "",
     "./.local/bin/autoformat-docker": "",
     "./.local/bin/autoformat-go": "",

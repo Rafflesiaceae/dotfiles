@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -eo pipefail
+gersemi --warnings-as-errors "$@"
+gersemi --in-place "$@"
