@@ -1,3 +1,4 @@
 #!/bin/dash
 # autoformat-spotless "$@"
-jenkfmt -w --max-width 9000 "$@"
+# set -x
+jenkfmt -w --max-width 9000 --wrap-steps-in-script true "$@"
