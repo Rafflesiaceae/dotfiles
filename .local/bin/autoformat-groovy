@@ -1,2 +1,3 @@
 #!/bin/dash
-autoformat-spotless "$@"
+# autoformat-spotless "$@"
+jenkfmt -w --max-width 9000 "$@"
