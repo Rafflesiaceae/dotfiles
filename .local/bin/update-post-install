@@ -26,7 +26,7 @@ nvim +'PlugUpdate --sync' +qa
 
 # {{{1 update YCM
 banner "update YCM"
-ycm_dir="${HOME}/.vim/plugged/YouCompleteMe"
+ycm_dir="${HOME}/.vim/plugged/LouCompleteMe"
 ycm_state_file="${XDG_CACHE_HOME:-${HOME}/.cache}/update-post-install/ycm-build-state"
 ycm_completer_flags=(--clangd-completer --go-completer --rust-completer --ts-completer)
 

@@ -407,7 +407,7 @@ Plug 'editorconfig/editorconfig-vim'
 Plug 'skywind3000/asyncrun.vim'
 
 " Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
-Plug 'Rafflesiaceae/YouCompleteMe'
+Plug 'Rafflesiaceae/LouCompleteMe'
 " Plug 'scrooloose/syntastic'
 Plug 'Rafflesiaceae/ale'
 Plug 'Rafflesiaceae/vim-yaml'
