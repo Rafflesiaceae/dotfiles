@@ -49,8 +49,30 @@ info "Detected staged changes."
 
 # ---- Workspace --------------------------------------------------------------
 TMPDIR="$(mktemp -d -t edit-amend.XXXXXX)"
+
+# Safety-net stash entry holding the complete original state (staged and
+# unstaged). The staged changes are otherwise only kept in $PATCH, which lives
+# in $TMPDIR and is deleted on exit, so a failure (e.g. conflicts) followed by
+# `git rebase --abort` would lose them for good. Only dropped on full success.
+BACKUP_OID=""
+
 cleanup() { rm -rf "$TMPDIR"; }
-trap cleanup EXIT
+
+# On any failing exit tell the user where the backup is.
+on_exit() {
+    local rc=$?
+    cleanup
+    if [ "$rc" -ne 0 ] && [ -n "$BACKUP_OID" ]; then
+        local ref
+        ref="$(resolve_stash_ref "$BACKUP_OID" || true)"
+        [ -n "$ref" ] || ref="$BACKUP_OID"
+        printf "\n\e[33mNOTE:\e[0m A backup of ALL your original changes (staged and unstaged) is in \e[1m%s\e[0m.\n" "$ref" >&2
+        printf "Restore with:  git stash apply --index \"%s\"\n" "$ref" >&2
+        printf "Drop it once you no longer need it:  git stash drop \"%s\"\n\n" "$ref" >&2
+    fi
+    exit "$rc"
+}
+trap on_exit EXIT
 
 ALL_STAGED="$TMPDIR/all_staged.nul"
 ALLOWED_NUL="$TMPDIR/allowed.nul"
@@ -62,13 +84,13 @@ UNSTAGED_STASHED=0
 UNSTAGED_STASH_OID=""
 UNSTAGED_STASH_REF=""
 
-resolve_unstaged_stash_ref() {
-    local oid ref
+resolve_stash_ref() {
+    local want="$1" oid ref
 
-    [ -n "$UNSTAGED_STASH_OID" ] || return 1
+    [ -n "$want" ] || return 1
 
     while IFS=$'\t' read -r oid ref; do
-        if [ "$oid" = "$UNSTAGED_STASH_OID" ]; then
+        if [ "$oid" = "$want" ]; then
             printf '%s\n' "$ref"
             return 0
         fi
@@ -76,6 +98,8 @@ resolve_unstaged_stash_ref() {
 
     return 1
 }
+
+resolve_unstaged_stash_ref() { resolve_stash_ref "$UNSTAGED_STASH_OID"; }
 
 # If the script exits early and we created a stash, tell the user how to restore it.
 announce_stash_on_exit() {
@@ -128,6 +152,16 @@ fi
 
 # Serialize staged changes to a patch (only allowed paths)
 git_nr diff --cached --binary -- "${ALLOWED_ARR[@]}" >"$PATCH"
+
+# 1b) back up the complete current state before anything destructive happens.
+# `stash create` does not touch the working tree or index; `stash store` makes
+# it reachable via the stash reflog so it survives `git rebase --abort`.
+BACKUP_OID="$(git_nr stash create "pre-edit:backup")"
+if [ -z "$BACKUP_OID" ]; then
+    err "Could not create the safety backup of your changes."
+    exit 1
+fi
+git_nr stash store -m "pre-edit:backup (staged+unstaged) $(date -u +%Y%m%dT%H%M%SZ)" "$BACKUP_OID"
 
 # 2) stash UNSTAGED changes; by default DO NOT include untracked
 if ! git_nr diff --quiet || { [ "$INCLUDE_UNTRACKED" -eq 1 ] && [ -n "$(git_nr ls-files --others --exclude-standard)" ]; }; then
@@ -194,5 +228,10 @@ if [ "$UNSTAGED_STASHED" -eq 1 ]; then
 else
     info "No previously unstaged changes to restore."
 fi
+
+# Everything succeeded, the safety backup is no longer needed.
+BACKUP_REF="$(resolve_stash_ref "$BACKUP_OID" || true)"
+[ -z "$BACKUP_REF" ] || git_nr stash drop -q "$BACKUP_REF" >/dev/null
+BACKUP_OID=""
 
 info "Done (submodules untouched)."
