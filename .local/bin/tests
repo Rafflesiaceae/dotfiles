@@ -6,6 +6,9 @@ if [ -e "$test_path" ]; then
 elif find-upwards "Taskfile.yml" >/dev/null; then
     printf "+ go-task test %s\n" "$*"
     go-task test "$@"
+elif find-upwards "dev.py" >/dev/null; then
+    printf "+ ./dev.py test %s\n" "$*"
+    ./dev.py test "$@"
 else
     if [ "$IF_HAS_TESTS" = 1 ]; then
         :
