@@ -115,6 +115,8 @@ let g:ycm_complete_in_comments = 1
 let g:ycm_complete_in_strings  = 1
 let g:ycm_auto_trigger = 1
 let g:ycm_echo_current_diagnostic = 1
+" Show hover documentation only when explicitly requested (Shift-K).
+let g:ycm_auto_hover = ''
 let g:ycm_global_ycm_extra_conf = $HOME.'/.config/ycm-extra-conf.py'
 let g:ycm_open_loclist_on_ycm_diags = 0
 
@@ -210,6 +212,8 @@ let g:EditorConfig_max_line_indicator = "none"
 " }}}
 " {{{ ALE
 let g:ale_completion_enabled = 0
+" Request ALE hover information only through explicit commands.
+let g:ale_hover_cursor = 0
 let g:ale_sign_error = '⤫'
 let g:ale_sign_warning = '⚠'
 
