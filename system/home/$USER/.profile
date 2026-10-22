@@ -38,3 +38,6 @@ export MAKEFLAGS="$MAKEFLAGS -j 4"
 
 # ansible
 export ANSIBLE_NOCOWS=1
+
+# tig etc. (most ncurses)
+export ESCDELAY=3
