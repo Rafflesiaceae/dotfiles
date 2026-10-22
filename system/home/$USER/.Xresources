@@ -15,6 +15,8 @@ URxvt.font: xft:Consolas:size=11,xft:Fixed:size=11,xft:Nimbus Sans:size 11,xft:S
 URxvt.internalBorder: 0
 URxvt.iso14755: False
 URxvt.iso14755_52:  false
+URxvt.refreshBatching: true
+URxvt.refreshRate: 144
 URxvt.saveLines: 50000
 URxvt.scrollBar: false
 URxvt.urgentOnBell: true
@@ -54,9 +56,12 @@ URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
 !{{{1 XFT
 Xft.antialias:1
 Xft.autohint:0
+! ↓↓↓ Standard
 ! Xft.dpi:96
 ! Xft.dpi:144
+! ↓↓↓ Default
 Xft.dpi:128
+! Xft.dpi:170
 Xft.hinting:1
 Xft.hintstyle:hintfull
 Xft.lcdfilter:lcddefault
