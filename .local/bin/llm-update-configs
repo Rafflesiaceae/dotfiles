@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 #
-# update-llm-configs
-#
 # Regenerates the global instructions/"system prompt" files for the
 # various LLM coding assistants (Claude Code, Codex, GitHub Copilot, ...)
 # from a shared set of source snippets, so the same guidance doesn't have
@@ -33,9 +31,6 @@
 # and copied into the right source snippet by hand; quitting vimdiff
 # with a non-zero exit (e.g. ":cq") skips regenerating that tool so the
 # edits aren't lost, rather than "qa"/exit 0 which proceeds as usual.
-#
-# Usage:
-#   ./update-llm-configs
 
 set -euo pipefail
 

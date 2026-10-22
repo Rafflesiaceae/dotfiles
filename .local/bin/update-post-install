@@ -16,9 +16,9 @@ banner() {
     printf '\n%s%s==>%s %s\n' "$cbold" "$cblue" "$creset" "$1"
 }
 
-# {{{1 update-llm-configs
-banner "update-llm-configs"
-update-llm-configs
+# {{{1 llm-update-configs
+banner "llm-update-configs"
+llm-update-configs
 
 # {{{1 update vim plugins
 banner "update vim plugins"

@@ -374,7 +374,7 @@ sources = {
     "./.local/bin/update-arch": {"linux": ""},
     "./.local/bin/update-arch-android": {"linux": ""},
     "./.local/bin/update-grub": "",
-    "./.local/bin/update-llm-configs": "",
+    "./.local/bin/llm-update-configs": "",
     "./.local/bin/update-numdots": "",
     "./.local/bin/update-post-install": "",
     "./.local/bin/update-ubuntu": "",
