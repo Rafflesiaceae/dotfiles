@@ -116,6 +116,7 @@ let g:ycm_complete_in_strings  = 1
 let g:ycm_auto_trigger = 1
 let g:ycm_echo_current_diagnostic = 1
 let g:ycm_global_ycm_extra_conf = $HOME.'/.config/ycm-extra-conf.py'
+let g:ycm_open_loclist_on_ycm_diags = 0
 
 let g:ycm_filetype_blacklist = {
       \ 'tagbar' : 1,
