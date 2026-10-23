@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -eo pipefail
+for path in ./build*; do
+    if [[ -d "$path" ]]; then
+        (set -x; rm -rf "$path")
+    fi
+done
+
+set -x
+build "$@"
