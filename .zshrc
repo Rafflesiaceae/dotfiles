@@ -424,23 +424,32 @@ bindkey "^v" expand_command_line
 autoload edit-command-line; zle -N edit-command-line
 bindkey "^k" edit-command-line
 # }}}
-# {{{ edit which first word in current buffer <F5>
+# {{{ edit first non-binary file in current buffer <F5>
 edit_which_current_buffer() {
-    local cmd file
-    local -a words
+    emulate -L zsh
+    local candidate encoding
 
-    words=(${(z)BUFFER})
-    cmd=$words[1]
+    for candidate in ${(z)BUFFER}; do
+        candidate=${(Q)candidate}
+        [[ $candidate == '~/'* ]] && candidate="$HOME/${candidate#\~/}"
 
-    [[ -z "$cmd" ]] && return
+        # Resolve executable names through PATH
+        if [[ ! -f $candidate ]]; then
+            candidate=$(whence -p -- "$candidate" 2>/dev/null) || continue
+        fi
 
-    file=$(which "$cmd") || return
+        [[ -f $candidate ]] || continue
 
-    if [[ -L "$file" ]]; then
-        file=$(readlink -f "$file")
-    fi
+        # Skip binary files
+        encoding=$(file -Lb --mime-encoding -- "$candidate") || continue
+        [[ $encoding == binary ]] && continue
 
-    "$EDITOR" "$file"
+        # Resolve symlinks before editing
+        candidate=$(realpath -- "$candidate") || continue
+
+        "$EDITOR" "$candidate"
+        return
+    done
 }
 zle -N edit_which_current_buffer
 bindkey '^[[15~' edit_which_current_buffer # F5
