@@ -1,7 +1,7 @@
 #!/usr/bin/env luajit
 
--- Show current resident memory by program, with optional proportional
--- accounting for shared pages and per-process details.
+-- Show proportional and private resident memory by program, ranked by PSS,
+-- with optional per-process details.
 
 local ffi = require("ffi")
 local bit = require("bit")
@@ -106,13 +106,14 @@ Options:
   -p, --instances COUNT    Instances per program (default: 0)
   -n, --count COUNT        Stop after this many snapshots
   -ss, --show-self         Include ram-monitor in the output
-      --pss               Rank by proportional RAM instead of resident RAM
+      --pss               Rank by PSS (default)
       --no-clear          Print every snapshot instead of refreshing the screen
   -h, --help              Show this help
 
-RSS is resident RAM and can count shared pages in multiple processes. PSS
-splits shared pages among their users, but requires access to smaps_rollup.
-With --pss, groups marked * include RSS fallback for inaccessible processes.
+PSS apportions shared pages; USS sums private clean, dirty, and hugetlb pages.
+PSS and USS require smaps_rollup access. Programs and instances rank by PSS.
+Unavailable metrics appear as -; marked group totals omit those processes.
+Entries without readable PSS sort last. %RAM uses PSS.
 SWAP is per-process VmSwap and excludes swapped shared memory.
 All sizes use binary units. Press q or Ctrl-C to stop an interactive run.
 ]])
@@ -157,7 +158,7 @@ local function parse_options(arguments)
 			usage(io.stdout)
 			os.exit(0)
 		elseif argument == "--pss" then
-			options.pss = true
+			-- Preserve existing invocations now that PSS ranking is unconditional.
 		elseif argument == "--no-clear" then
 			options.no_clear = true
 		elseif argument == "-ss" or argument == "--show-self" then
@@ -365,7 +366,7 @@ local function system_memory()
 	return memory
 end
 
-local function process_memory(pid, options)
+local function process_memory(pid)
 	local contents = read_file("/proc/" .. pid .. "/status")
 	if not contents then
 		return nil
@@ -376,24 +377,24 @@ local function process_memory(pid, options)
 	end
 	local command = contents:match("^Name:%s*([^\n]+)") or tostring(pid)
 	command = command:gsub("[%c]", "?")
-	local ram = memory.VmRSS
-	local fallback = false
-	if options.pss then
-		local rollup = read_file("/proc/" .. pid .. "/smaps_rollup")
-		local proportional = rollup and memory_fields(rollup).Pss
-		if proportional then
-			ram = proportional
-		else
-			-- Keep inaccessible programs visible instead of silently hiding them.
-			fallback = true
+	local rollup = read_file("/proc/" .. pid .. "/smaps_rollup")
+	local rollup_memory = rollup and memory_fields(rollup)
+	local pss, uss
+	if rollup_memory then
+		pss = rollup_memory.Pss
+		local private_clean = rollup_memory.Private_Clean
+		local private_dirty = rollup_memory.Private_Dirty
+		if private_clean and private_dirty then
+			-- USS is private resident memory, including private huge pages.
+			uss = private_clean + private_dirty + (rollup_memory.Private_Hugetlb or 0)
 		end
 	end
 	return {
 		pid = pid,
 		command = command,
-		ram = ram,
+		pss = pss,
+		uss = uss,
 		swap = memory.VmSwap or 0,
-		fallback = fallback,
 	}
 end
 
@@ -403,24 +404,39 @@ local function sample_programs(options, self_pid)
 		die(error_message)
 	end
 	local groups = {}
-	local fallbacks = 0
+	local pss_missing = 0
+	local uss_missing = 0
 	for _, pid in ipairs(ids) do
-		local instance = (pid ~= self_pid or options.show_self) and process_memory(pid, options)
+		local instance = (pid ~= self_pid or options.show_self) and process_memory(pid)
 		if instance then
 			local key, label, command_line = process_identity(pid, instance)
 			local program = groups[key]
 			if not program then
-				program = { label = label, ram = 0, swap = 0, instances = {}, fallback = false }
+				program = {
+					label = label, pss = 0, pss_count = 0,
+					pss_missing = 0, uss = 0, uss_count = 0, uss_missing = 0,
+					swap = 0, instances = {},
+				}
 				groups[key] = program
 			end
 			instance.command_line = command_line
-			program.ram = program.ram + instance.ram
 			program.swap = program.swap + instance.swap
-			program.fallback = program.fallback or instance.fallback
-			program.instances[#program.instances + 1] = instance
-			if instance.fallback then
-				fallbacks = fallbacks + 1
+			-- Mark missing values so grouped metrics never imply complete totals.
+			if instance.pss then
+				program.pss = program.pss + instance.pss
+				program.pss_count = program.pss_count + 1
+			else
+				program.pss_missing = program.pss_missing + 1
+				pss_missing = pss_missing + 1
 			end
+			if instance.uss then
+				program.uss = program.uss + instance.uss
+				program.uss_count = program.uss_count + 1
+			else
+				program.uss_missing = program.uss_missing + 1
+				uss_missing = uss_missing + 1
+			end
+			program.instances[#program.instances + 1] = instance
 		end
 	end
 
@@ -429,19 +445,24 @@ local function sample_programs(options, self_pid)
 	for _, program in pairs(groups) do
 		programs[#programs + 1] = program
 		table.sort(program.instances, function(left, right)
-			if left.ram ~= right.ram then
-				return left.ram > right.ram
+			-- Unavailable PSS sorts below even a measured zero.
+			local left_pss, right_pss = left.pss or -1, right.pss or -1
+			if left_pss ~= right_pss then
+				return left_pss > right_pss
 			end
 			return left.pid < right.pid
 		end)
 	end
 	table.sort(programs, function(left, right)
-		if left.ram ~= right.ram then
-			return left.ram > right.ram
+		-- Rank partial groups by their measured sum and unknown groups last.
+		local left_pss = left.pss_count > 0 and left.pss or -1
+		local right_pss = right.pss_count > 0 and right.pss or -1
+		if left_pss ~= right_pss then
+			return left_pss > right_pss
 		end
 		return left.label < right.label
 	end)
-	return programs, fallbacks
+	return programs, pss_missing, uss_missing
 end
 
 local function format_size(kib)
@@ -453,7 +474,25 @@ local function format_size(kib)
 	return string.format("%.0fKiB", kib)
 end
 
-local function render(state, programs, fallbacks, memory, options)
+-- Missing measurements stay visible as dashes; partial aggregate sums get a marker.
+local function format_metric_size(kib, count, missing)
+	if kib == nil or (count and count == 0) then
+		return "-"
+	end
+	local marker = missing and missing > 0 and "*" or ""
+	return format_size(kib) .. marker
+end
+
+-- Percentages follow PSS availability and mark incomplete group totals too.
+local function format_ram_percentage(kib, total, count, missing)
+	if kib == nil or (count and count == 0) then
+		return "-"
+	end
+	local marker = missing and missing > 0 and "*" or ""
+	return string.format("%.1f%%", 100 * kib / total) .. marker
+end
+
+local function render(state, programs, pss_missing, uss_missing, memory, options)
 	local used = memory.MemTotal - memory.MemAvailable
 	local lines = {
 		string.format("ram-monitor  RAM %s / %s (%.1f%%)  available %s  interval %.2fs",
@@ -464,19 +503,23 @@ local function render(state, programs, fallbacks, memory, options)
 			format_size(memory.SwapTotal or 0), format_size(memory.Cached or 0),
 			format_size(memory.Shmem or 0), format_size(memory.Slab or 0)),
 		"System used = total - available; cached/shared/slab overlap and are not additive.",
-		string.format("%9s %9s %7s %4s  %s", options.pss and "PSS*" or "RSS", "SWAP", "%RAM", "RUN", "PROGRAM / INSTANCE"),
 	}
+	lines[#lines + 1] = string.format("%9s %9s %9s %7s %4s  %s",
+		"PSS*", "USS*", "SWAP", "%RAM", "RUN", "PROGRAM / INSTANCE")
 	for index = 1, math.min(options.limit, #programs) do
 		local program = programs[index]
-		local marker = program.fallback and " *" or ""
-		lines[#lines + 1] = string.format("%9s %9s %6.1f%% %4d  %s%s",
-			format_size(program.ram), format_size(program.swap), 100 * program.ram / memory.MemTotal,
-			#program.instances, truncate(program.label, 96), marker)
+		lines[#lines + 1] = string.format("%9s %9s %9s %7s %4d  %s",
+			format_metric_size(program.pss, program.pss_count, program.pss_missing),
+			format_metric_size(program.uss, program.uss_count, program.uss_missing),
+			format_size(program.swap),
+			format_ram_percentage(program.pss, memory.MemTotal, program.pss_count, program.pss_missing),
+			#program.instances, truncate(program.label, 96))
 		for row = 1, math.min(options.instances, #program.instances) do
 			local instance = program.instances[row]
-			lines[#lines + 1] = string.format("%9s %9s %6.1f%% %4s    pid %-7d %s%s",
-				format_size(instance.ram), format_size(instance.swap), 100 * instance.ram / memory.MemTotal,
-				"", instance.pid, truncate(instance.command_line, 96), instance.fallback and " *" or "")
+			lines[#lines + 1] = string.format("%9s %9s %9s %7s %4s    pid %-7d %s",
+				format_metric_size(instance.pss), format_metric_size(instance.uss),
+				format_size(instance.swap), format_ram_percentage(instance.pss, memory.MemTotal),
+				"", instance.pid, truncate(instance.command_line, 96))
 		end
 	end
 	if #programs == 0 then
@@ -484,11 +527,10 @@ local function render(state, programs, fallbacks, memory, options)
 	elseif #programs > options.limit then
 		lines[#lines + 1] = string.format("... %d more programs", #programs - options.limit)
 	end
-	if options.pss then
-		lines[#lines + 1] = string.format("* RSS fallback for %d processes with unreadable PSS; totals may include shared pages more than once.", fallbacks)
-	else
-		lines[#lines + 1] = "RSS counts shared pages in each process; --pss apportions them where readable."
-	end
+	lines[#lines + 1] = string.format("* Marked group totals omit unavailable metrics (PSS: %d, USS: %d).",
+		pss_missing, uss_missing)
+	lines[#lines + 1] = "PSS: RAM this process uses, splitting shared memory among processes; used for sorting and %RAM."
+	lines[#lines + 1] = "USS: RAM used only by this process."
 	lines[#lines + 1] = (terminal_state and "q quit | " or "") .. "Current RAM only; inaccessible processes and unmapped/kernel memory may be absent."
 
 	if not options.no_clear and C.isatty(1) == 1 then
@@ -517,8 +559,8 @@ local function main()
 			break
 		end
 		local memory = system_memory()
-		local programs, fallbacks = sample_programs(options, self_pid)
-		render(state, programs, fallbacks, memory, options)
+		local programs, pss_missing, uss_missing = sample_programs(options, self_pid)
+		render(state, programs, pss_missing, uss_missing, memory, options)
 		snapshots = snapshots + 1
 		if options.count and snapshots >= options.count then
 			break
