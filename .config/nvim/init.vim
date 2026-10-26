@@ -414,7 +414,7 @@ Plug 'skywind3000/asyncrun.vim'
 " Plug 'Valloric/YouCompleteMe', { 'commit': '2d1de481a94a3be428c87ab0404c38e58b386813' }
 Plug 'Rafflesiaceae/LouCompleteMe'
 " Plug 'scrooloose/syntastic'
-Plug 'Rafflesiaceae/ale'
+" Plug 'Rafflesiaceae/ale'
 Plug 'Rafflesiaceae/vim-yaml'
 " Plug 'dansomething/vim-eclim' ,{ 'for': ['java', 'php']}
 Plug 'majutsushi/tagbar'
@@ -1783,6 +1783,7 @@ unmap <leader>to
 unmap <leader>tn
 " }}}
 " {{{ Split, jump, and sync
+command! SwapSplit execute winlayout()[0] ==# 'row' ? 'wincmd K' : 'wincmd H'
 " Split, jump to nearest //! comment above, and sync horizontal scrolling
 function! s:SplitJumpAndSyncHor() abort
   " 1) Ensure nowrap is set (so horizontal scroll actually happens)
