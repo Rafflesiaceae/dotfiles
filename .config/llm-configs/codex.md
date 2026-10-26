@@ -14,3 +14,11 @@
 - IMPORTANT: do NOT keep a history/log via comments or otherwise in files unless
   they are specifically made to keep a history like a separate changelog file ;
   keep history/log to the git commit message only
+
+- do NOT do extensive testing for every feature/change we do - implement the
+  requirement first and then stop and propose adding a test in a next step
+
+- when writing a git commit message: do NOT list all the things you did,
+  everyone can see these from the diff ! - only write things that are not
+  directly obvious from the diff and/or very very simple, concise summaries that
+  summarize multiple more complicated things
