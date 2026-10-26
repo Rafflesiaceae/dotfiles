@@ -427,10 +427,40 @@ bindkey "^k" edit-command-line
 # {{{ edit first non-binary file in current buffer <F5>
 edit_which_current_buffer() {
     emulate -L zsh
-    local candidate encoding
+    local candidate encoding word
+    local -a words order
+    local -i i pos=1 start priority=0
 
-    for candidate in ${(z)BUFFER}; do
-        candidate=${(Q)candidate}
+    words=(${(z)BUFFER})
+
+    # Find the word containing the cursor
+    for (( i=1; i<=${#words}; i++ )); do
+        word=${words[i]}
+
+        # Locate the word in the original buffer
+        while (( pos + ${#word} - 1 <= ${#BUFFER} )) &&
+              [[ ${BUFFER[pos,pos+${#word}-1]} != "$word" ]]; do
+            (( pos++ ))
+        done
+
+        start=pos-1  # ZLE cursor positions are zero-based
+
+        if (( CURSOR >= start && CURSOR < start + ${#word} )); then
+            priority=i
+            break
+        fi
+
+        (( pos += ${#word} ))
+    done
+
+    # Cursor word first, then all other words left to right
+    (( priority )) && order+=( $priority )
+    for (( i=1; i<=${#words}; i++ )); do
+        (( i == priority )) || order+=( $i )
+    done
+
+    for i in "${order[@]}"; do
+        candidate=${(Q)words[i]}
         [[ $candidate == '~/'* ]] && candidate="$HOME/${candidate#\~/}"
 
         # Resolve executable names through PATH
