@@ -7,8 +7,6 @@
 # *zsh) is_zsh=1 ;;
 # esac
 
-export ESCDELAY=3
-
 is_linux=
 is_windows=
 is_macos=
@@ -18,14 +16,6 @@ darwin*) is_macos=1 ;;
 cygwin | msys) is_windows=1 ;;
 *) printf "ERROR: could not determine OS via \$OSTYPE\n" >&2 ;;
 esac
-
-# - - -
-
-# ssh-agent socket path
-export SSH_AUTH_SOCK="/run/user/1000/ssh-agent.socket"
-
-# chosenim
-export PATH="${PATH}:${HOME}/.nimble/bin"
 
 # - - -
 

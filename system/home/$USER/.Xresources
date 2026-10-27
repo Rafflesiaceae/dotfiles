@@ -15,11 +15,12 @@ URxvt.font: xft:Consolas:size=11,xft:Fixed:size=11,xft:Nimbus Sans:size 11,xft:S
 URxvt.internalBorder: 0
 URxvt.iso14755: False
 URxvt.iso14755_52:  false
-URxvt.refreshBatching: true
 URxvt.refreshRate: 144
 URxvt.saveLines: 50000
 URxvt.scrollBar: false
 URxvt.urgentOnBell: true
+URxvt.preeditType: Root
+URxvt.skipXIM: true
 
 ! @INFO - 'matcher' doesnt support j/k movement and can cause slowdowns(?)
 ! @INFO - 'searchable-scrollback' doesnt support j/k movement

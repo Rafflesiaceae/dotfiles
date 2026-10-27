@@ -1,3 +1,4 @@
+export TERMINAL=nrxvt
 export EDITOR=vim
 export BROWSER=chromium
 export PAGER=cat
@@ -11,30 +12,19 @@ export FZF_DEFAULT_OPTS="--no-separator"
 # ssh
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
 
-# php
-export PATH=$PATH:$HOME/.config/composer/vendor/bin
-
 # nodejs
 export PATH=$PATH:$HOME/.node_modules/bin
-export npm_config_prefix=$HOME/.node_modules
 export NODE_OPTIONS="--enable-source-maps"
-
-# openresty
-export PATH=$PATH:/opt/openresty/bin
-
-# nim
-export PATH=$PATH:$HOME/.nimble/bin
 
 # go
 export PATH=$PATH:$HOME/.go/bin
 export GOPATH=$HOME/.go
-export GOBIN=$HOME/.go/bin
 
 # cargo
 export PATH=$PATH:$HOME/.cargo/bin
 
 # MAKEFLAGS
-export MAKEFLAGS="$MAKEFLAGS -j 4"
+export MAKEFLAGS="$MAKEFLAGS -j4"
 
 # ansible
 export ANSIBLE_NOCOWS=1
