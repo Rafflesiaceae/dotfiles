@@ -412,6 +412,7 @@ sources = {
     "./.local/bin_override/makepkg": "",
     "./.local/bin_override/proton": "",
     "./.local/bin_override/vimdiff": {"linux": ""},
+    "./.npmrc": "",
     "./.urxvt//ext/buffer-pipe": {"linux": ""},
     "./.qtcvimrc": "",
     "./.vim/colors/base16-kokonai.vim": {"linux": ""},
