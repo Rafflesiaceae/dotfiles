@@ -74,7 +74,7 @@ f() {
 
 gcl() {
     url="${1:-$(cb)}"
-    dir="${url##*/}"
+    dir="${2:-${url##*/}}"
     dir="${dir%.git}"
 
     user="$(gitusers-prompt "$url")" || return
@@ -87,10 +87,10 @@ gcl() {
     if [[ ! -d "$dir" ]]; then
         git clone \
             -c core.sshCommand="$(gitusers -sshc "$user")" \
-            "$url"
+            "$url" "$dir" || return
     fi
 
-    cd "$dir"
+    cd "$dir" || return
     gitusers "$user"
 }
 
