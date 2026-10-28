@@ -40,6 +40,12 @@ set nocompatible
 filetype off
 set autoindent breakindent
 set backup backupdir=$HOME/.vim/backup
+" Autodetection reads the clipboard and can wait forever for an unresponsive
+" owner. Select the existing X11 provider without fetching clipboard contents.
+if !has('mac') && empty($WAYLAND_DISPLAY) && !empty($DISPLAY)
+      \ && executable('xsel')
+    let g:clipboard = 'xsel'
+endif
 set clipboard^=unnamed
 set foldlevel=99 foldmethod=marker
 set formatoptions-=t
