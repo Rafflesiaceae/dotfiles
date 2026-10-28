@@ -25,7 +25,7 @@ Presets:
     -ft, --full-terminal, --fullterm
         Spawning a normal terminal, no popup'nes
 EOF
-    exit "${1:0}"
+    exit "${1:-0}"
 }
 usage_and_die() {
     printf '%s\n' "$1" >&2
