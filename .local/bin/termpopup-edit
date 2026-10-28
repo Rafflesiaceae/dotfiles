@@ -1,0 +1,6 @@
+#!/bin/sh
+dir=$1
+shift
+for arg in "$@"; do
+    termpopup -ft -nw --cd "$dir" -s "/bin/sh" -- "vim \"$arg\""
+done

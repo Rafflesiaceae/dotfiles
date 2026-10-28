@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<actions>
+<action>
+	<icon>utilities-terminal</icon>
+	<name>🟪 Open Terminal Here</name>
+	<submenu></submenu>
+	<unique-id>1691540412141850-1</unique-id>
+	<command>urxvt -cd %f</command>
+	<description></description>
+	<range></range>
+	<patterns>*</patterns>
+	<startup-notify/>
+	<directories/>
+</action>
+<action>
+	<icon>edit-copy</icon>
+	<name>⬜ Copy Path</name>
+	<submenu></submenu>
+	<unique-id>1767382406144549-1</unique-id>
+	<command>cb -s &apos;%f&apos;</command>
+	<description>Copy Path to Clipboard</description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<directories/>
+	<audio-files/>
+	<image-files/>
+	<other-files/>
+	<text-files/>
+	<video-files/>
+</action>
+<action>
+	<icon>applications-development</icon>
+	<name>⬛ ffsmoltwo</name>
+	<submenu></submenu>
+	<unique-id>1751012361275222-1</unique-id>
+	<command>ffsmoltwo %n</command>
+	<description></description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<audio-files/>
+	<image-files/>
+	<other-files/>
+	<video-files/>
+</action>
+<action>
+	<icon>accessories-dictionary</icon>
+	<name>⬛ pdfify</name>
+	<submenu></submenu>
+	<unique-id>1751456323819253-1</unique-id>
+	<command>pdfify %N</command>
+	<description></description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<audio-files/>
+	<image-files/>
+	<other-files/>
+	<text-files/>
+	<video-files/>
+</action>
+<action>
+	<icon>node-join</icon>
+	<name>⬛ Dump clipboard image</name>
+	<submenu></submenu>
+	<unique-id>1754845471347836-1</unique-id>
+	<command>dump-clipboard-image %f</command>
+	<description></description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<directories/>
+</action>
+<action>
+	<icon>image-x-gif</icon>
+	<name>⬛ Convert IMG to JPG</name>
+	<submenu></submenu>
+	<unique-id>1790082586629470-1</unique-id>
+	<command>convert-img-to-jpg &apos;%f&apos;</command>
+	<description></description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<image-files/>
+</action>
+<action>
+	<icon>account-edit</icon>
+	<name>⬛ Terminal Edit</name>
+	<submenu></submenu>
+	<unique-id>1793176182161937-1</unique-id>
+	<command>termpopup-edit %d %F</command>
+	<description></description>
+	<range>*</range>
+	<patterns>*</patterns>
+	<directories/>
+	<audio-files/>
+	<image-files/>
+	<other-files/>
+	<text-files/>
+	<video-files/>
+</action>
+</actions>
