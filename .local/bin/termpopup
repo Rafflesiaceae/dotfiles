@@ -18,6 +18,7 @@ Options:
     -nf, --no-float            Don't float the window
     -ns, --no-shell            Don't run passed commands through \$SHELL
     -nw, --no-wait             Don't wait for command to exit / nohup the command
+    -s,  --shell <shell>       Set and export \$SHELL for the terminal
     -t,  --title               Set a title for the popup (unreliable)
     -w,  --wait                Wait for command to exit (default)
 
@@ -71,6 +72,11 @@ while :; do
         ;;
     -ns | --no-shell) no_shell=1 ;;
     -nw | --no-wait) wait= ;;
+    -s | --shell)
+        [[ $# -ge 2 && -n $2 ]] || usage_and_die "--shell expects a followup shell argument"
+        export SHELL="$2"
+        shift
+        ;;
     -t | --title)
         title=$2
         shift || usage_and_die "--title expects a followup title argument"
