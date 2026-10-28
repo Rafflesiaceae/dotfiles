@@ -33,3 +33,5 @@ alternate_screen = "never"
 fullscreen_transcript = false
 terminal_title = []
 status_line = ["model-with-reasoning", "current-dir", "five-hour-limit", "weekly-limit"]
+
+# {{{ Local
