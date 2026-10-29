@@ -34,4 +34,5 @@ fi
 export STEAM_COMPAT_DATA_PATH="$COMPATDATA"
 export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_ROOT"
 
-exec "$PROTON" run "$@"
+exec "$PROTON" runinprefix "$@"
+# exec "$PROTON" run "$@"
