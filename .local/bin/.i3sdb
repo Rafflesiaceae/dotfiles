@@ -1,0 +1,48 @@
+# use like this:
+#   i3sd_block "Hello"
+
+i3sd_block_raw() {
+    if [ "$#" -gt 3 ]; then
+        printf 'i3sd_block: maximum 3 arguments\n' >&2
+        return 2
+    fi
+
+    printf '%s\n%s\n%s\n\0' "${1-}" "${2-}" "${3-}" >&8
+}
+i3sd_block() {
+    i3sd_block_raw "<span foreground='#272822' background='#FDD102'>$1</span>" "$1" "pango=true"
+}
+
+# Initialize
+[ -n "${XDG_RUNTIME_DIR:-}" ] || return 1
+mkdir -p -m 700 "$XDG_RUNTIME_DIR/i3sd-blocks" || return 1
+
+__i3sd_tmpdir=$(mktemp -d "$XDG_RUNTIME_DIR/i3sd-blocks/.tmp.XXXXXXXX") || return 1
+__i3sd_fifo="$__i3sd_tmpdir/input.fifo"
+
+mkfifo -m 600 "$__i3sd_fifo" || return 1
+# (umask 077; : > "$XDG_RUNTIME_DIR/i3sd-blocks/$$") || return 1
+
+OUT="$XDG_RUNTIME_DIR/i3sd-blocks/$$" \
+TMP="$__i3sd_tmpdir/content" \
+DIR="$__i3sd_tmpdir" \
+nohup gawk -v RS='\0' '
+    RT != "" {
+        tmp = ENVIRON["TMP"]
+        printf "%s", $0 > tmp
+        close(tmp)
+
+        if (system("mv -f \"$TMP\" \"$OUT\"") != 0)
+            exit 1
+    }
+
+    END {
+        system("rm -f \"$OUT\" \"$TMP\"; rmdir \"$DIR\"")
+    }
+' < "$__i3sd_fifo" >/dev/null 2>&1 &
+
+exec 8>"$__i3sd_fifo"
+rm -f "$__i3sd_fifo"
+unset __i3sd_fifo __i3sd_tmpdir
+
+# vim: set ft=sh:

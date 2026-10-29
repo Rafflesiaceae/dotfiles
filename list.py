@@ -49,6 +49,7 @@ sources = {
     "./.githooks/prepare-commit-msg-common-start": "",
     "./.githooks/prepare-commit-msg-gerrit-auto-change-id": "",
     "./.local/bin/#": "",
+    "./.local/bin/.i3sdb": "",
     "./.local/bin/0x0": "",
     "./.local/bin/add-breakpoint": {"linux": ""},
     "./.local/bin/add-gpg-key": "",
