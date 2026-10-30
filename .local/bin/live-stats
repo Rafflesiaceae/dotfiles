@@ -11,8 +11,8 @@ int clock_gettime(int clockid, struct timespec *tp);
 int clock_nanosleep(int clockid, int flags, const struct timespec *request, struct timespec *remain);
 ]]
 
-if #arg > 1 or (arg[1] and arg[1] ~= '--osdt') then
-  io.stderr:write('Usage: ', arg[0], ' [--osdt]\n')
+if arg[1] and arg[1] ~= '--osdt' then
+  io.stderr:write('Usage: ', arg[0], ' [--osdt [osdt args...]]\n')
   os.exit(1)
 end
 
@@ -63,7 +63,11 @@ if arg[1] then
     file:close()
     command = "'" .. local_osdt:gsub("'", "'\\''") .. "'"
   end
-  output = assert(io.popen(command .. ' --no-datetime --text -', 'w'))
+  command = command .. ' --no-datetime --text -'
+  for i = 2, #arg do
+    command = command .. " '" .. arg[i]:gsub("'", "'\\''") .. "'"
+  end
+  output = assert(io.popen(command, 'w'))
 end
 
 -- Keep the sampled counter deltas for the rolling CPU average.
