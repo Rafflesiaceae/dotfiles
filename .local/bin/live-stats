@@ -1,0 +1,117 @@
+#!/usr/bin/env luajit
+
+local SAMPLE_INTERVAL_MS = 100
+local CPU_WINDOW_SECONDS = 10
+
+local ffi = require('ffi')
+ffi.cdef[[
+struct timespec { long tv_sec; long tv_nsec; };
+int isatty(int fd);
+int clock_gettime(int clockid, struct timespec *tp);
+int clock_nanosleep(int clockid, int flags, const struct timespec *request, struct timespec *remain);
+]]
+
+if #arg > 1 or (arg[1] and arg[1] ~= '--osdt') then
+  io.stderr:write('Usage: ', arg[0], ' [--osdt]\n')
+  os.exit(1)
+end
+
+local function read(path)
+  local file = assert(io.open(path, 'r'))
+  local data = file:read('*a')
+  file:close()
+  return data
+end
+
+local function cpus()
+  local result = {}
+  for id, fields in read('/proc/stat'):gmatch('cpu(%d+)%s+([^\n]+)') do
+    local values = {}
+    for value in fields:gmatch('%d+') do values[#values + 1] = tonumber(value) end
+    local total = 0
+    -- Guest time is already included in user and nice; iowait is idle.
+    for i = 1, math.min(#values, 8) do total = total + values[i] end
+    result[tonumber(id)] = { total, values[4] + (values[5] or 0) }
+  end
+  return result
+end
+
+local previous = cpus()
+local groups = {}
+for cpu in pairs(previous) do
+  -- Sibling lists identify physical cores even when core IDs repeat on dies.
+  local siblings = read('/sys/devices/system/cpu/cpu' .. cpu .. '/topology/thread_siblings_list')
+  groups[siblings] = groups[siblings] or {}
+  table.insert(groups[siblings], cpu)
+end
+local cores = {}
+for _, group in pairs(groups) do
+  table.sort(group)
+  table.insert(cores, group)
+end
+table.sort(cores, function(a, b) return a[1] < b[1] end)
+
+local terminal = not arg[1] and ffi.C.isatty(1) == 1
+local output = io.stdout
+if arg[1] then
+  -- Prefer the local build, falling back to an installed osdt on PATH.
+  local dir = arg[0]:match('^(.*)/') or '.'
+  local local_osdt = dir .. '/build/src/osdt'
+  local file = io.open(local_osdt, 'r')
+  local command = 'osdt'
+  if file then
+    file:close()
+    command = "'" .. local_osdt:gsub("'", "'\\''") .. "'"
+  end
+  output = assert(io.popen(command .. ' --no-datetime --text -', 'w'))
+end
+
+-- Keep the sampled counter deltas for the rolling CPU average.
+local samples = {}
+local deadline = ffi.new('struct timespec[1]')
+assert(ffi.C.clock_gettime(1, deadline) == 0)
+while true do
+  -- Absolute deadlines keep collection time from accumulating as drift.
+  local nanoseconds = tonumber(deadline[0].tv_nsec) + SAMPLE_INTERVAL_MS * 1000000
+  deadline[0].tv_sec = deadline[0].tv_sec + math.floor(nanoseconds / 1000000000)
+  deadline[0].tv_nsec = nanoseconds % 1000000000
+  local result = ffi.C.clock_nanosleep(1, 1, deadline, nil)
+  while result == 4 do result = ffi.C.clock_nanosleep(1, 1, deadline, nil) end
+  assert(result == 0, 'clock_nanosleep failed: ' .. result)
+
+  local memory = read('/proc/meminfo')
+  local total = assert(tonumber(memory:match('MemTotal:%s*(%d+)')))
+  local available = assert(tonumber(memory:match('MemAvailable:%s*(%d+)')))
+  local parts = {string.format('RAM %.1f/%.1fG', (total - available) / 1048576, total / 1048576)}
+  local current = cpus()
+  local now = assert(tonumber(read('/proc/uptime'):match('^%S+')))
+  local sample = { time = now, cores = {} }
+  for _, core in ipairs(cores) do
+    local elapsed, idle = 0, 0
+    for _, cpu in ipairs(core) do
+      local before, after = previous[cpu], current[cpu]
+      if before and after and after[1] >= before[1] and after[2] >= before[2] then
+        elapsed = elapsed + after[1] - before[1]
+        idle = idle + after[2] - before[2]
+      end
+    end
+    sample.cores[core[1]] = { elapsed, idle }
+  end
+  samples[#samples + 1] = sample
+  while #samples > 1 and samples[1].time <= now - CPU_WINDOW_SECONDS do
+    table.remove(samples, 1)
+  end
+  for _, core in ipairs(cores) do
+    local elapsed, idle = 0, 0
+    for _, entry in ipairs(samples) do
+      local counters = entry.cores[core[1]]
+      elapsed, idle = elapsed + counters[1], idle + counters[2]
+    end
+    local usage = elapsed > 0 and math.max(0, math.min(100, 100 * (elapsed - idle) / elapsed)) or 0
+    parts[#parts + 1] = string.format('%3.0f%%', usage)
+  end
+  previous = current
+  -- osdt consumes NUL-terminated frames; terminals redraw the current line.
+  assert(output:write(terminal and '\r\27[K' or '', table.concat(parts, ' '), terminal and '' or '\0'))
+  assert(output:flush())
+end

@@ -287,6 +287,7 @@ sources = {
     "./.local/bin/last-file": "",
     "./.local/bin/last-local-bins": "",
     "./.local/bin/lastdl": "",
+    "./.local/bin/live-stats": "",
     "./.local/bin/lookup-dns": "",
     "./.local/bin/loop-it": "",
     "./.local/bin/mark-code": "",
