@@ -189,7 +189,28 @@ git-rebase-noninteractive-single --edit "${TARGET_COMMIT}"
 
 # 5) restore previously staged changes
 info "Restoring the previously staged changes..."
-git_nr apply --3way --whitespace=nowarn "$PATCH"
+if ! git_nr apply --3way --whitespace=nowarn "$PATCH"; then
+    # Only offer conflict resolution when Git actually left unmerged entries.
+    if [ -z "$(git_nr diff --name-only --diff-filter=U)" ]; then
+        err "Could not apply the staged changes."
+        exit 1
+    fi
+
+    while [ -n "$(git_nr diff --name-only --diff-filter=U)" ]; do
+        info "Resolve the conflicts and stage the resolved files in the shell below."
+        info "Exit the shell to continue, or abort the rebase and exit to stop."
+        if ! "${SHELL:-/bin/sh}" -i </dev/tty; then
+            err "The conflict-resolution shell failed."
+            exit 1
+        fi
+        # Do not amend a different commit if the user aborted the rebase.
+        if [ ! -d "$(git_nr rev-parse --git-path rebase-merge)" ] &&
+           [ ! -d "$(git_nr rev-parse --git-path rebase-apply)" ]; then
+            err "The rebase is no longer in progress."
+            exit 1
+        fi
+    done
+fi
 
 # `git apply --3way` updates the index, including deleted paths.
 
