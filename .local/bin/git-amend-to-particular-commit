@@ -119,7 +119,7 @@ announce_stash_on_exit() {
 trap 'rc=$?; announce_stash_on_exit; exit $rc' INT TERM
 
 # Collect staged paths (robust to spaces/newlines)
-git_nr diff --cached --name-only -z >"$ALL_STAGED"
+git_nr diff --cached --no-renames --name-only -z >"$ALL_STAGED"
 
 # Detect submodules (gitlinks, mode 160000)
 SUBMODS_TXT="$TMPDIR/submods.txt"
@@ -179,10 +179,9 @@ else
     info "No unstaged changes to stash."
 fi
 
-# 3) hide the staged changes (no stash; avoids gitlinks)
+# 3) Reverse the complete patch so additions, deletions, and renames are hidden.
 info "Temporarily hiding originally STAGED (non-submodule) changes..."
-git_nr reset -q -- "${ALLOWED_ARR[@]}"
-git_nr checkout -q -- "${ALLOWED_ARR[@]}"
+git_nr apply --reverse --index "$PATCH"
 
 # 4) edit the target commit
 info "Editing commit ${TARGET_COMMIT} noninteractively..."
@@ -192,9 +191,7 @@ git-rebase-noninteractive-single --edit "${TARGET_COMMIT}"
 info "Restoring the previously staged changes..."
 git_nr apply --3way --whitespace=nowarn "$PATCH"
 
-# 6) re-stage exactly the original set (include deletions)
-info "Staging restored changes (exact original set)..."
-git_nr add -A -- "${ALLOWED_ARR[@]}"
+# `git apply --3way` updates the index, including deleted paths.
 
 # 7) amend (opens $EDITOR)
 info "Amending commit (opening \$EDITOR for the message)..."
