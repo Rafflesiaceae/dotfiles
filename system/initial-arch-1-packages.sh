@@ -203,6 +203,7 @@ dev=(
     # intellij-idea-community-edition
     llvm
     meson
+    musl
     nodejs
     npm
     nvchecker
