@@ -352,6 +352,7 @@ sources = {
     "./.local/bin/sshhost": "",
     "./.local/bin/steam-big-screen-set-blank-startup-movie": "",
     "./.local/bin/steam-proton-prefix": "",
+    "./.local/bin/steam-ws": "",
     "./.local/bin/stress-stability-test": "",
     "./.local/bin/strip-ansi-escape-codes": "",
     "./.local/bin/strip-final-newline": "",
