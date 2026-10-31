@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-#!/bin/bash
-
 # Print 256 colors in the terminal
 for color in {0..255}; do
     # Print the color number with its background
