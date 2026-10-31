@@ -1,0 +1,577 @@
+#!/usr/bin/env hacman
+# Single-file hotkey overview: Python stdlib + Chromium, no pip packages.
+# Run: ./hotkey-overview.siml
+name: hotkey-overview
+command: python3 -c 'import os; os.chmod("render.py", 0o755)'
+bin-path: render.py
+files:
+  hotkeys.toml: |
+    [canvas]
+    width = 1920
+    height = 1050
+    output = "overview.png"  # relative to the working directory; absolute paths work too
+
+    [layout]
+    columns = 5
+    rows = 5
+    section_height = 30  # height in pixels for each header element
+    # section_color = "muted"  # default header color
+    gap = 18
+    padding = 42
+    hide_index = true  # true hides the card number in the top-right corner
+
+    [overview]
+    # title = "I3 / HOTKEY OVERVIEW"
+    # subtitle = "Window management   /   Arch Linux"
+    title = ""
+    subtitle = ""
+    header_position = "bottom"  # "top" or "bottom"
+    hide_header = true      # true removes both the header and its separator
+    separator_color = "muted"  # palette name or #RRGGBB
+
+    # From the supplied terminal screenshot. Override any value here.
+    [palette]
+    background = "#272822"
+    card = "#1E1F1A"
+    text = "#F8F8F2"
+    muted = "#99947B"
+    green = "#A6E22E"
+    cyan = "#73E6E6"
+    blue = "#33B9F3"
+    yellow = "#FDD102"
+    red = "#FF4535"
+    purple = "#AE81FF"
+    orange = "#FD971F"
+
+    # Elements are rendered in declaration order.
+    # Headers span all columns and force the following cards onto a new row.
+    # Header colors default to layout.section_color; card colors default to green.
+    # A card may set glow = true to highlight it.
+    # Set muted = true to dim the entire card, including its border and text.
+    # Cards with empty/omitted keys are informational; category = "" removes the label row.
+
+    [[element]]
+    kind = "header"
+    title = "BASICS"
+    color = "green"
+
+    [[element]]
+    kind = "card"
+    keys = "Win+r"
+    title = "Launcher"
+    description = "Press this to launch an application"
+    # glow = true
+
+    [[element]]
+    kind = "card"
+    keys = "Win+Shift+q"
+    title = "Close Window"
+    description = "Close the focused window"
+    color = "green"
+
+    [[element]]
+    kind = "header"
+    title = "NAVIGATION"
+    color = "blue"
+
+    [[element]]
+    kind = "card"
+    keys = "Win+1"
+    title = "Workspace X"
+    description = "Switch to the Xth workspace"
+    color = "blue"
+    muted = true
+
+    [[element]]
+    kind = "card"
+    keys = "Win+Shift+1"
+    title = "Move Window To Workspace X"
+    description = "Move focused window to the Xth workspace"
+    color = "blue"
+    muted = true
+
+    [[element]]
+    kind = "header"
+    title = "ADVANCED"
+    color = "yellow"
+
+    [[element]]
+    kind = "card"
+    keys = "Win+f"
+    title = "Toggle Fullscreen"
+    description = "on the focused window"
+    color = "yellow"
+    muted = true
+
+    # Example: informational, muted card (no keyboard shortcut).
+    # [[element]]
+    # kind = "card"
+    # title = "Helpful tip"
+    # description = "Information without an associated shortcut."
+    # keys = ""  # optional; may be omitted entirely
+    # category = ""
+    # muted = true
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Return"
+    # title = "Terminal"
+    # description = "Launch a terminal window"
+    # category = "Applications"
+    # glow = true  # optional highlight using this card's accent color
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+D"
+    # title = "Launcher"
+    # description = "Open the application launcher"
+    # category = "Applications"
+    # color = "yellow"
+
+    # [[element]]
+    # kind = "header"
+    # title = "WINDOWS / SESSION"
+    # color = "red"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+Q"
+    # title = "Close Window"
+    # description = "Kill the focused window"
+    # category = "Windows"
+    # color = "red"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+E"
+    # title = "Exit Session"
+    # description = "Show the i3 exit dialog"
+    # category = "Session"
+    # color = "red"
+
+    # [[element]]
+    # kind = "header"
+    # title = "FOCUS"
+    # color = "cyan"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+H"
+    # title = "Focus Left"
+    # description = "Focus the window to the left"
+    # category = "Navigation"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+J"
+    # title = "Focus Down"
+    # description = "Focus the window below"
+    # category = "Navigation"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+K"
+    # title = "Focus Up"
+    # description = "Focus the window above"
+    # category = "Navigation"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+L"
+    # title = "Focus Right"
+    # description = "Focus the window to the right"
+    # category = "Navigation"
+
+    # [[element]]
+    # kind = "header"
+    # title = "MOVE"
+    # color = "blue"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+H"
+    # title = "Move Left"
+    # description = "Move the focused window left"
+    # category = "Move"
+    # color = "blue"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+J"
+    # title = "Move Down"
+    # description = "Move the focused window down"
+    # category = "Move"
+    # color = "blue"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+K"
+    # title = "Move Up"
+    # description = "Move the focused window up"
+    # category = "Move"
+    # color = "blue"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+Shift+L"
+    # title = "Move Right"
+    # description = "Move the focused window right"
+    # category = "Move"
+    # color = "blue"
+
+    # [[element]]
+    # kind = "header"
+    # title = "LAYOUT / WORKSPACES"
+    # color = "purple"
+
+    # # Shortcut examples: replace with your actual bindings.
+    # # Omitted color defaults to green. Any palette name or #RRGGBB works.
+    # # Set glow = true on a hotkey to highlight its card with an accent-colored glow.
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+F"
+    # title = "Fullscreen"
+    # description = "Toggle fullscreen mode"
+    # category = "Layout"
+    # color = "purple"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+V"
+    # title = "Vertical Split"
+    # description = "Split the next window vertically"
+    # category = "Layout"
+    # color = "cyan"
+
+    # [[element]]
+    # kind = "card"
+    # keys = "Win+B"
+    # title = "Horizontal Split"
+    # description = "Split the next window horizontally"
+    # category = "Layout"
+    # color = "cyan"
+  render.py: |
+    #!/usr/bin/env python3
+    """Create a PNG hotkey overview using only the Python stdlib and Chromium."""
+
+    import argparse
+    import html
+    import os
+    import re
+    import shutil
+    import struct
+    import subprocess
+    import sys
+    import tempfile
+    import tomllib
+    from pathlib import Path
+
+    DEFAULT_PALETTE = {
+        "background": "#272822",  # sampled from the supplied terminal screenshot
+        "card": "#1E1F1A",
+        "text": "#F8F8F2",
+        "muted": "#99947B",
+        "green": "#A6E22E",
+        "cyan": "#73E6E6",
+        "blue": "#33B9F3",
+        "yellow": "#FDD102",
+        "red": "#FF4535",
+        "purple": "#AE81FF",
+        "orange": "#FD971F",
+    }
+
+    HEX_COLOR = re.compile(r"#[0-9a-fA-F]{6}\Z")
+
+
+    def positive_integer(value, field, upper=8192):
+        if type(value) is not int or not (1 <= value <= upper):
+            raise ValueError(f"{field} must be an integer from 1 to {upper}")
+        return value
+
+
+    def color_value(value, palette):
+        if not isinstance(value, str):
+            raise ValueError(f"Color must be a name or #RRGGBB: {value!r}")
+        actual = palette.get(value.lower(), value)
+        if not HEX_COLOR.fullmatch(actual):
+            raise ValueError(f"Unknown or invalid color {value!r}; use palette name or #RRGGBB")
+        return actual.upper()
+
+
+    def markup(value):
+        return html.escape(str(value), quote=True)
+
+
+    def keyboard_html(keys):
+        # Empty/missing keys make an informational card without keyboard badges.
+        if isinstance(keys, str):
+            if not keys.strip():
+                return ""
+            parts = [p.strip() for p in keys.split("+")]
+        elif isinstance(keys, list) and all(isinstance(x, str) for x in keys):
+            if not keys:
+                return ""
+            parts = [p.strip() for p in keys]
+        else:
+            raise ValueError("Card keys must be a string or an array of strings")
+        if any(not p for p in parts):
+            raise ValueError("Individual keys may not be empty; use an array for a literal '+' key")
+        return '<span class="keys">' + '<span class="join">+</span>'.join(
+            f'<kbd>{markup(part)}</kbd>' for part in parts
+        ) + '</span>'
+
+
+    def render_html(data):
+        canvas = data.get("canvas", {})
+        layout = data.get("layout", {})
+        heading = data.get("overview", {})
+        raw_palette = data.get("palette", {})
+        if not all(isinstance(x, dict) for x in (canvas, layout, heading, raw_palette)):
+            raise ValueError("canvas, layout, overview and palette must be TOML tables")
+
+        width = positive_integer(canvas.get("width", 1920), "canvas.width")
+        height = positive_integer(canvas.get("height", 1080), "canvas.height")
+        rows = positive_integer(layout.get("rows", 4), "layout.rows", 20)
+        columns = positive_integer(layout.get("columns", 4), "layout.columns", 20)
+        gap = positive_integer(layout.get("gap", 18), "layout.gap", 200)
+        padding = positive_integer(layout.get("padding", 42), "layout.padding", 300)
+        hide_index = layout.get("hide_index", False)
+        if type(hide_index) is not bool:
+            raise ValueError("layout.hide_index must be a boolean")
+
+        palette = dict(DEFAULT_PALETTE)
+        for name, value in raw_palette.items():
+            if not isinstance(name, str) or not HEX_COLOR.fullmatch(str(value)):
+                raise ValueError(f"Invalid palette entry {name} = {value!r}")
+            palette[name.lower()] = str(value).upper()
+
+        elements = data.get("element", [])
+        if not isinstance(elements, list) or not all(isinstance(x, dict) for x in elements):
+            raise ValueError("Define items using [[element]] TOML tables")
+        if sum(x.get("kind") == "card" for x in elements) > rows * columns:
+            raise ValueError(f"Too many cards for a {columns}x{rows} grid")
+
+        section_height = positive_integer(layout.get("section_height", 30), "layout.section_height", 120)
+        section_color_default = layout.get("section_color", "muted")
+        color_value(section_color_default, palette)
+
+        font_scale = min(1.0, 4 / max(rows, 1), 5 / max(columns, 1))
+        font_scale = max(0.53, font_scale)
+        cards = []
+        tracks = []
+        column = 0
+        card_rows = 0
+        card_number = 0
+        for element_number, element in enumerate(elements, 1):
+            kind = element.get("kind")
+            if kind == "header":
+                # Full-width headers appear exactly where they occur in the TOML.
+                # The next card starts on a fresh row even after a partial row.
+                name = element.get("title", "")
+                if not isinstance(name, str) or not name.strip():
+                    raise ValueError(f"Header element #{element_number}: title must be a nonempty string")
+                color = color_value(element.get("color", section_color_default), palette)
+                column = 0
+                tracks.append(f"{section_height}px")
+                track_row = len(tracks)
+                cards.append(f'''<div class="section-header" style="grid-row:{track_row};grid-column:1/-1;--section-accent:{color}">
+                      <span class="section-title">{markup(name)}</span><span class="section-line"></span>
+                    </div>''')
+                continue
+            if kind != "card":
+                raise ValueError(f'Element #{element_number}: kind must be "card" or "header"')
+
+            card_number += 1
+            if column == 0:
+                card_rows += 1
+                if card_rows > rows:
+                    raise ValueError(
+                        f"Element order requires {card_rows} card rows but layout.rows={rows}; "
+                        "increase layout.rows or move a header"
+                    )
+                tracks.append("minmax(0,1fr)")
+            track_row = len(tracks)
+            column += 1
+            title = element.get("title", "")
+            description = element.get("description", "")
+            category = element.get("category", "")
+            if not isinstance(title, str) or not title.strip():
+                raise ValueError(f"Card element #{element_number} is missing a title")
+            if not isinstance(description, str) or not isinstance(category, str):
+                raise ValueError(f"Card element #{element_number}: description and category must be strings")
+            color = color_value(element.get("color", "green"), palette)
+            glow = element.get("glow", False)
+            if type(glow) is not bool:
+                raise ValueError(f"Card element #{element_number}: glow must be a boolean")
+            muted = element.get("muted", False)
+            if type(muted) is not bool:
+                raise ValueError(f"Card element #{element_number}: muted must be a boolean")
+            keys_html = keyboard_html(element.get("keys", ""))
+            index_html = "" if hide_index else f"<span>{card_number:02d}</span>"
+            # Avoid an empty meta row (and its top padding) when no category/index exists.
+            meta_html = (
+                f'<div class="meta"><span>{markup(category)}</span>{index_html}</div>'
+                if category.strip() or index_html else ""
+            )
+            classes = "card"
+            if glow:
+                classes += " glow"
+            if muted:
+                classes += " muted"
+            if not meta_html:
+                classes += " no-meta"
+            if not keys_html:
+                classes += " no-keys"
+            cards.append(f'''
+              <article class="{classes}" style="grid-row:{track_row};grid-column:{column};--accent:{color}">
+                {meta_html}
+                <div class="contents">
+                  {keys_html}
+                  <div class="card-title">{markup(title)}</div>
+                  <div class="description">{markup(description)}</div>
+                </div>
+              </article>''')
+            if column == columns:
+                column = 0
+
+        # Unused layout.rows tracks remain empty, preserving the specified grid size.
+        tracks.extend(["minmax(0,1fr)"] * (rows - card_rows))
+
+        title = heading.get("title", "HOTKEY OVERVIEW")
+        subtitle = heading.get("subtitle", "Keyboard shortcuts")
+        if not isinstance(title, str) or not isinstance(subtitle, str):
+            raise ValueError("overview.title and overview.subtitle must be strings")
+
+        header_position = heading.get("header_position", "top")
+        hide_header = heading.get("hide_header", False)
+        if header_position not in ("top", "bottom"):
+            raise ValueError('overview.header_position must be "top" or "bottom"')
+        if type(hide_header) is not bool:
+            raise ValueError("overview.hide_header must be a boolean")
+        separator_color = color_value(heading.get("separator_color", "green"), palette)
+
+        header_html = f'''
+      <header class="header">
+        <div><h1>{markup(title)}</h1><div class="subtitle">{markup(subtitle)}</div></div>
+      </header>'''
+        rule_html = '<div class="rule"></div>'
+        grid_html = f'<section class="grid">{"".join(cards)}</section>'
+        if hide_header:
+            content = grid_html
+        elif header_position == "bottom":
+            content = "\n".join((grid_html, rule_html, header_html))
+        else:
+            content = "\n".join((header_html, rule_html, grid_html))
+
+        return f'''<!doctype html>
+    <html lang="en">
+    <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{markup(title)}</title>
+    <style>
+    :root {{
+      --bg: {color_value('background', palette)};
+      --card: {color_value('card', palette)};
+      --fg: {color_value('text', palette)};
+      --muted: {color_value('muted', palette)};
+      --s: {font_scale:.3f};
+    }}
+    * {{ box-sizing: border-box; border-radius: 0 !important; }}
+    html, body {{ margin:0; width:{width}px; height:{height}px; overflow:hidden; }}
+    body {{ background:var(--bg); color:var(--fg); font-family:"DejaVu Sans Mono", "Liberation Mono", monospace; }}
+    .page {{ height:100%; padding:{padding}px; display:flex; flex-direction:column; gap:26px; }}
+    .header {{ display:flex; justify-content:space-between; align-items:end; gap:30px; min-height:56px; flex-shrink:0; }}
+    .header h1 {{ font-size:clamp(23px, 2.55vw, 52px); margin:0 0 6px; font-weight:800; line-height:1.1; letter-spacing:.045em; }}
+    .subtitle {{ font-size:17px; color:var(--muted); }}
+    .spec {{ text-align:right; color:var(--muted); font-size:16px; line-height:1.5; flex-shrink:0; }}
+    .spec strong {{ color:{color_value('green', palette)}; }}
+    .rule {{ background:{separator_color}; height:4px; flex-shrink:0; }}
+    .grid {{ display:grid; flex:1; min-height:0; grid-template-columns:repeat({columns},minmax(0,1fr)); grid-template-rows:{" ".join(tracks)}; gap:{gap}px; }}
+        .section-header {{ display:flex; align-items:center; gap:18px; min-width:0; min-height:0; color:var(--section-accent); }}
+        .section-title {{ font-size:calc(20px * var(--s)); font-weight:800; letter-spacing:.08em; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+        .section-line {{ display:block; flex:1; height:3px; background:var(--section-accent); min-width:16px; }}
+    .card {{ border:3px solid var(--accent); min-width:0; min-height:0; background:var(--card); padding:calc(14px * var(--s)); display:flex; flex-direction:column; overflow:hidden; }}
+    .card.glow {{ position:relative; z-index:1; box-shadow:0 0 7px 1px var(--accent), 0 0 20px -3px var(--accent); }}
+    .card.muted {{ filter:brightness(.52) saturate(.72); }}
+    .meta {{ color:var(--accent); display:flex; justify-content:space-between; gap:12px; font-size:calc(13px * var(--s)); font-weight:800; letter-spacing:.1em; text-transform:uppercase; line-height:1.2; flex-shrink:0; }}
+    .contents {{ display:flex; flex-direction:column; flex:1; min-height:0; padding-top:calc(15px * var(--s)); overflow:hidden; }}
+    .card.no-meta .contents {{ padding-top:0; }}
+    .keys {{ display:flex; flex-wrap:wrap; gap:calc(5px * var(--s)); align-items:center; margin-bottom:auto; min-height:0; flex-shrink:0; }}
+    kbd {{ display:inline-block; border:2px solid var(--accent); background:transparent; color:var(--accent); font-family:inherit; font-size:calc(19px * var(--s)); font-weight:800; line-height:1.12; padding:calc(5px * var(--s)) calc(9px * var(--s)); white-space:nowrap; }}
+    .join {{ color:var(--muted); font-size:calc(17px * var(--s)); }}
+    .card-title {{ font-size:calc(21px * var(--s)); font-weight:800; letter-spacing:-.025em; line-height:1.15; margin-top:calc(8px * var(--s)); overflow-wrap:anywhere; }}
+    .card.no-keys .card-title {{ margin-top:auto; }}
+    .description {{ font-size:calc(15px * var(--s)); color:var(--muted); line-height:1.35; margin-top:calc(4px * var(--s)); overflow-wrap:anywhere; }}
+    </style>
+    </head>
+    <body>
+    <main class="page">
+      {content}
+    </main>
+    </body>
+    </html>''', width, height
+
+
+    def png_dimensions(path):
+        with path.open("rb") as f:
+            first = f.read(24)
+        if len(first) != 24 or first[:8] != b"\x89PNG\r\n\x1a\n" or first[12:16] != b"IHDR":
+            raise ValueError("Chromium did not produce a valid PNG")
+        return struct.unpack(">II", first[16:24])
+
+
+    def main():
+        parser = argparse.ArgumentParser(description="Render a TOML hotkey grid as a PNG")
+        parser.add_argument("config", nargs="?", default=str(Path(__file__).with_name("hotkeys.toml")), help="TOML config path")
+        args = parser.parse_args()
+        config = Path(args.config).expanduser().resolve()
+        with config.open("rb") as f:
+            settings = tomllib.load(f)
+
+        page, width, height = render_html(settings)
+        output_value = settings.get("canvas", {}).get("output", "overview.png")
+        if not isinstance(output_value, str) or not output_value.strip():
+            raise ValueError("canvas.output must be a nonempty filename")
+        output = Path(output_value).expanduser()
+        if not output.is_absolute():
+            output = Path.cwd() / output
+        output = output.resolve()
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        chromium = shutil.which("chromium") or shutil.which("chromium-browser")
+        if chromium is None:
+            raise RuntimeError("Chromium not found; install it with: sudo pacman -S chromium")
+        with tempfile.TemporaryDirectory(prefix="hotkey-overview-") as temp:
+            temp_path = Path(temp)
+            webpage = temp_path / "overview.html"
+            webpage.write_text(page, encoding="utf-8")
+            cmd = [
+                chromium, "--headless", "--hide-scrollbars", "--disable-extensions",
+                "--no-first-run", "--no-default-browser-check", "--disable-background-networking",
+                "--force-device-scale-factor=1", f"--window-size={width},{height}",
+                f"--user-data-dir={temp_path / 'chromium'}",
+                f"--screenshot={output}", webpage.as_uri(),
+            ]
+            if hasattr(os, 'geteuid') and os.geteuid() == 0:
+                # Needed only for root-run test/CI containers. Normal users keep Chromium's sandbox.
+                cmd.insert(1, "--no-sandbox")
+            # Chromium may refuse to overwrite an existing screenshot.
+            output.unlink(missing_ok=True)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=70)
+            if result.returncode != 0 or not output.is_file():
+                raise RuntimeError(f"Chromium screenshot failed (exit {result.returncode}):\n{result.stderr[-2400:]}")
+
+        actual = png_dimensions(output)
+        if actual != (width, height):
+            output.unlink(missing_ok=True)
+            raise RuntimeError(f"Chromium returned {actual[0]}x{actual[1]}, expected {width}x{height}; PNG removed")
+        print(f"Created {output} ({width}x{height})")
+
+
+    if __name__ == "__main__":
+        try:
+            main()
+        except (ValueError, RuntimeError, OSError, subprocess.TimeoutExpired, tomllib.TOMLDecodeError) as exc:
+            sys.exit(f"hotkey-overview: {exc}")
