@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+if [[ $# -ne 0 ]]; then
+    printf 'Usage: git-set-origin-no-rewrite\n' >&2
+    exit 1
+fi
+
+git rev-parse --git-dir > /dev/null
+
+# Read the configured URL directly because remote get-url applies rewrites.
+if ! origin_url=$(git config --get remote.origin.url) || [[ -z "$origin_url" ]]; then
+    printf 'No URL configured for the origin remote.\n' >&2
+    exit 1
+fi
+
+# Git prefers the longest matching prefix, so the full URL overrides broad rules.
+git config --local --replace-all "url.${origin_url}.insteadOf" "$origin_url"
