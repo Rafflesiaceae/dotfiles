@@ -16,7 +16,11 @@ prompt_continue() {
     printf "\n"
 }
 
-cmd="sudo bash -c 'mkinitcpio -P && grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg'"
+if [[ -d /sys/firmware/efi ]]; then
+    cmd="sudo bash -c 'mkinitcpio -P && grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB && grub-mkconfig -o /boot/grub/grub.cfg'"
+else
+    cmd="sudo bash -c 'mkinitcpio -P && grub-install --target=i386-pc /dev/sda && grub-mkconfig -o /boot/grub/grub.cfg'"
+fi
 
 echo "+ $cmd"
 if [[ "$1" != "-y" ]]; then

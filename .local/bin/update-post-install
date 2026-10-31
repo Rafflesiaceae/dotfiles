@@ -62,9 +62,3 @@ else
 fi
 
 GO111MODULE=on go install golang.org/x/tools/gopls@latest # golang
-
-# {{{1 System Checks
-banner "System Checks"
-check-system || true
-
-printf '\n%s%sCONSIDER RESTARTING!%s\n' "$cbold" "$cyellow" "$creset"

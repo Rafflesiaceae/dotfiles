@@ -116,4 +116,12 @@ banner "==================== POST INSTALL =========================="
 banner "update grub"
 update-grub -y
 
-update-post-install
+if [[ -z "$ARCH_NO_POST_INSTALL" ]]; then
+    update-post-install
+fi
+
+# {{{1 System Checks
+banner "System Checks"
+check-system || true
+
+printf '\n%s%sCONSIDER RESTARTING!%s\n' "$cbold" "$cyellow" "$creset"
