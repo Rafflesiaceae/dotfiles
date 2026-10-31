@@ -8,8 +8,8 @@ files:
   hotkeys.toml: |
     [canvas]
     width = 1920
-    height = 1050
-    output = "overview.png"  # relative to the working directory; absolute paths work too
+    height = 1080
+    output = ".i3-overview.png"  # relative to the working directory; absolute paths work too
 
     [layout]
     columns = 5
