@@ -226,6 +226,7 @@ sources = {
     "./.local/bin/git-review-forced": "",
     "./.local/bin/git-reword-initial-commit": "",
     "./.local/bin/git-search-all-branches": "",
+    "./.local/bin/git-set-origin-no-rewrite": "",
     "./.local/bin/git-show-me-what-you-got": "",
     "./.local/bin/git-show-toplevel-name": "",
     "./.local/bin/git-show-toplevel-path": "",
