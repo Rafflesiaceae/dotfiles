@@ -47,7 +47,5 @@
     waitingForEditor = false
     addEmptyPathspec = false
     diverging = false
-[url "git@github.com:"]
-	insteadOf = https://github.com/
 [include]
     path = ~/.config/git/local
