@@ -125,6 +125,10 @@ def home_path_equivalent(repo_path, file_path):
 
 def is_already_linked(source_path, target_path):
     """Checks if file inside the repo is already linked from the outside"""
+    # Recreate absolute links even when they already point to the source.
+    if pathlib.islink(target_path) and pathlib.isabs(os.readlink(target_path)):
+        return False
+
     if common.isWindows:
         # assumes cygwin
         return pathlib.realpath(source_path) == pathlib.realpath(
@@ -316,7 +320,7 @@ def main():
         if is_already_linked(source_path, target_path):
             continue
 
-        # unlink wrongly linked files
+        # unlink absolute or wrongly linked files
         try:
             if stat.S_ISLNK(os.lstat(target_path).st_mode):
                 os.unlink(target_path)
@@ -335,8 +339,11 @@ def main():
 
         assert not pathlib.exists(target_path)
 
-        source_path = pathlib.abspath(source_path)
         target_path = pathlib.abspath(target_path)
+        # Relative symlink targets resolve from the link's actual parent directory.
+        source_path = pathlib.relpath(
+            source_path, pathlib.realpath(pathlib.dirname(target_path))
+        )
 
         print("{} {} {}".format(source_path, common.terminal_symbol_to, target_path))
         os.symlink(source_path, target_path)
