@@ -70,13 +70,16 @@ if [[ ! -x "$input_path" ]]; then
     die "install-local-bin: input file is not executable (yet?) '${input_path}'"
 fi
 
+# Resolve relative targets from the physical parent, including symlinked directories.
+relative_input_path=$(realpath -s --relative-to="$(realpath -- "$(dirname -- "$target_path")")" -- "$input_path")
+
 # link
 if [[ -L "$target_path" ]]; then
     linked_path=$(readlink "$target_path") || die "install-local-bin: couldnt read link for '${target_path}'"
-    if [[ "$linked_path" != "$input_path" ]]; then
+    if [[ "$linked_path" != "$relative_input_path" ]]; then
         echo "install-local-bin: symlink exists, wrong destination ('${linked_path}'), relinking"
         rm "$target_path"
-        ln -s "$input_path" "$target_path"
+        ln -s "$relative_input_path" "$target_path"
     else
         echo "install-local-bin: already correctly linked"
     fi
@@ -85,6 +88,6 @@ elif [[ -f "$target_path" ]]; then
     exit 1
 else
     echo "install-local-bin: linking '${input_fname}' to '${target_path}'"
-    ln -s "$input_path" "$target_path"
+    ln -s "$relative_input_path" "$target_path"
 fi
 exit 0
