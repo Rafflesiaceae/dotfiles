@@ -1,0 +1,36 @@
+{
+  "env": {
+    "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1",
+    "CLAUDE_CODE_DISABLE_MOUSE": "1"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "disableAgentView": true,
+  "statusLine": {
+    "type": "command",
+    "command": "luajit ~/.claude/statusline.lua",
+    "padding": 0
+  },
+  "spinnerTipsEnabled": false,
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Working"
+    ]
+  },
+  "modelSettings": {
+    "claude-sonnet-5-5": {
+      "effortLevel": "high"
+    },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    }
+  },
+  "tui": "default",
+  "prefersReducedMotion": true,
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark-ansi",
+  "autoCompactEnabled": true
+}
