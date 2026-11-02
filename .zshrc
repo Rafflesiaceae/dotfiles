@@ -204,7 +204,7 @@ cd_to_dirstack() {
     local newdir=$(cat "$HOME/.cache/zsh/dirs" | fzf) || exit 1
     cd "$newdir"
 
-    __execute_precmds()
+    __execute_precmds
 
     zle .reset-prompt
     zle .accept-line
@@ -218,7 +218,7 @@ pick_file() {
     local file=$(find * -type f | fzf) || exit 1
     LBUFFER+="$file"
 
-    __execute_precmds()
+    __execute_precmds
 
     zle .reset-prompt
 }
@@ -230,7 +230,7 @@ pick_dir() {
     local file=$(find . -type d -maxdepth 1 | sed -E 's#^(\./)+##' | fzf) || exit 1
     LBUFFER+="$file"
 
-    __execute_precmds()
+    __execute_precmds
 
     zle .reset-prompt
 }
@@ -254,7 +254,7 @@ most_recent_home() {
     local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
     LBUFFER+="${newdir}"
 
-    __execute_precmds()
+    __execute_precmds
 
     zle .reset-prompt
 }
