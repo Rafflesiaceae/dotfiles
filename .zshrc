@@ -223,6 +223,27 @@ pick_dir() {
 zle      -N  pick_dir{,}
 bindkey '^d' pick_dir
 # }}}
+# {{{ fzf - pick dir recursively below current dir <Alt-d>
+pick_dir_recursive() {
+    local dir
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    # Prefer fd: it skips .git, hidden and gitignored dirs (e.g.
+    # node_modules), which `find` would walk through below ~/workspace
+    if (( $+commands[fd] )); then
+        dir=$(fd --type d | fzf) || { zle .reset-prompt; return 1; }
+    else
+        # -mindepth 1 drops `.` itself, sed strips the leading `./`
+        dir=$(find . -mindepth 1 -type d | sed -E 's#^(\./)+##' | fzf) || { zle .reset-prompt; return 1; }
+    fi
+    LBUFFER+="$dir"
+
+    __execute_precmds
+
+    zle .reset-prompt
+}
+zle      -N  pick_dir_recursive{,}
+bindkey '^[d' pick_dir_recursive
+# }}}
 # {{{ fzf - edit file <C-x>
 edit_file() {
     local file="$(xclip -o)"
@@ -272,7 +293,7 @@ list_k8s_pods_via_fzf() {
 zle -N list_k8s_pods_via_fzf{,}
 bindkey '^[p' list_k8s_pods_via_fzf
 # }}}
-# {{{ docker - list containers <Alt-d>
+# {{{ docker - list containers <Alt-c>
 list_docker_containers_via_fzf() {
     local psout choice
     # Assign separately: `local x=$(...)` would mask the command's exit status
@@ -283,7 +304,7 @@ list_docker_containers_via_fzf() {
     zle .reset-prompt
 }
 zle -N list_docker_containers_via_fzf{,}
-bindkey '^[d' list_docker_containers_via_fzf
+bindkey '^[c' list_docker_containers_via_fzf
 # }}}
 # {{{ show vi-mode
 # function zle-line-init zle-keymap-select {
@@ -448,6 +469,10 @@ complete -C "q --list" q
 [ -f ~/.shellrc ] && source ~/.shellrc
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# fzf's key-bindings bind <Alt-c> to fzf-cd-widget, which would override our
+# docker container picker bound further up, so (re)bind it after sourcing fzf
+bindkey '^[c' list_docker_containers_via_fzf
 
 # for local zshrc settings outside of dotfiles
 [ -f ~/.zshrc.local ] && source ~/.zshrc.local
