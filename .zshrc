@@ -201,13 +201,16 @@ __execute_precmds() {
 
 # {{{ fzf - cd to Dirstack <C-z>
 cd_to_dirstack() {
-    local newdir=$(cat "$HOME/.cache/zsh/dirs" | fzf) || exit 1
-    cd "$newdir"
+    local newdir
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    newdir=$(fzf < "$DIRSTACKFILE") || { zle .reset-prompt; return 1; }
+    cd -- "$newdir"
 
     __execute_precmds
 
+    # Only redraw the prompt for the new PWD; accepting the line would run
+    # whatever the user has already typed in the buffer
     zle .reset-prompt
-    zle .accept-line
 }
 zle -N cd_to_dirstack{,}
 bindkey '^Z' cd_to_dirstack
@@ -215,7 +218,9 @@ bindkey '^Z' cd_to_dirstack
 # {{{ fzf - pick file below current dir <C-f>
 pick_file() {
     # local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
-    local file=$(find * -type f | fzf) || exit 1
+    local file
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    file=$(find * -type f | fzf) || { zle .reset-prompt; return 1; }
     LBUFFER+="$file"
 
     __execute_precmds
@@ -227,7 +232,9 @@ bindkey '^F' pick_file
 # }}}
 # {{{ fzf - pick dir below current dir <C-d>
 pick_dir() {
-    local file=$(find . -type d -maxdepth 1 | sed -E 's#^(\./)+##' | fzf) || exit 1
+    local file
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    file=$(find . -type d -maxdepth 1 | sed -E 's#^(\./)+##' | fzf) || { zle .reset-prompt; return 1; }
     LBUFFER+="$file"
 
     __execute_precmds
@@ -251,7 +258,9 @@ bindkey '^x' edit_file
 # }}}
 # {{{ fzf - most recent file from home <Alt-h>
 most_recent_home() {
-    local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
+    local newdir
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || { zle .reset-prompt; return 1; }
     LBUFFER+="${newdir}"
 
     __execute_precmds
@@ -263,7 +272,9 @@ bindkey '^[h' most_recent_home
 # }}}
 # {{{ fzf - list git branches <C-g>
 list_git_branches_via_fzf() {
-    local branch=$(git branch | awk -F ' +' '! /\(no branch\)/ {print $2}' | fzf) || exit 1
+    local branch
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    branch=$(git branch | awk -F ' +' '! /\(no branch\)/ {print $2}' | fzf) || { zle .reset-prompt; return 1; }
     LBUFFER+="$branch"
     zle .reset-prompt
 }
@@ -272,7 +283,9 @@ bindkey '^G' list_git_branches_via_fzf
 # }}}
 # {{{ k8s - list pods <C-p>
 list_k8s_pods_via_fzf() {
-    local podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || exit 1
+    local podline pod namespace
+    # Assign separately: `local x=$(...)` would mask fzf's exit status
+    podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || { zle .reset-prompt; return 1; }
     pod=$(echo "$podline" | awk '{ print $1 }')
     namespace=$(echo "$podline" | awk '{ print $2 }')
     LBUFFER+="-n $namespace $pod"
@@ -283,10 +296,12 @@ bindkey '^[p' list_k8s_pods_via_fzf
 # }}}
 # {{{ docker - list containers <Alt-d>
 list_docker_containers_via_fzf() {
-    local psout=$(docker ps) || exit 1
-    local header=$(echo "$psout" | head -n 1)
-    local choices=$(echo "$psout" | tail -n +2)
-    local choice=$(echo "$choices" | fzf --header "$header") || exit 1
+    local psout header choices choice container
+    # Assign separately: `local x=$(...)` would mask the command's exit status
+    psout=$(docker ps) || { zle .reset-prompt; return 1; }
+    header=$(echo "$psout" | head -n 1)
+    choices=$(echo "$psout" | tail -n +2)
+    choice=$(echo "$choices" | fzf --header "$header") || { zle .reset-prompt; return 1; }
     container=$(echo "$choice" | awk '{ print $1 }')
     LBUFFER+="$container"
     zle .reset-prompt
