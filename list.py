@@ -24,6 +24,7 @@ sources = {
     "./.config/mpv/scripts/global-vol.lua": "",
     "./.config/mpv/scripts/time-management.lua": "",
     "./.config/mpv/scripts/toggle-video.lua": "",
+    "./.config/nrxvt/init.lua": "",
     "./.config/nvim/.editorconfig": "",
     "./.config/nvim/autoload/airline/themes/base16_kokonai.vim": {"linux": ""},
     "./.config/nvim/colors/base16-kokonai.vim": {"linux": ""},
