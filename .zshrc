@@ -33,6 +33,10 @@ autoload -Uz compinit
         # compinit does not refresh the dump's mtime when nothing changed, so
         # without this the dump would count as stale forever
         touch ~/.zcompdump
+        # Compile the dump so `compinit -C` can load the .zwc instead of
+        # parsing the dump; must happen after the touch, as zsh ignores a
+        # .zwc that is older than its source file
+        zcompile ~/.zcompdump
     fi
 }
 
