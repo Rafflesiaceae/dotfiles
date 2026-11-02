@@ -5,15 +5,6 @@ function cdgit() {
     cd "$(git rev-parse --show-toplevel)"
 }
 
-function pyselect2() {
-    if [[ "$PATH" =~ "bin_override_py2" ]]; then
-        echo "Already set python2 as default"
-        echo "TODO: switch to python3"
-    else
-        export PATH="$HOME/.local/bin_override_py2/:$PATH"
-    fi
-}
-
 ## basic
 bindkey -e # emacs default binds
 REPORTTIME=5 # show time if command takes longer than 5 seconds
@@ -440,62 +431,6 @@ if [[ $#h -gt 0 ]]; then
     zstyle ':completion:*:ssh:*' hosts $h
     zstyle ':completion:*:slogin:*' hosts $h
 fi
-# }}}
-# autocomplete python argcomplete {{{
-# $ register-python-argcomplete {{{
-# Run something, muting output or redirecting it to the debug stream
-# depending on the value of _ARC_DEBUG.
-# If ARGCOMPLETE_USE_TEMPFILES is set, use tempfiles for IPC.
-__python_argcomplete_run() {
-    if [[ -z "${ARGCOMPLETE_USE_TEMPFILES-}" ]]; then
-        __python_argcomplete_run_inner "$@"
-        return
-    fi
-    local tmpfile="$(mktemp)"
-    _ARGCOMPLETE_STDOUT_FILENAME="$tmpfile" __python_argcomplete_run_inner "$@"
-    local code=$?
-    cat "$tmpfile"
-    rm "$tmpfile"
-    return $code
-}
-
-__python_argcomplete_run_inner() {
-    if [[ -z "${_ARC_DEBUG-}" ]]; then
-        "$@" 8>&1 9>&2 1>/dev/null 2>&1
-    else
-        "$@" 8>&1 9>&2 1>&9 2>&1
-    fi
-}
-
-_python_argcomplete() {
-    local IFS=$'\013'
-    local SUPPRESS_SPACE=0
-    if compopt +o nospace 2> /dev/null; then
-        SUPPRESS_SPACE=1
-    fi
-    COMPREPLY=( $(IFS="$IFS" \
-                  COMP_LINE="$COMP_LINE" \
-                  COMP_POINT="$COMP_POINT" \
-                  COMP_TYPE="$COMP_TYPE" \
-                  _ARGCOMPLETE_COMP_WORDBREAKS="$COMP_WORDBREAKS" \
-                  _ARGCOMPLETE=1 \
-                  _ARGCOMPLETE_SUPPRESS_SPACE=$SUPPRESS_SPACE \
-                  __python_argcomplete_run "$1") )
-    if [[ $? != 0 ]]; then
-        unset COMPREPLY
-    elif [[ $SUPPRESS_SPACE == 1 ]] && [[ "${COMPREPLY-}" =~ [=/:]$ ]]; then
-        compopt -o nospace
-    fi
-}
-# }}}
-
-function argcomplete() {
-    complete -o nospace -o default -o bashdefault -F _python_argcomplete $*
-}
-
-# manage your list of argcomplete supported commands in your ~/.zshrc.local with entries like this:
-# argcomplete "my-cool-script" "my-other-cool-script"
-
 # }}}
 # autocomplete q {{{
 complete -C "q --list" q
