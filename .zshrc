@@ -109,6 +109,17 @@ chpwd() { print -l $PWD ${(u)dirstack} >$DIRSTACKFILE; }
 # as it is ready; the previous RPROMPT stays visible until then
 typeset -g __rprompt_fd=
 
+# Assemble RPROMPT from the time, the conda env and the git part given as $1
+__rprompt_set() {
+    local -a parts=("${(%):-%*}")   # current time, without forking `date`
+    [[ -n $CONDA_DEFAULT_ENV ]] && parts+=("%B${CONDA_DEFAULT_ENV:0:28}%b")
+    parts+=("$1")
+    # Assign the text itself (not a reference to it): gitusers emits
+    # `$fg[...]` color codes that only work because PROMPT_SUBST expands them
+    # again when RPROMPT is displayed
+    RPROMPT="$parts"
+}
+
 # zle -F handler: called with the pipe's fd once gitusers' output is readable
 __rprompt_done() {
     local fd=$1 git
@@ -117,13 +128,7 @@ __rprompt_done() {
     exec {fd}<&-              # close the pipe
     __rprompt_fd=
 
-    local -a parts=("${(%):-%*}")   # current time, without forking `date`
-    [[ -n $CONDA_DEFAULT_ENV ]] && parts+=("%B${CONDA_DEFAULT_ENV:0:28}%b")
-    parts+=("$git")
-    # Assign the text itself (not a reference to it): gitusers emits
-    # `$fg[...]` color codes that only work because PROMPT_SUBST expands them
-    # again when RPROMPT is displayed
-    RPROMPT="$parts"
+    __rprompt_set "$git"
     zle reset-prompt
 }
 
@@ -137,7 +142,13 @@ __rprompt_start() {
     zle -F $__rprompt_fd __rprompt_done
 }
 
-(( $+commands[gitusers] )) && add-zsh-hook precmd __rprompt_start
+if (( $+commands[gitusers] )); then
+    # zle only redraws a right prompt that was already non-empty when it
+    # started reading the line, so seed RPROMPT (time only) before the first
+    # prompt; otherwise the git part would only show up from the second prompt
+    __rprompt_set ''
+    add-zsh-hook precmd __rprompt_start
+fi
 # }}}
 # {{{ PROMPT: Show last exit-code
 # Build the exit-code segment once per prompt in a precmd hook instead of
