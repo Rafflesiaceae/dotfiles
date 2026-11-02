@@ -20,13 +20,21 @@ REPORTTIME=5 # show time if command takes longer than 5 seconds
 
 fpath=("$HOME/.zsh" $fpath)
 
-# cache autoload for 10min
+# Only run the full (slow, security-checking) compinit when the dump is older
+# than 20 hours, otherwise trust the cached dump via `compinit -C`
 autoload -Uz compinit
-if [[ ! -e ~/.zcompdump || -n ~/.zcompdump(#qN.mm+9) ]]; then
-    compinit
-else
-    compinit -C
-fi
+() {
+    # Glob qualifiers inside [[ ]] only work with extendedglob; keep it scoped
+    setopt localoptions extendedglob
+    if [[ -n ~/.zcompdump(#qN.mh-20) ]]; then
+        compinit -C
+    else
+        compinit
+        # compinit does not refresh the dump's mtime when nothing changed, so
+        # without this the dump would count as stale forever
+        touch ~/.zcompdump
+    fi
+}
 
 autoload -U colors && colors
 
