@@ -140,25 +140,29 @@ __rprompt_start() {
 (( $+commands[gitusers] )) && add-zsh-hook precmd __rprompt_start
 # }}}
 # {{{ PROMPT: Show last exit-code
-function show_last_exit_code() {
-    local last_exit_code=$?
-    if [[ $last_exit_code -eq 0 ]]; then
-        echo "%{$bg[blue]%}  %{$reset_color%}%{$fg[blue]%}"
-    elif [[ $last_exit_code -eq 127 ]]; then                                          # unknown command
-        echo "%{$bg[yellow]%}  %{$reset_color%}%{$fg[yellow]%}"
-    elif [[ $last_exit_code -eq 255 ]]; then                                          # display 255 as -1
-        echo "%{$bg[red]%}%{$fg[black]%}-1%{$reset_color%}%{$fg[red]%}"
-    elif [[ $last_exit_code -lt 10 ]]; then
-        echo "%{$bg[red]%}%{$fg[black]%}$last_exit_code %{$reset_color%}%{$fg[red]%}"
-    elif [[ $last_exit_code -lt 100 ]]; then
-        echo "%{$bg[red]%}%{$fg[black]%}$last_exit_code%{$reset_color%}%{$fg[red]%}"
-    elif [[ $last_exit_code -gt 10 ]]; then
-        echo "%{$bg[red]%}%{$fg[black]%}>>%{$reset_color%}%{$fg[red]%}"
-    fi
+# Build the exit-code segment once per prompt in a precmd hook instead of
+# forking a `$(...)` subshell from PROMPT; zsh passes every precmd hook the
+# exit status of the last command
+__prompt_status() {
+    local st=$? label
+    # Widgets re-run the precmd hooks via __execute_precmds without a new
+    # command having run, and $? is then the widget's own status; keep the
+    # segment of the last command in that case
+    zle && return
+    case $st in
+        0)   __prompt_seg="%{$bg[blue]%}  %{$reset_color%}%{$fg[blue]%}"; return ;;
+        127) __prompt_seg="%{$bg[yellow]%}  %{$reset_color%}%{$fg[yellow]%}"; return ;;  # unknown command
+        255) label='-1' ;;    # display 255 as -1
+        ?)   label="$st " ;;  # pad to two columns
+        ??)  label=$st ;;
+        *)   label='>>' ;;    # three digits do not fit
+    esac
+    __prompt_seg="%{$bg[red]%}%{$fg[black]%}${label}%{$reset_color%}%{$fg[red]%}"
 }
+add-zsh-hook precmd __prompt_status
 
 setopt PROMPT_SUBST
-PROMPT='$(show_last_exit_code) %n %{$fg[yellow]%}%~ %{$reset_color%}%% '
+PROMPT='${__prompt_seg} %n %{$fg[yellow]%}%~ %{$reset_color%}%% '
 # }}}
 
 __execute_precmds() {
