@@ -193,7 +193,13 @@ pick_file() {
     # local newdir=$(/bin/ls -d1tr ~/* | tail -8 | fzf --tac --no-sort) || exit 1
     local file
     # Assign separately: `local x=$(...)` would mask fzf's exit status
-    file=$(find * -type f | fzf) || { zle .reset-prompt; return 1; }
+    # Prefer fd: it skips .git, hidden and gitignored files (e.g.
+    # node_modules), which `find` would walk through below ~/workspace
+    if (( $+commands[fd] )); then
+        file=$(fd --type f | fzf) || { zle .reset-prompt; return 1; }
+    else
+        file=$(find * -type f | fzf) || { zle .reset-prompt; return 1; }
+    fi
     LBUFFER+="$file"
 
     __execute_precmds
