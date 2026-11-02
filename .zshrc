@@ -258,9 +258,8 @@ bindkey '^G' list_git_branches_via_fzf
 list_k8s_pods_via_fzf() {
     local podline pod namespace
     # Assign separately: `local x=$(...)` would mask fzf's exit status
-    podline=$(kubectl get pods --all-namespaces -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | tail -n +2 | fzf) || { zle .reset-prompt; return 1; }
-    pod=$(echo "$podline" | awk '{ print $1 }')
-    namespace=$(echo "$podline" | awk '{ print $2 }')
+    podline=$(kubectl get pods --all-namespaces --no-headers -o=custom-columns=NAME:.metadata.name,Namespace:.metadata.namespace | fzf) || { zle .reset-prompt; return 1; }
+    read -r pod namespace <<< "$podline"
     LBUFFER+="-n $namespace $pod"
     zle .reset-prompt
 }
@@ -269,14 +268,12 @@ bindkey '^[p' list_k8s_pods_via_fzf
 # }}}
 # {{{ docker - list containers <Alt-d>
 list_docker_containers_via_fzf() {
-    local psout header choices choice container
+    local psout choice
     # Assign separately: `local x=$(...)` would mask the command's exit status
     psout=$(docker ps) || { zle .reset-prompt; return 1; }
-    header=$(echo "$psout" | head -n 1)
-    choices=$(echo "$psout" | tail -n +2)
-    choice=$(echo "$choices" | fzf --header "$header") || { zle .reset-prompt; return 1; }
-    container=$(echo "$choice" | awk '{ print $1 }')
-    LBUFFER+="$container"
+    # Keep the `docker ps` header line pinned above the list
+    choice=$(fzf --header-lines=1 <<< "$psout") || { zle .reset-prompt; return 1; }
+    LBUFFER+=${choice%% *}   # first column: container ID
     zle .reset-prompt
 }
 zle -N list_docker_containers_via_fzf{,}
