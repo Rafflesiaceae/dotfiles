@@ -41,6 +41,7 @@ autoload -Uz compinit
 }
 
 autoload -U colors && colors
+autoload -Uz add-zsh-hook # precmd/preexec hooks below
 
 ## various
 #  By default, if a command line contains a globbing expression which doesn't
@@ -112,75 +113,40 @@ chpwd() { print -l $PWD ${(u)dirstack} >$DIRSTACKFILE; }
 
 ## prompt/rprompt
 # {{{ RPROMPT
-local zsh_git_prompt=$HOME/.zsh/zsh-git-prompt/zshrc.sh
-local has_zsh_git_prompt=
-command -v gitusers &>/dev/null && has_zsh_git_prompt=1
-function rprompt_cmd() {
-    [[ $has_zsh_git_prompt ]] && echo "$(gitusers -p)"
+# The git part comes from `gitusers -p`, which takes ~35 ms, so it runs in the
+# background for every prompt and zle picks up its output via `zle -F` as soon
+# as it is ready; the previous RPROMPT stays visible until then
+typeset -g __rprompt_fd=
+
+# zle -F handler: called with the pipe's fd once gitusers' output is readable
+__rprompt_done() {
+    local fd=$1 git
+    IFS= read -r -u $fd git   # gitusers prints no trailing newline; read stops at EOF
+    zle -F $fd                # unregister the handler
+    exec {fd}<&-              # close the pipe
+    __rprompt_fd=
+
+    local -a parts=("${(%):-%*}")   # current time, without forking `date`
+    [[ -n $CONDA_DEFAULT_ENV ]] && parts+=("%B${CONDA_DEFAULT_ENV:0:28}%b")
+    parts+=("$git")
+    # Assign the text itself (not a reference to it): gitusers emits
+    # `$fg[...]` color codes that only work because PROMPT_SUBST expands them
+    # again when RPROMPT is displayed
+    RPROMPT="$parts"
+    zle reset-prompt
 }
 
-ASYNC_PROC=0
-function precmd() {
-    function async() {
-        # save to temp file
-        if [[ ! -d "/tmp/zsh/" ]]; then
-            mkdir -p "/tmp/zsh/"
-        fi
-
-        printf "%s" "$(rprompt_cmd)" > "/tmp/zsh/zsh_prompt_$$"
-
-        # signal parent
-        kill -s USR1 $$
-    }
-
-    # do not clear RPROMPT, let it persist
-
-    # kill child if necessary
-    if [[ "${ASYNC_PROC}" != 0 ]]; then
-        kill -s HUP $ASYNC_PROC >/dev/null 2>&1 || :
+__rprompt_start() {
+    # Drop the computation still running for the previous prompt
+    if [[ -n $__rprompt_fd ]]; then
+        zle -F $__rprompt_fd
+        exec {__rprompt_fd}<&-
     fi
-
-    # start background computation
-    async &!
-    ASYNC_PROC=$!
+    exec {__rprompt_fd}< <(gitusers -p 2>/dev/null)
+    zle -F $__rprompt_fd __rprompt_done
 }
 
-function TRAPUSR1() {
-    if [[ $has_zsh_git_prompt ]]; then
-        local parts
-
-        parts+=("$(date +"%T")") # date
-
-        # conda-env
-        if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
-            parts+=('%B'"${CONDA_DEFAULT_ENV:0:28}"'%b')
-        fi
-
-        # rprompt_cmd
-        parts+=("$(cat /tmp/zsh/zsh_prompt_$$ 2>/dev/null)")
-
-        RPROMPT="$parts"
-
-        # reset proc number
-        ASYNC_PROC=0
-
-        # redisplay
-        zle && zle reset-prompt
-        return 0
-    fi
-
-    # fired by the 60s timer
-    emulate -L zsh
-    [[ -n ${__ZSH_TITLE_CMDLINE-} ]] || return 0
-    __title_set "🟠 ${__ZSH_TITLE_CMDLINE}"
-
-  return 0
-}
-TRAPUSR1
-function TRAPEXIT() {
-    # cleanup async prompts
-    [[ -f "/tmp/zsh/zsh_prompt_$$" ]] && rm "/tmp/zsh/zsh_prompt_$$"
-}
+(( $+commands[gitusers] )) && add-zsh-hook precmd __rprompt_start
 # }}}
 # {{{ PROMPT: Show last exit-code
 function show_last_exit_code() {
@@ -450,7 +416,6 @@ __title_preexec() {
   __title_set "🟡 $cmdline"
 }
 
-autoload -Uz add-zsh-hook
 add-zsh-hook precmd  __title_idle     # runs when zsh is ready for input (after command finished)
 add-zsh-hook preexec __title_preexec  # runs right before executing a command
 
