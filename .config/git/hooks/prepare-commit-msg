@@ -1,0 +1,35 @@
+#!/bin/sh
+
+case "${2:-}" in
+    ""|template) ;;
+    *) exit 0 ;;
+esac
+
+git rev-parse --verify HEAD >/dev/null 2>&1 || exit 0
+
+tmp=$(mktemp) || exit 1
+trap 'rm -f "$tmp"' EXIT
+
+git log -3 --format='#%x09%s' |
+awk '
+    FILENAME == "-" {
+        commits[++count] = $0
+        next
+    }
+
+    /^# Please enter the commit message/ {
+        in_header = 1
+    }
+
+    in_header && !inserted && /^#$/ {
+        print
+        print "# Last 3 commits:"
+        for (i = 1; i <= count; i++)
+            print commits[i]
+        print "#"
+        inserted = 1
+        next
+    }
+
+    { print }
+' - "$1" > "$tmp" && cat "$tmp" > "$1"
