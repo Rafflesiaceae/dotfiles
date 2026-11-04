@@ -1671,6 +1671,7 @@ augroup siml_filetype
   autocmd!
   autocmd BufRead,BufNewFile *.siml setfiletype siml
   autocmd FileType siml setlocal syntax=yaml
+  autocmd FileType siml setlocal commentstring=#\ %s
 augroup END
 " }}} Additional filetype detection
 " }}} 📄 Filetypes and autocommands
