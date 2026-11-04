@@ -48,3 +48,6 @@
 
 - Don't usually add casual changelogs as comments. Changelogs should be part of
   the git commit message, but not part of code/data comments.
+
+- when you write CI code (github actions etc.):
+    - Never use globs, wildcards or "whatever is in the directory" to select files that get published, released or uploaded (packages, artifacts, binaries). Always name every expected file explicitly and verify that they exist. If any check fails, the job must fail without publishing anything, so a release is either complete or not published at all (as atomic as possible).
