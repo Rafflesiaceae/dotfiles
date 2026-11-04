@@ -2364,6 +2364,10 @@ vim write to file on every buffer change (.vim): |
     autocmd TextChanged,TextChangedI <buffer> silent write
 show term cursor again via tput (.gdb): 'shell tput cnorm'
 
+i3sd blocks: |
+  . .i3sdb
+  i3sd_block "TODO"
+
 utf8/unicode symbols (.various): |
   ⇑ ↑ ▲ ⬆ ⇡ ⤊ ↥
   ← → ↑ ↓ ⟵ ⟶ ⇦ ⇨ ⇧ ⇩ ⬅ ( ⮕ ➡ ) ⬆ ⬇
