@@ -99,7 +99,10 @@ elif [[ "$PWD" == "${HOME}/.lastdir" ]]; then  # explicit
     __cd_last_dirstack_dir
 fi
 
-chpwd() { print -l $PWD ${(u)dirstack} >$DIRSTACKFILE; }
+chpwd() {
+    [[ -n $DIRSTACKFILE ]] || return 0
+    print -l $PWD ${(u)dirstack} >$DIRSTACKFILE
+}
 # }}}
 
 ## prompt/rprompt

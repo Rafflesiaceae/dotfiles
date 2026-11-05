@@ -38,7 +38,7 @@ alias ..='cd ..'
 # default opts for progs
 alias grep="grep --color"
 alias less="less -r"
-alias ls="ls --color -GF"
+alias ls="ls --color=auto -GF"
 alias ll="ls -ltrah"
 alias mkdir="mkdir -p"
 alias ssh="TERM=xterm ssh"
