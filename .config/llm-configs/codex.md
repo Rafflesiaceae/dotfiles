@@ -3,17 +3,13 @@
   asking for it and then parsing them
 
 - do NOT do things I have not asked you to do, if you want to do more than that,
-  prompt me with what you're going to do and ask for my explicit consent
+  prompt me with what you're going to do and ask for my explicit consent FIRST
 
 - do NOT add a paragraph in the git commit stating what you did for validation:
   ran tests etc.
 
-- An implementation obstacle is not permission to expand scope! Ask before
+- An implementation obstacle is not permission to expand scope! Ask BEFORE
   making changes beyond the request.
-
-- IMPORTANT: do NOT keep a history/log via comments or otherwise in files unless
-  they are specifically made to keep a history like a separate changelog file ;
-  keep history/log to the git commit message only
 
 - do NOT do extensive testing for every feature/change we do - implement the
   requirement first and then stop and propose adding a test in a next step
