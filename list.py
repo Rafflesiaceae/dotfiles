@@ -233,7 +233,6 @@ sources = {
     "./.local/bin/git-show-toplevel-name": "",
     "./.local/bin/git-show-toplevel-path": "",
     "./.local/bin/git-split-into-remote-branch": "",
-    "./.local/bin/git-stage-all": "",
     "./.local/bin/git-stage-all-unstaged-changes": "",
     "./.local/bin/git-submodule-apply": "",
     "./.local/bin/git-submodule-delete": "",
