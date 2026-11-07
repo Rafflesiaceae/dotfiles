@@ -7,11 +7,53 @@
     "commit": "",
     "pr": ""
   },
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "escape": null
+      }
+    }
+  ],
   "disableAgentView": true,
   "statusLine": {
     "type": "command",
     "command": "luajit ~/.claude/statusline.lua",
     "padding": 0
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "luajit ~/.claude/turn-cost.lua",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreModelSwitch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreModelSwitch\",\"permissionDecision\":\"allow\"}}'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -c '\n  (.tool_input.subagent_type // \"general-purpose\") as $st\n  | (.tool_input.isolation // \"\") as $iso\n  | if $iso == \"remote\" then\n      {hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"Blocked by ~/.claude/CLAUDE.md rule: never kick off tasks into the background - each session should only have one task. isolation:remote always runs the agent in the background.\"}}\n    elif $st != \"fork\" then\n      {hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: (\"Blocked by ~/.claude/CLAUDE.md rule: never kick off tasks into the background - each session should only have one task. subagent_type \" + $st + \" is not fork; only Agent calls with subagent_type fork (which inherit context and run inline) are allowed here. Ask the user for explicit approval before spawning a separate background agent.\")}}\n    else\n      {}\n    end\n'"
+          }
+        ]
+      }
+    ]
   },
   "spinnerTipsEnabled": false,
   "spinnerVerbs": {

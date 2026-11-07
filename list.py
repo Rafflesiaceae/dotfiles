@@ -3,6 +3,8 @@ import common
 # sources {{{1
 sources = {
     # <source>: <target> (empty means same as source)
+    "./.claude/statusline.lua": "",
+    "./.claude/turn-cost.lua": "",
     "./.config/.bazelrc": "./.bazelrc",
     "./.config/.ripgreprc": {"linux": ""},
     "./.config/.yamlfmt": "",
