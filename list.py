@@ -202,6 +202,7 @@ sources = {
     "./.local/bin/git-diff-view-meld-single-commit": "",
     "./.local/bin/git-do-for-all-branches": "",
     "./.local/bin/git-drop": "",
+    "./.local/bin/git-drop-subtree-merges": "",
     "./.local/bin/git-edit-date": "",
     "./.local/bin/git-find-commit-by-message": "",
     "./.local/bin/git-first-commit": "",

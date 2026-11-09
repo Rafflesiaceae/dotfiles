@@ -1,0 +1,395 @@
+#!/usr/bin/env python3
+"""git drop-subtree-merges [--dry-run] [--root | <since>] [-d <commit>]...
+
+Interactively drop `git subtree` merge commits from the history of the
+current branch.
+
+Why this exists: `git rebase -i --rebase-merges` replays merges with a
+plain `git merge`, without the subtree strategy.  A subtree merge is
+therefore replayed wrongly (the upstream's root files, e.g. README.md,
+collide with the repository's own).  This tool drives the rebase itself
+and replays every *kept* subtree merge as an explicit subtree merge
+(`merge -s ours` + `read-tree --prefix`), so that only the merges you
+choose to drop disappear.
+
+Flow:
+  1. Find all subtree merges (optionally only those after <since>).
+  2. Open $VISUAL/$EDITOR on a list: change `keep` to `drop` for the
+     ones to remove.
+  3. Create a backup branch, run `git rebase -i --rebase-merges` with a
+     generated todo list, and verify that the resulting tree differs from
+     the old one only below the dropped prefixes.
+
+A merge counts as a subtree merge when
+  - the second parent (or the merge message) names a prefix, via a
+    `git-subtree-dir:` trailer or a "Squashed '<dir>/' content" subject,
+    AND
+  - the tree at <prefix> in the merge equals the tree of the second
+    parent exactly.
+Subtree merges with local edits inside the prefix fail the second test and
+are NOT handled (they are listed as comments); replaying them would lose
+the edits.
+"""
+
+import argparse
+import datetime
+import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+
+# Repository root, set in main(); every git call runs there.
+TOP = None
+
+# `git subtree --squash` commit subject, e.g. "Squashed 'vendor/x/' content from commit abc".
+SQUASH_RE = re.compile(r"^Squashed '(.+?)/?' content from commit")
+# Rebase todo line of a recreated merge: `merge -C <sha> <label> # subject`.
+MERGE_RE = re.compile(r"^(?:merge|m)\s+-[Cc]\s+(\S+)\s+(\S+)")
+# Rebase todo line of an ordinary commit: `pick <sha> # subject`.
+PICK_RE = re.compile(r"^(?:pick|p)\s+(\S+)")
+
+
+def die(msg):
+    print(f"git-drop-subtree-merges: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def git(*args, check=True):
+    """Run git in the repo root, return stripped stdout (None on failure if not check)."""
+    r = subprocess.run(["git", *args], cwd=TOP, capture_output=True, text=True)
+    if r.returncode != 0:
+        if check:
+            die(f"`git {' '.join(args)}` failed:\n{r.stderr.strip()}")
+        return None
+    return r.stdout.strip()
+
+
+def subtree_dir(merge, second_parent):
+    """Return the subtree prefix a merge claims to merge into, or None."""
+    # Trailers written by `git subtree` (on the squash commit, or on the
+    # merge itself for a non-squashed `subtree add`).
+    for rev in (second_parent, merge):
+        for line in git("log", "-1", "--format=%B", rev).splitlines():
+            if line.startswith("git-subtree-dir:"):
+                return line.split(":", 1)[1].strip().strip("/")
+    m = SQUASH_RE.match(git("log", "-1", "--format=%s", second_parent))
+    return m.group(1).strip("/") if m else None
+
+
+def find_merges(since):
+    """Classify merges: (verified subtree merges, [(sha, subject, why-not)])."""
+    rng = f"{since}..HEAD" if since else "HEAD"
+    out = git("rev-list", "--merges", "--parents", "--reverse", "--topo-order", rng)
+    subtree, others = [], []
+    for line in out.splitlines():
+        sha, *parents = line.split()
+        subject = git("log", "-1", "--format=%s", sha)
+        if len(parents) != 2:
+            others.append((sha, subject, "octopus merge"))
+            continue
+        d = subtree_dir(sha, parents[1])
+        if d is None:
+            others.append((sha, subject, "regular merge"))
+            continue
+        # Exact check: the merge must contain the second parent's tree
+        # unchanged below the prefix.  Otherwise replaying it from the
+        # second parent alone would lose local edits.
+        merged = git("rev-parse", "--verify", "-q", f"{sha}:{d}", check=False)
+        theirs = git("rev-parse", f"{parents[1]}^{{tree}}")
+        if merged == theirs:
+            subtree.append({"sha": sha, "p2": parents[1], "dir": d, "subject": subject})
+        else:
+            others.append((sha, subject, f"subtree merge into {d}/ with local changes, not handled"))
+    return subtree, others
+
+
+def pick_editor():
+    for var in ("VISUAL", "EDITOR"):
+        if os.environ.get(var):
+            return os.environ[var]
+    return git("var", "GIT_EDITOR")
+
+
+def edit_decisions(subtree, others):
+    """Let the user mark merges with keep/drop; return {full sha: action}."""
+    lines = [
+        "# Subtree merges in this history (oldest first).",
+        "# Change `keep` to `drop` for the ones to remove from history.",
+        "# Only lines saying `drop` (or `d`) have an effect; deleting a line keeps it.",
+        "# Kept subtree merges are replayed as subtree merges by this tool.",
+        "# Saving without any `drop` aborts.",
+        "",
+    ]
+    for it in subtree:
+        lines.append(f"keep {it['sha'][:10]} {it['dir']}/  {it['subject']}")
+    if others:
+        lines += ["", "# Other merges (not touched by this tool):"]
+        for sha, subject, why in others:
+            lines.append(f"#   {sha[:10]}  [{why}]  {subject}")
+
+    fd, path = tempfile.mkstemp(prefix="drop-subtree-merges-", suffix=".txt")
+    with os.fdopen(fd, "w") as f:
+        f.write("\n".join(lines) + "\n")
+    try:
+        rc = subprocess.call(f"{pick_editor()} {shlex.quote(path)}", shell=True)
+        if rc != 0:
+            die("editor exited non-zero, aborting")
+        with open(path) as f:
+            edited = f.read()
+    finally:
+        os.unlink(path)
+
+    known = {it["sha"] for it in subtree}
+    decisions = {}
+    for raw in edited.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(None, 2)
+        if len(parts) < 2 or parts[0] not in ("keep", "k", "drop", "d"):
+            die(f"cannot parse line: {raw!r}")
+        full = git("rev-parse", "--verify", "-q", f"{parts[1]}^{{commit}}", check=False)
+        if full not in known:
+            die(f"{parts[1]!r} is not one of the listed subtree merges")
+        decisions[full] = "drop" if parts[0] in ("drop", "d") else "keep"
+    return decisions
+
+
+def find_branch_block(lines, label):
+    """Locate the todo lines that build the side branch ending in `label <label>`.
+
+    Expected shape (what rebase emits for a squashed subtree commit):
+        [# Branch <name>]
+        reset <something>
+        pick <sha> ...        (one or more)
+        label <label>
+    """
+    try:
+        end = [l.strip() for l in lines].index(f"label {label}")
+    except ValueError:
+        raise RuntimeError(f"no `label {label}` line in the todo list")
+    start = end - 1
+    while start >= 0 and lines[start].startswith("pick "):
+        start -= 1
+    if start == end - 1 or start < 0 or not lines[start].startswith("reset "):
+        raise RuntimeError(f"unexpected todo layout around `label {label}`")
+    if start > 0 and lines[start - 1].startswith("# Branch "):
+        start -= 1
+    return start, end
+
+
+def rewrite_todo(state_path, todo_path):
+    """GIT_SEQUENCE_EDITOR mode: transform the rebase todo list in place."""
+    with open(state_path) as f:
+        state = json.load(f)
+    merges = state["merges"]            # full sha -> {action, p2, dir}
+    drop_commits = set(state["commits"])  # plain commits to drop (full shas)
+    with open(todo_path) as f:
+        lines = f.read().split("\n")
+
+    def resolve(abbrev):
+        return subprocess.run(
+            ["git", "rev-parse", "--verify", "-q", f"{abbrev}^{{commit}}"],
+            capture_output=True, text=True,
+        ).stdout.strip()
+
+    remove, replace, seen, seen_commits = set(), {}, set(), set()
+    for i, line in enumerate(lines):
+        # Ordinary commit the user asked to drop: just remove its pick.
+        pm = PICK_RE.match(line)
+        if pm:
+            full = resolve(pm.group(1))
+            if full in drop_commits:
+                seen_commits.add(full)
+                remove.add(i)
+            continue
+        m = MERGE_RE.match(line)
+        if not m:
+            continue
+        full = resolve(m.group(1))
+        entry = merges.get(full)
+        if entry is None:
+            continue  # regular merge, leave to --rebase-merges
+        seen.add(full)
+        try:
+            start, end = find_branch_block(lines, m.group(2))
+        except RuntimeError as e:
+            print(f"git-drop-subtree-merges: {e}", file=sys.stderr)
+            sys.exit(1)
+        # The side branch is not needed in either case: dropped merges
+        # vanish, kept ones are recreated below from the original
+        # second parent.
+        remove.update(range(start, end + 1))
+        if entry["action"] == "drop":
+            replace[i] = []
+        else:
+            d, full_p2 = shlex.quote(entry["dir"]), entry["p2"]
+            # Recreate the subtree merge: merge state with our tree, swap
+            # the prefix for the upstream tree, commit with the original
+            # message/author.
+            replace[i] = [
+                f"# subtree merge into {entry['dir']}/ (replayed explicitly)",
+                "exec git merge -q -s ours --no-ff --no-commit --allow-unrelated-histories "
+                f"{full_p2} && git rm -r -q -f --ignore-unmatch -- {d} "
+                f"&& git read-tree --prefix={shlex.quote(entry['dir'] + '/')} -u {full_p2} "
+                f"&& git commit -q --no-verify -C {full}",
+            ]
+
+    # Kept merges older than the rebase base are legitimately absent from
+    # the todo list; a merge to drop that is missing is an error.
+    missing = [s for s, e in merges.items() if e["action"] == "drop" and s not in seen]
+    missing += [s for s in drop_commits if s not in seen_commits]
+    if missing:
+        print("git-drop-subtree-merges: commits not found in the rebase todo list: "
+              + " ".join(s[:10] for s in missing), file=sys.stderr)
+        sys.exit(1)
+
+    out = []
+    for i, line in enumerate(lines):
+        if i in replace:
+            out.extend(replace[i])
+        elif i not in remove:
+            out.append(line)
+    with open(todo_path, "w") as f:
+        f.write("\n".join(out))
+
+
+def main():
+    global TOP
+    ap = argparse.ArgumentParser(prog="git drop-subtree-merges", description=__doc__.split("\n\n")[0])
+    ap.add_argument("since", nargs="?", help="only consider merges in <since>..HEAD")
+    ap.add_argument("--root", action="store_true",
+                    help="rebase from the very first (root) commit instead of the "
+                         "automatically chosen base; considers all merges in history")
+    ap.add_argument("-d", "--drop", metavar="COMMIT", action="append", default=[],
+                    help="drop this ordinary (non-merge) commit; repeatable. Skips the "
+                         "editor: all subtree merges are kept (and replayed correctly)")
+    ap.add_argument("-n", "--dry-run", action="store_true", help="show what would be done, change nothing")
+    args = ap.parse_args()
+
+    TOP = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True).stdout.strip()
+    if not TOP:
+        die("not in a git repository")
+    if os.path.isdir(os.path.join(TOP, git("rev-parse", "--git-path", "rebase-merge"))) or \
+       os.path.isdir(os.path.join(TOP, git("rev-parse", "--git-path", "rebase-apply"))):
+        die("a rebase is already in progress")
+
+    if args.root and args.since:
+        # Every merge in a --root rebase is replayed, so all subtree merges
+        # must be known to the todo rewrite; a <since> limit would leave the
+        # older ones to be replayed as plain (broken) merges.
+        die("--root and <since> are mutually exclusive")
+
+    # Ordinary commits to drop: must be non-merge commits reachable from HEAD.
+    extra = []
+    for c in args.drop:
+        full = git("rev-parse", "--verify", "-q", f"{c}^{{commit}}", check=False)
+        if not full:
+            die(f"--drop: {c!r} is not a commit")
+        if git("merge-base", "--is-ancestor", full, "HEAD", check=False) is None:
+            die(f"--drop: {c} is not an ancestor of HEAD")
+        nparents = len(git("rev-list", "--parents", "-n1", full).split()) - 1
+        if nparents > 1:
+            die(f"--drop: {c} is a merge commit; subtree merges are dropped via the editor list")
+        if nparents == 0:
+            die(f"--drop: {c} is the root commit and cannot be dropped")
+        extra.append(full)
+
+    subtree, others = find_merges(args.since)
+    if extra:
+        # Commits were named explicitly: no editor, keep every subtree merge.
+        decisions = {}
+    else:
+        if not subtree:
+            print("No subtree merges found.")
+            return
+        decisions = edit_decisions(subtree, others)
+    drops = [it for it in subtree if decisions.get(it["sha"]) == "drop"]
+    if not drops and not extra:
+        print("Nothing marked `drop`, nothing to do.")
+        return
+
+    # The rebase has to start below every commit to drop; subtree merges
+    # after that point are replayed explicitly by the todo rewrite.
+    # With --root the range reaches back to and including the first commit.
+    base = None if args.root else git("merge-base", "--octopus",
+                                      *[f"{it['sha']}^1" for it in drops], *[f"{c}^1" for c in extra])
+    rebase_range = ["--root"] if args.root else [base]
+    state = {
+        "merges": {it["sha"]: {"action": decisions.get(it["sha"], "keep"), "p2": it["p2"], "dir": it["dir"]}
+                   for it in subtree},
+        "commits": extra,
+    }
+
+    # A kept merge into a prefix whose earlier merge is dropped ends up as
+    # the first appearance of that prefix: valid, but worth a heads up.
+    for it in drops:
+        later = [o for o in subtree if o["dir"] == it["dir"] and o["sha"] != it["sha"]
+                 and decisions.get(o["sha"]) != "drop"]
+        if later:
+            print(f"warning: {it['dir']}/ has other subtree merges that are kept; "
+                  "its history will start from those.", file=sys.stderr)
+
+    what = [it["sha"][:10] + " (" + it["dir"] + "/)" for it in drops]
+    what += [c[:10] + " (" + git("log", "-1", "--format=%s", c) + ")" for c in extra]
+    print(f"Dropping: {', '.join(what)}")
+    print("Rebase base: root commit (--root)" if args.root else f"Rebase base: {base[:10]}")
+    if args.dry_run:
+        return
+
+    orig = git("rev-parse", "HEAD")
+    backup = "backup/drop-subtree-merges-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    git("branch", backup, orig)
+    print(f"Backup branch: {backup}")
+
+    tmp = tempfile.mkdtemp(prefix="drop-subtree-merges-")
+    try:
+        state_path = os.path.join(tmp, "state.json")
+        with open(state_path, "w") as f:
+            json.dump(state, f)
+        # git runs the sequence editor via the shell and appends the todo path.
+        seq_editor = " ".join(shlex.quote(x) for x in
+                              [sys.executable, os.path.abspath(__file__), "--rewrite-todo", state_path])
+        env = dict(os.environ, GIT_SEQUENCE_EDITOR=seq_editor)
+        rc = subprocess.run(["git", "rebase", "-i", "--rebase-merges", "--autostash", *rebase_range],
+                            cwd=TOP, env=env).returncode
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+    if rc != 0:
+        print("\nThe rebase did not finish. Fix the problem and `git rebase --continue`,\n"
+              f"or `git rebase --abort`. Original history: {backup}\n"
+              f"After --continue, review the result with: git diff --stat {backup} HEAD",
+              file=sys.stderr)
+        sys.exit(rc)
+
+    # Sanity check: the final tree may only differ below dropped prefixes
+    # and in files touched by dropped ordinary commits.
+    dropped_dirs = [it["dir"] for it in drops]
+    touched = set()
+    for c in extra:
+        touched.update(p for p in git("diff-tree", "--no-commit-id", "--name-only", "-r", "-z", c).split("\0") if p)
+    changed = [p for p in git("diff", "--name-only", "-z", orig, "HEAD").split("\0") if p]
+    unexpected = [p for p in changed
+                  if p not in touched and not any(p == d or p.startswith(d + "/") for d in dropped_dirs)]
+    if unexpected:
+        print(f"\nWARNING: {len(unexpected)} path(s) outside the dropped prefixes/commits differ from {backup}:",
+              file=sys.stderr)
+        for p in unexpected[:20]:
+            print(f"  {p}", file=sys.stderr)
+        sys.exit(2)
+    allowed = [d + "/" for d in dropped_dirs] + sorted(touched)
+    print(f"\nDone. Tree differs from {backup} only in: {', '.join(allowed)}")
+    print("Nothing was pushed. When happy: git push --force-with-lease")
+
+
+if __name__ == "__main__":
+    # Internal mode: invoked by git as GIT_SEQUENCE_EDITOR with the todo path appended.
+    if len(sys.argv) == 4 and sys.argv[1] == "--rewrite-todo":
+        rewrite_todo(sys.argv[2], sys.argv[3])
+    else:
+        main()
