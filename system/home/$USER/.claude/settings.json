@@ -1,6 +1,7 @@
 {
   "env": {
     "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1",
+    "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
     "CLAUDE_CODE_DISABLE_MOUSE": "1"
   },
   "attribution": {
@@ -61,14 +62,6 @@
     "verbs": [
       "Working"
     ]
-  },
-  "modelSettings": {
-    "claude-sonnet-5-5": {
-      "effortLevel": "high"
-    },
-    "claude-opus-5-5": {
-      "effortLevel": "high"
-    }
   },
   "tui": "default",
   "prefersReducedMotion": true,
