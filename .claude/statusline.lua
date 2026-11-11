@@ -1,6 +1,7 @@
 #!/usr/bin/env lust
 -- Claude Code status line:
--- dir | claude account | git branch | model | session cost [context] | lines changed
+-- dir | claude account | git branch | model | session cost [context] |
+-- lines changed | session title
 --
 -- Reads the status JSON that Claude Code pipes in on stdin.
 
@@ -28,6 +29,7 @@ local USER_COLOR   = C.MAGENTA  -- claude account
 local BRANCH_COLOR = C.GREEN
 local MODEL_COLOR  = C.DIM
 local DIFF_COLOR   = C.DIM
+local TITLE_COLOR  = C.WHITE
 
 local SEP = " " .. C.DIM .. "|" .. C.RESET .. " "
 
@@ -134,6 +136,39 @@ end
 
 local user = claude_account()
 
+-- Session title. The status JSON doesn't carry it, but the transcript has
+-- one JSON line per title change: "custom-title" (set via /rename) and
+-- "ai-title" (generated). The latest custom title wins over the latest
+-- generated one. Lines are prefiltered by plain substring search so only
+-- the few title lines get decoded; scanning a 14MB transcript takes ~12ms.
+local function session_title(path)
+  if path == "" then return nil end
+  local f = io.open(path, "r")
+  if not f then return nil end
+
+  local custom, ai
+  for line in f:lines() do
+    if line:find('"type":"custom-title"', 1, true) then
+      local entry = json.decode(line)
+      local t = type(entry) == "table" and get(entry, "customTitle", "") or ""
+      if t ~= "" then custom = t end
+    elseif line:find('"type":"ai-title"', 1, true) then
+      local entry = json.decode(line)
+      local t = type(entry) == "table" and get(entry, "aiTitle", "") or ""
+      if t ~= "" then ai = t end
+    end
+  end
+  f:close()
+
+  local title = custom or ai
+  if not title then return nil end
+  -- Control characters (newlines, escapes) would break the one-line bar.
+  title = title:gsub("%c", " ")
+  return title
+end
+
+local title = session_title(get(data, "transcript_path", ""))
+
 local branch
 if dir ~= "" then
   branch = capture({ "git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD" })
@@ -167,6 +202,10 @@ if added ~= 0 or removed ~= 0 then
   parts[#parts + 1] = DIFF_COLOR ..
     "+" .. added .. "/-" .. removed ..
     C.RESET
+end
+
+if title then
+  parts[#parts + 1] = TITLE_COLOR .. title .. C.RESET
 end
 
 io.write(table.concat(parts, SEP))
