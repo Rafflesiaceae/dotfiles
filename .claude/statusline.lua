@@ -1,6 +1,6 @@
 #!/usr/bin/env lust
 -- Claude Code status line:
--- dir | git branch | model | session cost [context] | lines changed
+-- dir | claude account | git branch | model | session cost [context] | lines changed
 --
 -- Reads the status JSON that Claude Code pipes in on stdin.
 
@@ -19,10 +19,12 @@ local C = {
   YELLOW = "\27[33m",
   ORANGE = "\27[38;5;208m",
   RED    = "\27[31m",
+  MAGENTA = "\27[35m",
 }
 
 -- Colors of the plain (non-threshold) segments.
 local DIR_COLOR    = C.CYAN
+local USER_COLOR   = C.MAGENTA  -- claude account
 local BRANCH_COLOR = C.GREEN
 local MODEL_COLOR  = C.DIM
 local DIFF_COLOR   = C.DIM
@@ -109,12 +111,39 @@ if home and home ~= "" and dir:sub(1, #home) == home then
   short_dir = "~" .. dir:sub(#home + 1)
 end
 
+-- Claude account Claude Code is logged into. The status JSON doesn't carry
+-- it, but Claude Code keeps it in .claude.json (in $CLAUDE_CONFIG_DIR if
+-- set, else $HOME) under oauthAccount. Prefer the display name, fall back
+-- to the email address; nil when logged out or using an API key.
+local function claude_account()
+  local cfg_dir = os.getenv("CLAUDE_CONFIG_DIR")
+  if not cfg_dir or cfg_dir == "" then cfg_dir = home end
+  if not cfg_dir or cfg_dir == "" then return nil end
+
+  local f = io.open(cfg_dir .. "/.claude.json", "r")
+  if not f then return nil end
+  local cfg = json.decode(f:read("*a") or "")
+  f:close()
+  if type(cfg) ~= "table" then return nil end
+
+  local name = get(cfg, "oauthAccount.displayName", "")
+  if name == "" then name = get(cfg, "oauthAccount.emailAddress", "") end
+  if name == "" then return nil end
+  return name
+end
+
+local user = claude_account()
+
 local branch
 if dir ~= "" then
   branch = capture({ "git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD" })
 end
 
 local parts = { DIR_COLOR .. short_dir .. C.RESET }
+
+if user then
+  parts[#parts + 1] = USER_COLOR .. user .. C.RESET
+end
 
 if branch then
   parts[#parts + 1] = BRANCH_COLOR .. branch .. C.RESET
