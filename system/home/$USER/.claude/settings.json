@@ -2,20 +2,14 @@
   "env": {
     "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
-    "CLAUDE_CODE_DISABLE_MOUSE": "1"
+    "CLAUDE_CODE_DISABLE_MOUSE": "1",
+    "CLAUDE_CODE_SHELL": "/bin/bash"
   },
   "attribution": {
     "commit": "",
     "pr": ""
   },
-  "bindings": [
-    {
-      "context": "Chat",
-      "bindings": {
-        "escape": null
-      }
-    }
-  ],
+  "model": "opus",
   "disableAgentView": true,
   "statusLine": {
     "type": "command",
@@ -67,5 +61,13 @@
   "prefersReducedMotion": true,
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-ansi",
-  "autoCompactEnabled": true
+  "autoCompactEnabled": true,
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "escape": null
+      }
+    }
+  ]
 }
