@@ -1,10 +1,12 @@
-#!/usr/bin/env luajit
+#!/usr/bin/env lust
 -- Claude Code status line:
 -- dir | git branch | model | session cost [context] | lines changed
 --
 -- Reads the status JSON that Claude Code pipes in on stdin.
 
-local cjson = require("cjson.safe")
+-- lust built-ins: JSON parser and process runner (no shell involved).
+local json = require("lust.json")
+local proc = require("lust.sys.proc")
 
 -- ---------------------------------------------------------------- config --
 
@@ -46,7 +48,7 @@ local CTX_LEVELS = {
 }
 
 -- --------------------------------------------------------------- helpers --
-local NULL = cjson.null
+local NULL = json.null
 
 local function get(tbl, path, default)
   local cur = tbl
@@ -58,12 +60,11 @@ local function get(tbl, path, default)
   return cur
 end
 
-local function capture(cmd)
-  local pipe = io.popen(cmd .. " 2>/dev/null")
-  if not pipe then return nil end
-  local out = pipe:read("*a")
-  local ok = pipe:close()
-  if not ok or not out then return nil end
+-- Runs argv (no shell, so no quoting needed) and returns its trimmed
+-- stdout, or nil if it failed or printed nothing.
+local function capture(argv)
+  local status, out = proc.run(argv, { stderr = "null" })
+  if status ~= 0 or not out then return nil end
   out = out:gsub("%s+$", "")
   if out == "" then return nil end
   return out
@@ -90,7 +91,7 @@ local function level_for(value, levels)
 end
 
 -- ------------------------------------------------------------------ main --
-local data = cjson.decode(io.read("*a") or "")
+local data = json.decode(io.read("*a") or "")
 if type(data) ~= "table" then data = {} end
 
 local dir = get(data, "workspace.current_dir", get(data, "cwd", ""))
@@ -110,10 +111,7 @@ end
 
 local branch
 if dir ~= "" then
-  branch = capture(
-    "git -C '" .. dir:gsub("'", "'\\''") ..
-    "' rev-parse --abbrev-ref HEAD"
-  )
+  branch = capture({ "git", "-C", dir, "rev-parse", "--abbrev-ref", "HEAD" })
 end
 
 local parts = { DIR_COLOR .. short_dir .. C.RESET }

@@ -13,7 +13,7 @@
   "disableAgentView": true,
   "statusLine": {
     "type": "command",
-    "command": "luajit ~/.claude/statusline.lua",
+    "command": "lust ~/.claude/statusline.lua",
     "padding": 0
   },
   "hooks": {
