@@ -1,0 +1,118 @@
+#!/usr/bin/env hacman
+# Creates a marker file with optional contents.
+# Removes the file when stdin reaches EOF, including when
+# the parent process crashes or is killed with SIGKILL.
+#
+# Usage:
+#   ./examples/marker-watch.siml /tmp/foo
+#   ./examples/marker-watch.siml /tmp/foo 'foo\nboo\ncsd\n'
+#
+# The parent must keep the watchdog's stdin pipe open.
+
+name: marker-watch
+command: meson setup build && meson compile -C build
+bin-path: build/marker-watch
+
+files:
+  main.c: |
+    #include <errno.h>
+    #include <fcntl.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <unistd.h>
+
+    static int write_contents(int fd, const char *src)
+    {
+        size_t len = strlen(src);
+        char *buf = malloc(len + 1);
+        if (!buf)
+            return -1;
+
+        size_t n = 0;
+        for (size_t i = 0; i < len; i++) {
+            char c = src[i];
+
+            if (c == '\\' && i + 1 < len) {
+                char next = src[i + 1];
+                switch (next) {
+                case 'n':  c = '\n'; break;
+                case 'r':  c = '\r'; break;
+                case 't':  c = '\t'; break;
+                case '\\': c = '\\'; break;
+                default:   break;
+                }
+                if (next == 'n' || next == 'r' ||
+                    next == 't' || next == '\\')
+                    i++;
+            }
+
+            buf[n++] = c;
+        }
+
+        size_t off = 0;
+        while (off < n) {
+            ssize_t written = write(fd, buf + off, n - off);
+            if (written < 0 && errno == EINTR)
+                continue;
+            if (written <= 0) {
+                if (written == 0)
+                    errno = EIO;
+                free(buf);
+                return -1;
+            }
+            off += (size_t)written;
+        }
+
+        free(buf);
+        return 0;
+    }
+
+    int main(int argc, char **argv)
+    {
+        if (argc < 2 || argc > 3) {
+            fprintf(stderr, "Usage: %s <path> [contents]\n", argv[0]);
+            return 2;
+        }
+
+        const char *path = argv[1];
+        const char *contents = argc == 3 ? argv[2] : "";
+
+        int fd = open(path, O_CREAT | O_EXCL | O_WRONLY, 0600);
+        if (fd < 0) {
+            perror("open");
+            return 1;
+        }
+
+        if (write_contents(fd, contents) < 0) {
+            perror("write");
+            close(fd);
+            unlink(path);
+            return 1;
+        }
+
+        close(fd);
+
+        // Wait for the parent to close the pipe.
+        char buf[256];
+        for (;;) {
+            ssize_t n = read(STDIN_FILENO, buf, sizeof(buf));
+            if (n == 0)
+                break;
+            if (n < 0 && errno != EINTR)
+                break;
+        }
+
+        if (unlink(path) < 0) {
+            perror("unlink");
+            return 1;
+        }
+
+        return 0;
+    }
+
+  meson.build: |
+    project('marker-watch', 'c',
+      default_options: ['c_std=c99', 'warning_level=3'])
+
+    executable('marker-watch', 'main.c')

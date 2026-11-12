@@ -299,6 +299,7 @@ sources = {
     "./.local/bin/lookup-dns": "",
     "./.local/bin/loop-it": "",
     "./.local/bin/mark-code": "",
+    "./.local/bin/marker-watch": "",
     "./.local/bin/meson-quickbuild": "",
     "./.local/bin/mkdirp": "",
     "./.local/bin/mmbr": "",
