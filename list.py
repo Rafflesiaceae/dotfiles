@@ -3,6 +3,7 @@ import common
 # sources {{{1
 sources = {
     # <source>: <target> (empty means same as source)
+    "./.claude/commands/handoff.md": "",
     "./.claude/statusline.lua": "",
     "./.config/.bazelrc": "./.bazelrc",
     "./.config/.ripgreprc": {"linux": ""},
