@@ -276,12 +276,12 @@ local title = stats.title
 local function new_session_hint()
   local reasons, severe = {}, false
 
-  if ctx_tokens >= HINT.CTX_HARD then
-    reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_HARD)
-    severe = true
-  elseif ctx_tokens >= HINT.CTX_SOFT then
-    reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_SOFT)
-  end
+  -- if ctx_tokens >= HINT.CTX_HARD then
+  --   reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_HARD)
+  --   severe = true
+  -- elseif ctx_tokens >= HINT.CTX_SOFT then
+  --   reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_SOFT)
+  -- end
 
   if stats.compactions >= HINT.MAX_COMPACTIONS then
     reasons[#reasons + 1] = stats.compactions .. "× compacted"
