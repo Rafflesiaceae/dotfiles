@@ -1,7 +1,7 @@
 #!/usr/bin/env lust
 -- Claude Code status line:
 -- dir | claude account | git branch | model | session cost [context] |
--- lines changed | session title
+-- new session hint | lines changed | session title
 --
 -- Reads the status JSON that Claude Code pipes in on stdin.
 
@@ -49,6 +49,36 @@ local CTX_LEVELS = {
   { at = 200000, color = C.ORANGE, marker = " ⚠"  },
   { at = 100000, color = C.YELLOW, marker = " ↑"  },
   { at =      0, color = C.WHITE,  marker = ""    },
+}
+
+-- "Start a new session?" hint. Thresholds come from an analysis of past
+-- transcripts: correction/pushback rates and throughput did not degrade with
+-- raw context size up to ~150k, but did with repeated compaction (stale
+-- topics surviving in the summary) and with many interactive prompts since
+-- the last fresh start. Above ~200k throughput dropped and every step costs
+-- ~5x what it does at a fresh ~40k start; a compacted session restarts at
+-- ~51k anyway. Topic switches are the strongest reason to start fresh, but
+-- can't be detected here - that one stays a judgment call.
+local HINT = {
+  CTX_SOFT        = 150000, -- compact or wrap up soon
+  CTX_HARD        = 200000, -- past the throughput drop, near auto-compact
+  MAX_COMPACTIONS = 2,      -- prefer a fresh session over another compact
+  MAX_PROMPTS     = 8,      -- interactive prompts since start/last compact
+  IDLE_SECS       = 3600,   -- prompt cache TTL; after this it's cold
+  IDLE_CTX        = 150000, -- only worth flagging for a big cold context
+  ICON            = "↻ new session?",
+}
+
+-- Prompts that just keep an autonomous loop running. They don't add new
+-- topics, so they are not counted towards MAX_PROMPTS.
+local CONTINUATION_PROMPTS = {
+  ["continue"] = true, ["go on"] = true, ["keep going"] = true,
+  ["carry on"] = true, ["finish up what you were doing"] = true,
+}
+
+-- Prompt sources that represent a human turn (excludes e.g. "system").
+local HUMAN_PROMPT_SOURCES = {
+  typed = true, queued = true, suggestion_accepted = true,
 }
 
 -- --------------------------------------------------------------- helpers --
@@ -136,19 +166,84 @@ end
 
 local user = claude_account()
 
--- Session title. The status JSON doesn't carry it, but the transcript has
--- one JSON line per title change: "custom-title" (set via /rename) and
--- "ai-title" (generated). The latest custom title wins over the latest
--- generated one. Lines are prefiltered by plain substring search so only
--- the few title lines get decoded; scanning a 14MB transcript takes ~12ms.
-local function session_title(path)
-  if path == "" then return nil end
-  local f = io.open(path, "r")
-  if not f then return nil end
+-- Text of a user prompt entry: content is either a string or a list of
+-- blocks of which only the text blocks matter.
+local function prompt_text(entry)
+  local content = get(entry, "message.content", "")
+  if type(content) == "string" then return content end
+  if type(content) ~= "table" then return "" end
 
-  local custom, ai
+  local texts = {}
+  for _, block in ipairs(content) do
+    if type(block) == "table" and block.type == "text"
+      and type(block.text) == "string" then
+      texts[#texts + 1] = block.text
+    end
+  end
+  return table.concat(texts, " ")
+end
+
+-- Seconds since the epoch for a UTC ISO-8601 timestamp such as
+-- "2026-11-11T11:26:33.200Z", or nil. os.time() reads a date table as
+-- local time, so the local UTC offset is added back; both conversions use
+-- isdst = false so DST can't skew the offset.
+local function iso_utc_to_epoch(s)
+  local y, mo, d, h, mi, se =
+    s:match("^(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
+  if not y then return nil end
+
+  local now = os.time()
+  local utc_now = os.date("!*t", now)
+  utc_now.isdst = false
+  local offset = now - os.time(utc_now)
+
+  return os.time({
+    year = tonumber(y), month = tonumber(mo), day = tonumber(d),
+    hour = tonumber(h), min = tonumber(mi), sec = tonumber(se),
+    isdst = false,
+  }) + offset
+end
+
+-- Single pass over the transcript collecting:
+--   title       - session title. The status JSON doesn't carry it, but the
+--                 transcript has one JSON line per title change:
+--                 "custom-title" (set via /rename) and "ai-title"
+--                 (generated). The latest custom title wins over the
+--                 latest generated one.
+--   compactions - number of compact_boundary entries (manual and auto).
+--   prompts     - human, non-continuation prompts since the start or the
+--                 last compaction.
+--   last_ts     - epoch of the newest timestamped entry, for idle time.
+-- Lines are prefiltered by plain substring search so only the few
+-- interesting lines get decoded; scanning a 14MB transcript takes ~12ms.
+local function transcript_stats(path)
+  local stats = { compactions = 0, prompts = 0 }
+  if path == "" then return stats end
+  local f = io.open(path, "r")
+  if not f then return stats end
+
+  local custom, ai, last_ts_line
   for line in f:lines() do
-    if line:find('"type":"custom-title"', 1, true) then
+    -- Keep a reference to the newest line carrying a timestamp; it is only
+    -- parsed once after the loop.
+    if line:find('"timestamp":"', 1, true) then last_ts_line = line end
+
+    if line:find('"subtype":"compact_boundary"', 1, true) then
+      stats.compactions = stats.compactions + 1
+      stats.prompts = 0
+    elseif line:find('"promptSource":"', 1, true) then
+      local entry = json.decode(line)
+      if type(entry) == "table" and entry.type == "user"
+        and entry.isSidechain ~= true
+        and HUMAN_PROMPT_SOURCES[get(entry, "promptSource", "")] then
+        -- Normalize "Continue." / " continue " to the lookup key.
+        local text = prompt_text(entry):lower()
+          :gsub("^%s+", ""):gsub("[%s%p]+$", "")
+        if not CONTINUATION_PROMPTS[text] then
+          stats.prompts = stats.prompts + 1
+        end
+      end
+    elseif line:find('"type":"custom-title"', 1, true) then
       local entry = json.decode(line)
       local t = type(entry) == "table" and get(entry, "customTitle", "") or ""
       if t ~= "" then custom = t end
@@ -160,14 +255,58 @@ local function session_title(path)
   end
   f:close()
 
+  if last_ts_line then
+    local ts = last_ts_line:match('"timestamp":"([^"]+)"')
+    stats.last_ts = ts and iso_utc_to_epoch(ts)
+  end
+
   local title = custom or ai
-  if not title then return nil end
-  -- Control characters (newlines, escapes) would break the one-line bar.
-  title = title:gsub("%c", " ")
-  return title
+  if title then
+    -- Control characters (newlines, escapes) would break the one-line bar.
+    stats.title = title:gsub("%c", " ")
+  end
+  return stats
 end
 
-local title = session_title(get(data, "transcript_path", ""))
+local stats = transcript_stats(get(data, "transcript_path", ""))
+local title = stats.title
+
+-- Reasons to start a fresh session, plus whether any of them is severe.
+-- Returns nil when there is nothing to hint at.
+local function new_session_hint()
+  local reasons, severe = {}, false
+
+  if ctx_tokens >= HINT.CTX_HARD then
+    reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_HARD)
+    severe = true
+  elseif ctx_tokens >= HINT.CTX_SOFT then
+    reasons[#reasons + 1] = "ctx≥" .. fmt_tokens(HINT.CTX_SOFT)
+  end
+
+  if stats.compactions >= HINT.MAX_COMPACTIONS then
+    reasons[#reasons + 1] = stats.compactions .. "× compacted"
+  end
+
+  if stats.prompts >= HINT.MAX_PROMPTS then
+    reasons[#reasons + 1] = stats.prompts .. " prompts"
+  end
+
+  -- A big context whose prompt cache has expired gets re-written in full
+  -- on the next prompt, so a fresh session is the cheaper restart. Needs
+  -- statusLine.refreshInterval to show up while actually idle.
+  if stats.last_ts and ctx_tokens >= HINT.IDLE_CTX
+    and os.time() - stats.last_ts >= HINT.IDLE_SECS then
+    reasons[#reasons + 1] = "idle≥" .. math.floor(HINT.IDLE_SECS / 60) ..
+      "m, cache cold"
+  end
+
+  if #reasons == 0 then return nil end
+  -- Multiple independent reasons are as strong a signal as a severe one.
+  local color = (severe or #reasons >= 2) and C.RED or C.YELLOW
+  return color .. HINT.ICON .. " " .. table.concat(reasons, ", ") .. C.RESET
+end
+
+local hint = new_session_hint()
 
 local branch
 if dir ~= "" then
@@ -197,6 +336,10 @@ local ctx_text = ctx_level.color ..
   "[" .. fmt_tokens(ctx_tokens) .. ctx_level.marker .. "]" .. C.RESET
 
 parts[#parts + 1] = cost_text .. " " .. ctx_text
+
+if hint then
+  parts[#parts + 1] = hint
+end
 
 if added ~= 0 or removed ~= 0 then
   parts[#parts + 1] = DIFF_COLOR ..
