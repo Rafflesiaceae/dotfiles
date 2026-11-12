@@ -6,130 +6,159 @@ local power_profiles = require("i3sd.modules.power_profiles")
 local systemd = require("i3sd.modules.systemd")
 local nvidia = require("i3sd.modules.nvidia")
 local json_command = require("i3sd.modules.json_command")
+local directory_blocks = require("i3sd.modules.directory_blocks")
 local command = require("i3sd.modules.command")
 
-local color_bad = "#FF0000"
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+local color_bad = "#FF4535"
+local color_bad_very = "#FF0000"
 local color_degraded = "#FDD102"
 local color_dim = "#99947B"
+local color_normal = "#F8F8F2"
 
--- Failed system and user units are hidden while both managers are healthy.
-systemd {
-    scope = "both",
-    order = 500000,
-    format = function(value)
-        return {
-            full_text = ("systemd: %d failed"):format(value.count),
-            color = color_bad,
-            urgent = true,
-        }
-    end,
-}
+local function color_gradient(value, min, max, color_min, color_max)
+    local function rgb(color)
+        return tonumber(color:sub(2, 3), 16), tonumber(color:sub(4, 5), 16), tonumber(color:sub(6, 7), 16)
+    end
 
--- The original root disk block is warning-only below ten percent available.
-filesystem {
-    path = "/",
+    local t = math.max(0, math.min(1, (value - min) / (max - min)))
+    local r1, g1, b1 = rgb(color_min)
+    local r2, g2, b2 = rgb(color_max)
+
+    return ("#%02X%02X%02X"):format(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t)
+end
+
+local function color_gradient3(value, min, middle, max, color_left, color_middle, color_right)
+    if value <= middle then
+        return color_gradient(value, min, middle, color_left, color_middle)
+    else
+        return color_gradient(value, middle, max, color_middle, color_right)
+    end
+end
+
+local function color_gradient4(
+    value,
+    min,
+    middle_left,
+    middle_right,
+    max,
+    color_left,
+    color_middle_left,
+    color_middle_right,
+    color_right
+)
+    if value <= middle_left then
+        return color_gradient(value, min, middle_left, color_left, color_middle_left)
+    elseif value <= middle_right then
+        return color_gradient(value, middle_left, middle_right, color_middle_left, color_middle_right)
+    else
+        return color_gradient(value, middle_right, max, color_middle_right, color_right)
+    end
+end
+
+--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+i3sd.configure({
+    click_events = false,
+    debug = false,
+})
+
+-- datetime
+clock({
+    format = "📰 %Y-%m-%d  🕓 %H:%M:%S ·",
     interval = 2,
-    warn_below = 10,
-    critical_below = 10,
-    hysteresis = 1,
-    order = 40,
-    format = function(value)
-        return {
-            full_text = ("🧱 Disk: %.0f%%"):format(value.available_percent),
-            color = color_bad,
-        }
-    end,
-}
+})
 
--- Memory stays hidden while healthy and escalates at the original 20/10
--- percent available thresholds.
-memory {
-    interval = 2,
-    warn_below = 20,
-    critical_below = 10,
-    hysteresis = 2,
-    order = 30,
-    format = function(value)
-        return {
-            full_text = ("RAM: %.0f%%"):format(value.available_percent),
-            color = value.severity == "critical" and color_bad or color_degraded,
-            urgent = value.severity == "critical",
-        }
-    end,
-}
-
-block {
-    name = "load",
-    order = 20,
+block({
+    name = "cpu-load",
     interval = 2,
     update = function(ctx)
         local postfix = "  "
         local snapshot = assert(ctx:sample("load"))
-        if snapshot.load1 > 2.0 then
-            ctx:set {
-                full_text = ("🔲 <span foreground='%s'>%.2f</span>" .. postfix):format(color_degraded, snapshot.load1),
-                markup = "pango",
-            }
-            return
-        end
-        ctx:set {
-            full_text = ("🔲 %.2f" .. postfix):format(snapshot.load1),
+        local color =
+            color_gradient4(snapshot.load1, 1.0, 2.0, 6.0, 12.0, color_dim, color_normal, color_degraded, color_bad)
+        ctx:set({
+            full_text = ("🔲 <span foreground='%s'>%05.2f</span>" .. postfix):format(color, snapshot.load1),
+            markup = "pango",
+        })
+    end,
+})
+
+-- RAM
+memory({
+    interval = 2,
+    warn_below = 20,
+    critical_below = 10,
+    hysteresis = 2,
+    format = function(value)
+        local pct = tonumber(value.available_percent)
+        local color = color_gradient3(pct, 12, 20, 50, color_bad, color_degraded, color_normal)
+        return {
+            full_text = ("📛 RAM: %.0f%% "):format(pct),
+            color = color,
+            urgent = value.severity == "critical",
+        }
+    end,
+})
+
+-- disk
+filesystem({
+    path = "/",
+    interval = 2,
+    warn_below = 20,
+    critical_below = 10,
+    hysteresis = 1,
+    format = function(value)
+        return {
+            full_text = ("💾 %.0f%% "):format(tonumber(value.available_percent)),
+            color = color_bad,
+            urgent = value.severity == "critical",
+        }
+    end,
+})
+
+-- gpu
+nvidia({
+    index = 0,
+    interval = 5,
+    format = function(value)
+        local load = math.min(tonumber(value.load_percent) or 0, 99)
+        local color = color_gradient3(load, 20, 60, 99, color_dim, color_degraded, color_bad)
+
+        return {
+            full_text = ("  🔘 <span foreground='%s'>%02.0f%%</span> "):format(color, load),
             markup = "pango",
         }
     end,
-}
+})
 
-power_profiles {
-    order = 1000,
+power_profiles({
     format = function(value)
         local labels = {
-            ["power-saver"] = {"   😴   ", ""},
-            balanced        = {"   ➗   ", ""},
-            performance     = {"   🎯   ", ""},
+            ["power-saver"] = { "   😴   ", "" },
+            balanced = { "   ➗   ", "" },
+            performance = { "   🎯   ", "" },
         }
-        -- return "⚡ " .. (labels[value.active_profile] or value.active_profile)
-        -- return ("%s %s"):format(labels[value.active_profile][1], labels[value.active_profile][2])
         return {
             full_text = ("<span foreground='%s'>%s</span>"):format(color_dim, labels[value.active_profile][1]),
             markup = "pango",
             background = "#272822",
         }
-        -- if value.active_profile ~= "power-saver" then
-        --     return ("👽 %s"):format(labels[value.active_profile])
-        -- else
-        --     return "👽"
-        -- end
     end,
-}
+})
 
-clock {
-    format = "📰 %Y-%m-%d  🕓 %H:%M:%S ·",
-    interval = 2,
-    order = 10,
-}
-
-nvidia {
-    index = 0,
-    interval = 5,
-    order = 900,
-    format = function(value)
-        -- return ("🔘 %.0f%% %.1fW"):format(
-        return ("  🔘 %02.0f%% "):format(math.min(value.load_percent, 99) or 0)
-        -- return ("🔘 %.0f"):format((value.load_percent/10) or 0)
-    end,
-}
-
-json_command {
+-- llm/codex
+json_command({
     command = { "codex-usage", "--json" },
     interval = 30,
-    order = 10000,
     format = function(value)
         local result = ("🍚 %.0f%% %s/%.0f%% %s"):format(
-                tonumber(value["5h"]) or 0,
-                value["5h_reset_local"],
-                tonumber(value.week) or 0,
-                value["week_reset_local"]
-            )
+            tonumber(value["5h"]) or 0,
+            value["5h_reset_local"],
+            tonumber(value.week) or 0,
+            value["week_reset_local"]
+        )
 
         if value.credits > 0 then
             result = result .. (" · credits %g"):format(tonumber(value.credits) or 0)
@@ -140,15 +169,9 @@ json_command {
             markup = "pango",
         }
     end,
-}
+})
 
--- Reminds about a pending full system upgrade once the last one is at least
--- five days old. The distribution is decided once from os-release when the
--- configuration loads, so only its own pipeline ever runs. Each pipeline
--- prints the epoch of the last full upgrade, or nothing when its log is
--- missing or has no upgrade yet, which keeps the block hidden; errors go to
--- /dev/null instead of i3sd's stderr.
-command {
+command({
     name = "upgrade_reminder",
     shell = (function()
         if i3sd.os_like("arch") then
@@ -173,14 +196,17 @@ command {
             color = "#FDA202",
         }
     end,
-}
+})
 
--- The block updates immediately when the default sink, volume, or mute state
--- changes; no polling interval is involved.
--- pipewire_volume {
---     order = 800,
--- }
+systemd({
+    scope = "both",
+    format = function(value)
+        return {
+            full_text = ("systemd: %d failed"):format(value.count),
+            color = color_bad,
+            urgent = true,
+        }
+    end,
+})
 
--- Not represented here yet: read_file content, battery, cpu_temperature, and
--- volume need APIs/modules not present in this implementation. The commented
--- wireless and Ethernet blocks are outside i3sd's network-status scope.
+directory_blocks()
