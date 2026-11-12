@@ -6,6 +6,7 @@ local power_profiles = require("i3sd.modules.power_profiles")
 local systemd = require("i3sd.modules.systemd")
 local nvidia = require("i3sd.modules.nvidia")
 local json_command = require("i3sd.modules.json_command")
+local command = require("i3sd.modules.command")
 
 local color_bad = "#FF0000"
 local color_degraded = "#FDD102"
@@ -141,53 +142,44 @@ json_command {
     end,
 }
 
--- Reminds about a pending full system upgrade once the last one on ArchLinux
--- (pacman.log) or Ubuntu (apt history, including rotated logs) is at least
--- five days old. The shell part only extracts the epoch of the last upgrade
--- per distribution (0 when unknown) and always exits successfully, so a
--- missing log never turns into an error block.
-local upgrade_reminder_days = 5
-local upgrade_reminder_script = [==[
-arch=0
-ubuntu=0
-if [ -e /var/log/pacman.log ]; then
-    t="$(grep -i 'full system upgrade' /var/log/pacman.log | tail -1 | awk -F'[][]' '{print $2}')"
-    [ -n "$t" ] && arch="$(date --date="$t" +%s 2>/dev/null || echo 0)"
-fi
-if [ -e /var/log/apt/history.log ]; then
-    t="$(zcat -f /var/log/apt/history.log* | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1)"
-    [ -n "$t" ] && ubuntu="$(date --date="$t" +%s 2>/dev/null || echo 0)"
-fi
-printf '{"ArchLinux":%s,"Ubuntu":%s}\n' "${arch:-0}" "${ubuntu:-0}"
-exit 0
-]==]
+-- Reminds about a pending full system upgrade once the last one is at least
+-- five days old. The distribution is decided once from os-release when the
+-- configuration loads, so only its own pipeline ever runs. Each pipeline
+-- prints the epoch of the last full upgrade, or nothing when its log is
+-- missing or has no upgrade yet, which keeps the block hidden; errors go to
+-- /dev/null instead of i3sd's stderr. The do block keeps its locals out of
+-- the rest of the configuration.
+do
+    local reminder_days = 5
+    local script
+    if i3sd.os_like("arch") then
+        script = [==[grep -i 'full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | awk -F'[][]' '{print $2}' | xargs -r -I{} date --date={} +%s]==]
+    elseif i3sd.os_like("debian") then
+        -- apt history rotates, so the rotated gzip logs are searched as well.
+        script = [==[zcat -f /var/log/apt/history.log* 2>/dev/null | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1 | xargs -r -I{} date --date={} +%s]==]
+    end
 
-json_command {
-    command = { "sh", "-c", upgrade_reminder_script },
-    -- Upgrades are a days-scale concern, so checking every six hours is enough.
-    interval = 6 * 3600,
-    timeout = 60,
-    order = 400000,
-    format = function(value)
-        local now = os.time()
-        local due = {}
-        -- Fixed iteration order keeps the text stable if both logs exist.
-        for _, distro in ipairs({ "ArchLinux", "Ubuntu" }) do
-            local last = tonumber(value[distro]) or 0
-            if last > 0 and (now - last) / 86400 >= upgrade_reminder_days then
-                due[#due + 1] = "Update " .. distro
-            end
-        end
-        -- Nothing due hides the block.
-        if #due == 0 then
-            return nil
-        end
-        return {
-            full_text = table.concat(due, " · ") .. "  ",
-            color = "#FDA202",
+    -- Other distributions get no block at all.
+    if script ~= nil then
+        command {
+            name = "upgrade_reminder",
+            shell = script,
+            -- Upgrades are a days-scale concern, so checking every six hours is enough.
+            interval = 6 * 3600,
+            order = 400000,
+            format = function(stdout)
+                local last = tonumber(stdout:match("%d+"))
+                if last == nil or (os.time() - last) / 86400 < reminder_days then
+                    return nil
+                end
+                return {
+                    full_text = "Update " .. i3sd.os_release.NAME .. "  ",
+                    color = "#FDA202",
+                }
+            end,
         }
-    end,
-}
+    end
+end
 
 -- The block updates immediately when the default sink, volume, or mute state
 -- changes; no polling interval is involved.
