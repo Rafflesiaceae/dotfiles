@@ -92,6 +92,7 @@ sources = {
     "./.local/bin/autoformat-xml": "",
     "./.local/bin/autoformat-yml": "",
     "./.local/bin/autoversion": "",
+    "./.local/bin/b": "",
     "./.local/bin/bazel-list": "",
     "./.local/bin/beary": "",
     "./.local/bin/bell": "",

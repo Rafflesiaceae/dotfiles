@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+if [ -e ./bootstrap.py ]; then
+    ./bootstrap.py "$@"
+elif [ -e ./build.sh ]; then
+    ./build.sh "$@"
+else
+    build "$@"
+fi
