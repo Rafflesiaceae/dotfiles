@@ -1,17 +1,67 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Usage:
-#   script.sh              Reset author/committer of all commits
-#   script.sh <commit>     Reset author/committer of one commit
-#
-# Only the author/committer name and email are rewritten; the original
-# author and committer dates are kept untouched.
+usage() {
+    local prog
+    prog="$(basename "$0")"
+    cat <<EOF
+Usage: $prog [-d|--reset-dates] [--] [commit]
+       $prog -h|--help
 
-if (( $# > 1 )); then
-    echo "Usage: $0 [commit]" >&2
+Rewrite the author and committer of commits on the current branch to the
+identity configured via git user.name / user.email.
+
+Without <commit>, every commit of the current branch is rewritten.
+With <commit>, only that single commit is rewritten.
+
+By default only names and emails are changed; the original author and
+committer dates are kept untouched.
+
+Options:
+  -d, --reset-dates  Also set author and committer dates to the current time
+  -h, --help         Show this help and exit
+
+The original history is preserved in a backup/author-rewrite-* branch.
+EOF
+}
+
+reset_dates=0
+args=()
+
+# Parse options; anything that is not a known flag is treated as the
+# optional commit argument. "--" ends option parsing.
+while (( $# > 0 )); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        -d|--reset-dates)
+            reset_dates=1
+            ;;
+        --)
+            shift
+            args+=("$@")
+            break
+            ;;
+        -*)
+            echo "Error: unknown option: $1" >&2
+            usage >&2
+            exit 1
+            ;;
+        *)
+            args+=("$1")
+            ;;
+    esac
+    shift
+done
+
+if (( ${#args[@]} > 1 )); then
+    usage >&2
     exit 1
 fi
+
+set -- "${args[@]}"
 
 if ! command -v git-filter-repo >/dev/null 2>&1; then
     echo "Error: git-filter-repo is not installed" >&2
@@ -54,6 +104,7 @@ git branch "$backup" HEAD
 GIT_REWRITE_TARGET="$target" \
 GIT_REWRITE_NAME="$name" \
 GIT_REWRITE_EMAIL="$email" \
+GIT_REWRITE_DATE="$( (( reset_dates )) && date '+%s %z' || true )" \
 git filter-repo \
     --force \
     --refs "$branch" \
@@ -75,6 +126,12 @@ if not target or commit.original_id == target:
 
     commit.committer_name = name
     commit.committer_email = email
+
+    # Only set when --reset-dates was given; otherwise keep original dates.
+    date = os.environ["GIT_REWRITE_DATE"].encode()
+    if date:
+        commit.author_date = date
+        commit.committer_date = date
 '
 
 echo "Done. Original history preserved in branch: $backup"
