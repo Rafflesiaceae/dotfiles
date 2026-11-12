@@ -1,5 +1,7 @@
 scriptencoding utf-8
 " {{{ 🔨 Core options
+set shortmess+=I
+
 function! SourceIfExists(file) abort
     let l:path = expand(a:file)
     if filereadable(l:path)
