@@ -141,6 +141,54 @@ json_command {
     end,
 }
 
+-- Reminds about a pending full system upgrade once the last one on ArchLinux
+-- (pacman.log) or Ubuntu (apt history, including rotated logs) is at least
+-- five days old. The shell part only extracts the epoch of the last upgrade
+-- per distribution (0 when unknown) and always exits successfully, so a
+-- missing log never turns into an error block.
+local upgrade_reminder_days = 5
+local upgrade_reminder_script = [==[
+arch=0
+ubuntu=0
+if [ -e /var/log/pacman.log ]; then
+    t="$(grep -i 'full system upgrade' /var/log/pacman.log | tail -1 | awk -F'[][]' '{print $2}')"
+    [ -n "$t" ] && arch="$(date --date="$t" +%s 2>/dev/null || echo 0)"
+fi
+if [ -e /var/log/apt/history.log ]; then
+    t="$(zcat -f /var/log/apt/history.log* | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1)"
+    [ -n "$t" ] && ubuntu="$(date --date="$t" +%s 2>/dev/null || echo 0)"
+fi
+printf '{"ArchLinux":%s,"Ubuntu":%s}\n' "${arch:-0}" "${ubuntu:-0}"
+exit 0
+]==]
+
+json_command {
+    command = { "sh", "-c", upgrade_reminder_script },
+    -- Upgrades are a days-scale concern, so checking every six hours is enough.
+    interval = 6 * 3600,
+    timeout = 60,
+    order = 400000,
+    format = function(value)
+        local now = os.time()
+        local due = {}
+        -- Fixed iteration order keeps the text stable if both logs exist.
+        for _, distro in ipairs({ "ArchLinux", "Ubuntu" }) do
+            local last = tonumber(value[distro]) or 0
+            if last > 0 and (now - last) / 86400 >= upgrade_reminder_days then
+                due[#due + 1] = "Update " .. distro
+            end
+        end
+        -- Nothing due hides the block.
+        if #due == 0 then
+            return nil
+        end
+        return {
+            full_text = table.concat(due, " · ") .. "  ",
+            color = "#FDA202",
+        }
+    end,
+}
+
 -- The block updates immediately when the default sink, volume, or mute state
 -- changes; no polling interval is involved.
 -- pipewire_volume {
