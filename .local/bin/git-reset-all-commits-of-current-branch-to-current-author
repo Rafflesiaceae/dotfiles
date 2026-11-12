@@ -4,6 +4,9 @@ set -euo pipefail
 # Usage:
 #   script.sh              Reset author/committer of all commits
 #   script.sh <commit>     Reset author/committer of one commit
+#
+# Only the author/committer name and email are rewritten; the original
+# author and committer dates are kept untouched.
 
 if (( $# > 1 )); then
     echo "Usage: $0 [commit]" >&2
@@ -51,7 +54,6 @@ git branch "$backup" HEAD
 GIT_REWRITE_TARGET="$target" \
 GIT_REWRITE_NAME="$name" \
 GIT_REWRITE_EMAIL="$email" \
-GIT_REWRITE_DATE="$(date '+%s %z')" \
 git filter-repo \
     --force \
     --refs "$branch" \
@@ -67,15 +69,12 @@ target = os.environ["GIT_REWRITE_TARGET"].encode()
 if not target or commit.original_id == target:
     name = os.environ["GIT_REWRITE_NAME"].encode()
     email = os.environ["GIT_REWRITE_EMAIL"].encode()
-    date = os.environ["GIT_REWRITE_DATE"].encode()
 
     commit.author_name = name
     commit.author_email = email
-    commit.author_date = date
 
     commit.committer_name = name
     commit.committer_email = email
-    commit.committer_date = date
 '
 
 echo "Done. Original history preserved in branch: $backup"
