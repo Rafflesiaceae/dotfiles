@@ -147,39 +147,33 @@ json_command {
 -- configuration loads, so only its own pipeline ever runs. Each pipeline
 -- prints the epoch of the last full upgrade, or nothing when its log is
 -- missing or has no upgrade yet, which keeps the block hidden; errors go to
--- /dev/null instead of i3sd's stderr. The do block keeps its locals out of
--- the rest of the configuration.
-do
-    local reminder_days = 5
-    local script
-    if i3sd.os_like("arch") then
-        script = [==[grep -i 'full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | awk -F'[][]' '{print $2}' | xargs -r -I{} date --date={} +%s]==]
-    elseif i3sd.os_like("debian") then
-        -- apt history rotates, so the rotated gzip logs are searched as well.
-        script = [==[zcat -f /var/log/apt/history.log* 2>/dev/null | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1 | xargs -r -I{} date --date={} +%s]==]
-    end
-
-    -- Other distributions get no block at all.
-    if script ~= nil then
-        command {
-            name = "upgrade_reminder",
-            shell = script,
-            -- Upgrades are a days-scale concern, so checking every six hours is enough.
-            interval = 6 * 3600,
-            order = 400000,
-            format = function(stdout)
-                local last = tonumber(stdout:match("%d+"))
-                if last == nil or (os.time() - last) / 86400 < reminder_days then
-                    return nil
-                end
-                return {
-                    full_text = "Update " .. i3sd.os_release.NAME .. "  ",
-                    color = "#FDA202",
-                }
-            end,
+-- /dev/null instead of i3sd's stderr.
+command {
+    name = "upgrade_reminder",
+    shell = (function()
+        if i3sd.os_like("arch") then
+            return [==[grep -i 'full system upgrade' /var/log/pacman.log 2>/dev/null | tail -1 | awk -F'[][]' '{print $2}' | xargs -r -I{} date --date={} +%s]==]
+        elseif i3sd.os_like("debian") then
+            -- apt history rotates, so the rotated gzip logs are searched as well.
+            return [==[zcat -f /var/log/apt/history.log* 2>/dev/null | awk '/^Start-Date:/ { d = $2 " " $3 } /^Commandline:.* (dist-|full-)?upgrade( |$)/ { print d }' | sort | tail -1 | xargs -r -I{} date --date={} +%s]==]
+        end
+        -- Other distributions get no block at all.
+        return false
+    end)(),
+    -- Upgrades are a days-scale concern, so checking every six hours is enough.
+    interval = 6 * 3600,
+    order = 400000,
+    format = function(stdout)
+        local last = tonumber(stdout:match("%d+"))
+        if last == nil or (os.time() - last) / 86400 < 5 then
+            return nil
+        end
+        return {
+            full_text = "Update " .. i3sd.os_release.NAME .. "  ",
+            color = "#FDA202",
         }
-    end
-end
+    end,
+}
 
 -- The block updates immediately when the default sink, volume, or mute state
 -- changes; no polling interval is involved.
