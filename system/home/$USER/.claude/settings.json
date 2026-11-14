@@ -11,6 +11,17 @@
   },
   "model": "opus",
   "disableAgentView": true,
+  "disableClaudeAiConnectors": true,
+  "disableBundledSkills": true,
+  "enableArtifact": false,
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true,
+    "cc-plugin-easel@builtin": true,
+    "cc-plugin-plugin-authoring@builtin": false,
+    "cc-plugin-telemetry@builtin": false
+  },
+  "syncClaudeAiSkills": false,
+  "syncClaudeAiPlugins": false,
   "statusLine": {
     "type": "command",
     "command": "lust ~/.claude/statusline.lua",
