@@ -42,7 +42,7 @@ end)
 -- the shifted "D". Note: i3 currently grabs Mod4+Shift+d itself, so this
 -- only fires once that i3 binding is removed or changed.
 api.bind("Mod4-Shift-D", function(t)
-	api.write(t, "hello world")
+	api.write(t, "let's talk about this first, don't do anything yet")
 end)
 
 -- Claude Code idle marker: while Claude Code in a terminal is idle and
@@ -77,7 +77,7 @@ local CLAUDE_MARKER = {
 	dir = runtime_dir and runtime_dir ~= "" and runtime_dir .. "/i3sd-blocks",
 	-- Full text, short text, options; marker-watch unescapes the "\n".
 	-- i3sd has no "alert" option, "urgent" is i3bar's alert highlight.
-	contents = [[CLAUDE\nCLAUDE\nurgent=true\n]],
+	contents = [[♻\n♻\nurgent=true\n]],
 }
 
 -- Starts marker-watch for terminal t unless it is already running. Its
