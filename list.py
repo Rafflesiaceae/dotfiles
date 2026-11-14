@@ -438,6 +438,7 @@ sources = {
     "./.zshrc": {"linux": ""},
     "./.icon.jenkins.build.failed.png": "",
     "./.icon.jenkins.build.success.png": "",
+    "./.zprofile": "",
 }
 
 if common.get_current_os() == None:

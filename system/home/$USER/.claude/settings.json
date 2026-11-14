@@ -1,4 +1,6 @@
 {
+  "syncClaudeAiSkills": false,
+  "syncClaudeAiPlugins": false,
   "env": {
     "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1",
     "CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY": "1",
@@ -10,9 +12,9 @@
     "pr": ""
   },
   "model": "opus",
-  "disableAgentView": true,
   "disableClaudeAiConnectors": true,
   "disableBundledSkills": true,
+  "disableAgentView": true,
   "enableArtifact": false,
   "enabledPlugins": {
     "clangd-lsp@claude-plugins-official": true,
@@ -20,8 +22,6 @@
     "cc-plugin-plugin-authoring@builtin": false,
     "cc-plugin-telemetry@builtin": false
   },
-  "syncClaudeAiSkills": false,
-  "syncClaudeAiPlugins": false,
   "statusLine": {
     "type": "command",
     "command": "lust ~/.claude/statusline.lua",
