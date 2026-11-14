@@ -38,6 +38,13 @@ api.bind("Control-Shift-L", function(t)
 	})
 end)
 
+-- Win+Shift+D types "hello world" as if typed (no Enter). The keysym is
+-- the shifted "D". Note: i3 currently grabs Mod4+Shift+d itself, so this
+-- only fires once that i3 binding is removed or changed.
+api.bind("Mod4-Shift-D", function(t)
+	api.write(t, "hello world")
+end)
+
 -- Claude Code idle marker: while Claude Code in a terminal is idle and
 -- waiting for a prompt, an urgent "CLAUDE" item is shown in the i3bar via
 -- i3sd's directory_blocks module, one item per terminal. marker-watch
