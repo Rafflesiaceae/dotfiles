@@ -17,7 +17,7 @@ local color_degraded = "#FDD102"
 local color_dim = "#99947B"
 local color_normal = "#F8F8F2"
 
-local function color_gradient(value, min, max, color_min, color_max)
+local function color_gradient2(value, min, max, color_min, color_max)
     local function rgb(color)
         return tonumber(color:sub(2, 3), 16), tonumber(color:sub(4, 5), 16), tonumber(color:sub(6, 7), 16)
     end
@@ -31,9 +31,9 @@ end
 
 local function color_gradient3(value, min, middle, max, color_left, color_middle, color_right)
     if value <= middle then
-        return color_gradient(value, min, middle, color_left, color_middle)
+        return color_gradient2(value, min, middle, color_left, color_middle)
     else
-        return color_gradient(value, middle, max, color_middle, color_right)
+        return color_gradient2(value, middle, max, color_middle, color_right)
     end
 end
 
@@ -49,11 +49,11 @@ local function color_gradient4(
     color_right
 )
     if value <= middle_left then
-        return color_gradient(value, min, middle_left, color_left, color_middle_left)
+        return color_gradient2(value, min, middle_left, color_left, color_middle_left)
     elseif value <= middle_right then
-        return color_gradient(value, middle_left, middle_right, color_middle_left, color_middle_right)
+        return color_gradient2(value, middle_left, middle_right, color_middle_left, color_middle_right)
     else
-        return color_gradient(value, middle_right, max, color_middle_right, color_right)
+        return color_gradient2(value, middle_right, max, color_middle_right, color_right)
     end
 end
 
