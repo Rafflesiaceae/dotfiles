@@ -1,6 +1,6 @@
 In case you are working on something, finish up what you're currently doing.
 
-Write `./claude-handoff` (markdown, under 60 lines) so a fresh session with no context can continue without asking me anything. First check the real state instead of trusting memory or summaries, and mark anything you couldn't check as `(unverified)`. If the file already exists, replace it.
+Write `./claude-handoff.md` under 60 lines so a fresh session with no context can continue without asking me anything. First check the real state instead of trusting memory or summaries, and mark anything you couldn't check as `(unverified)`. If the file already exists, replace it.
 
 Be specific (paths, commands, commit hashes, errors), don't repeat repo docs (link to them instead), leave out secrets, and don't commit the file.
 
