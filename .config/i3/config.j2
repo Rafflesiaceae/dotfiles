@@ -178,7 +178,10 @@ bindsym »mod«+Ctrl+m bar mode toggle
 bindsym Print exec "maim | tee ~/shot_$(date +%s).png | xclip -selection clipboard -t image/png -i"
 bindsym Control+space exec "dunstctl close"
 bindsym Control+Shift+space exec "dunstctl history-pop"
-bindsym button8 kill
+
+# mouse buttons that kill windows
+bindsym button8 kill # thumb button
+bindsym button2 kill # middle button
 
 # }}}
 # {{{ MODES
