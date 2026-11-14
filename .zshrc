@@ -406,9 +406,12 @@ bindkey '^[[15~' edit_which_current_buffer # F5
 # --- terminal title: idle/command, and show failure title if last exit != 0 ---
 
 # Customize this if you want:
-typeset -g ZSH_TITLE_IDLE=${ZSH_TITLE_IDLE:-zsh}
-typeset -g ZSH_TITLE_FAIL=${ZSH_TITLE_FAIL:-zsh}   # shown when last command exited non-zero
+typeset -g ZSH_TITLE_IDLE=${ZSH_TITLE_IDLE:-zsh}   # fallback before any command has run
 typeset -g ZSH_TITLE_MAXLEN=${ZSH_TITLE_MAXLEN:-120}
+
+# Command line of the most recently executed command, set in preexec and
+# shown in the idle title together with its success/failure marker
+typeset -g __title_last_cmd=
 
 # Set terminal/window title (works for most xterm-compatible terminals, including in tmux/screen).
 __title_set() {
@@ -436,16 +439,18 @@ __title_set() {
 __title_idle() {
   local st=$?   # exit status of the last command (as seen by precmd)
   emulate -L zsh
+  local label=${__title_last_cmd:-$ZSH_TITLE_IDLE}
   if (( st != 0 && st != 130 )); then
-    __title_set "🔴 ${ZSH_TITLE_FAIL}"
+    __title_set "🔴 ${label}"
   else
-    __title_set "🟢 ${ZSH_TITLE_IDLE}"
+    __title_set "🟢 ${label}"
   fi
 }
 
 __title_preexec() {
   emulate -L zsh
   local cmdline="$1"
+  __title_last_cmd=$cmdline
   __title_set "🟡 $cmdline"
 }
 
