@@ -99,10 +99,12 @@ bindsym »mod«+Shift+s mark --add user-scratchpad, move scratchpad
 bindsym »mod«+s [con_mark="^user-scratchpad$"] scratchpad show
 bindsym »mod«+F12 scratchpad show
 
+bindsym »mod«+F4 exec "quickaction"
+
 bindsym »mod«+Shift+t sticky toggle
 
-bindsym »mod«+Shift+a focus parent
-bindsym »mod«+Shift+d focus child
+bindsym »mod«+Ctrl+a focus parent
+bindsym »mod«+Ctrl+d focus child
 
 bindsym »mod«+Shift+c reload
 bindsym »mod«+Shift+r restart
@@ -138,9 +140,10 @@ bindsym »mod«+m exec cb-surround-with-fences
 bindsym »mod«+o exec paup
 bindsym »mod«+y exec paup
 # bindsym »mod«+x exec paup
-bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
+# bindsym »mod«+F1 exec "X11_ACTIVEWINDOW=\\"$(xdotool getactivewindow)\\" termpopup \\"smart-context\\""
+bindsym »mod«+F1 exec "quickaction"
 bindsym »mod«+F2 exec idleby
-bindsym »mod«+F4 exec "termpopup --fullterm --no-wait -- vim \\"$(cb)\\""
+# bindsym »mod«+F4 exec "termpopup --fullterm --no-wait -- vim \\"$(cb)\\""
 {# @XXX the "&& :" part is here because otherwise termpopup using /bin/bash as $SHELL somehow prevents ezautocompl from copying to clipboard - might be a timing issue, however adding another command fixes this, so we use ":" - nop #}
 bindsym »mod«+u exec termpopup ezautocompl "--path" "$HOME/.config/ezautocompl.yml" "&&" ":"
 bindsym »mod«+F8 exec raf-last-shell-output 1
