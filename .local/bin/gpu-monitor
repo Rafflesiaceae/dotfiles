@@ -1,0 +1,478 @@
+#!/usr/bin/env luajit
+
+-- Show NVIDIA compute and graphics activity by program, with optional
+-- per-process details. nvidia-smi supplies utilization and framebuffer usage.
+
+local ffi = require("ffi")
+local bit = require("bit")
+
+ffi.cdef([[
+typedef long ssize_t;
+ssize_t readlink(const char *pathname, char *buf, size_t bufsiz);
+int getpid(void);
+int usleep(unsigned int usec);
+int isatty(int fd);
+typedef unsigned char cc_t;
+typedef unsigned int speed_t;
+typedef unsigned int tcflag_t;
+struct termios {
+    tcflag_t c_iflag;
+    tcflag_t c_oflag;
+    tcflag_t c_cflag;
+    tcflag_t c_lflag;
+    cc_t c_line;
+    cc_t c_cc[32];
+    speed_t c_ispeed;
+    speed_t c_ospeed;
+};
+int tcgetattr(int fd, struct termios *termios_p);
+int tcsetattr(int fd, int optional_actions, const struct termios *termios_p);
+ssize_t read(int fd, void *buf, size_t count);
+]])
+
+local C = ffi.C
+local TCSANOW = 0
+local ISIG = 1
+local ICANON = 2
+local ECHO = 8
+local ECHONL = 64
+local VTIME = 5
+local VMIN = 6
+local terminal_state
+
+local function restore_terminal()
+	if terminal_state then
+		C.tcsetattr(0, TCSANOW, terminal_state)
+		terminal_state = nil
+	end
+end
+
+local function enable_terminal_input(options)
+	if options.no_clear or C.isatty(0) ~= 1 or C.isatty(1) ~= 1 then
+		return
+	end
+
+	local original = ffi.new("struct termios[1]")
+	if C.tcgetattr(0, original) ~= 0 then
+		return
+	end
+	local raw = ffi.new("struct termios[1]")
+	ffi.copy(raw, original, ffi.sizeof("struct termios"))
+	-- Keep input immediately readable and suppress echo. ISIG is disabled so
+	-- Ctrl-C arrives as a byte and follows the same clean restoration path as q.
+	raw[0].c_lflag = bit.band(raw[0].c_lflag, bit.bnot(bit.bor(ISIG, ICANON, ECHO, ECHONL)))
+	raw[0].c_cc[VMIN] = 0
+	raw[0].c_cc[VTIME] = 0
+	if C.tcsetattr(0, TCSANOW, raw) == 0 then
+		terminal_state = original
+	end
+end
+
+local function quit_requested()
+	if not terminal_state then
+		return false
+	end
+	local buffer = ffi.new("unsigned char[64]")
+	local length = C.read(0, buffer, 64)
+	for index = 0, tonumber(length) - 1 do
+		if buffer[index] == string.byte("q") or buffer[index] == string.byte("Q") or buffer[index] == 3 then
+			return true
+		end
+	end
+	return false
+end
+
+local function usage(stream)
+	stream:write([[
+Usage: gpu-monitor [options]
+
+Continuously show the programs using the GPU, grouped by executable
+(and by script/module for common interpreters).
+
+Options:
+  -i, --interval SECONDS   Refresh interval (default: 2)
+  -l, --limit COUNT        Maximum programs to display (default: 15)
+  -p, --instances COUNT    Instances per program (default: 0)
+  -n, --count COUNT        Stop after this many snapshots
+      --no-clear          Print every snapshot instead of refreshing the screen
+  -h, --help              Show this help
+
+Programs are grouped by executable (and script/module) separately for each GPU.
+Ranked by SM activity, then encoder/decoder activity, then VRAM usage.
+SM is GPU execution activity; MEM is memory controller activity, not VRAM size.
+Percentages are NVIDIA's sample averages; grouped percentages are sums and may
+exceed 100%. Unsupported metrics appear as -; partial sums are marked with *.
+Requires nvidia-smi with pmon support. Press q or Ctrl-C to stop.
+]])
+end
+
+local function die(message)
+	restore_terminal()
+	io.stderr:write("gpu-monitor: ", message, "\n\n")
+	usage(io.stderr)
+	os.exit(2)
+end
+
+local function positive_number(value, option)
+	local number = tonumber(value)
+	if not number or number <= 0 or number ~= number or number == math.huge then
+		die(option .. " requires a number greater than zero")
+	end
+	return number
+end
+
+local function nonnegative_integer(value, option)
+	local number = tonumber(value)
+	if not number or number < 0 or number ~= number or number == math.huge or number ~= math.floor(number) then
+		die(option .. " requires a non-negative integer")
+	end
+	return number
+end
+
+local function parse_options(arguments)
+	local options = {
+		interval = 2,
+		limit = 15,
+		instances = 0,
+		count = nil,
+		no_clear = false,
+	}
+
+	local index = 1
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-h" or argument == "--help" then
+			usage(io.stdout)
+			os.exit(0)
+		elseif argument == "--no-clear" then
+			options.no_clear = true
+		elseif argument == "-i" or argument == "--interval" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.interval = positive_number(arguments[index], argument)
+		elseif argument == "-l" or argument == "--limit" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.limit = nonnegative_integer(arguments[index], argument)
+			if options.limit == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		elseif argument == "-p" or argument == "--instances" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.instances = nonnegative_integer(arguments[index], argument)
+		elseif argument == "-n" or argument == "--count" then
+			index = index + 1
+			if not arguments[index] then
+				die(argument .. " requires a value")
+			end
+			options.count = nonnegative_integer(arguments[index], argument)
+			if options.count == 0 then
+				die(argument .. " requires an integer greater than zero")
+			end
+		else
+			die("unknown option: " .. argument)
+		end
+		index = index + 1
+	end
+
+	return options
+end
+
+local function read_file(path)
+	local file = io.open(path, "rb")
+	if not file then
+		return nil
+	end
+	local contents = file:read("*a")
+	file:close()
+	return contents
+end
+
+local function read_link(path)
+	local buffer_size = 4096
+	local buffer = ffi.new("char[?]", buffer_size)
+	local length = C.readlink(path, buffer, buffer_size)
+	if length < 0 then
+		return nil
+	end
+	return ffi.string(buffer, length)
+end
+
+local function process_arguments(pid)
+	local contents = read_file("/proc/" .. pid .. "/cmdline")
+	local arguments = {}
+	if contents then
+		for argument in contents:gmatch("([^%z]+)") do
+			-- Avoid letting control characters in command lines corrupt the display.
+			arguments[#arguments + 1] = argument:gsub("[%c]", "?")
+		end
+	end
+	return arguments
+end
+
+local function basename(path)
+	return path:match("([^/]+)/*$") or path
+end
+
+local interpreters = {
+	bash = true,
+	dash = true,
+	fish = true,
+	lua = true,
+	luajit = true,
+	node = true,
+	perl = true,
+	ruby = true,
+	sh = true,
+	zsh = true,
+}
+
+local function is_interpreter(name)
+	return interpreters[name]
+		or name:match("^lua%d*%.?%d*$") ~= nil
+		or name:match("^luajit[%d%.%-]*$") ~= nil
+		or name:match("^python%d*%.?%d*$") ~= nil
+end
+
+local function interpreter_subject(arguments)
+	local index = 2
+	while index <= #arguments do
+		local argument = arguments[index]
+		if argument == "-m" and arguments[index + 1] then
+			return "-m " .. arguments[index + 1]
+		elseif (argument == "-c" or argument == "-e") and arguments[index + 1] then
+			return argument .. " " .. arguments[index + 1]
+		elseif argument:sub(1, 1) ~= "-" then
+			return argument
+		end
+		index = index + 1
+	end
+	return nil
+end
+
+local function process_identity(pid, stat)
+	local executable = read_link("/proc/" .. pid .. "/exe")
+	local arguments = process_arguments(pid)
+	local executable_name = executable and basename(executable) or stat.command
+	executable_name = executable_name:gsub("[%c]", "?")
+	local key = executable or ("[" .. stat.command .. "]")
+	local label = executable_name
+
+	-- Separate scripts and modules that happen to share the same interpreter.
+	if is_interpreter(executable_name) then
+		local subject = interpreter_subject(arguments)
+		if subject then
+			key = key .. "\0" .. subject
+			label = executable_name .. " " .. subject
+		end
+	end
+
+	local command_line
+	if #arguments > 0 then
+		command_line = table.concat(arguments, " ")
+	else
+		command_line = "[" .. stat.command .. "]"
+	end
+	return key, label, command_line
+end
+
+local function truncate(value, maximum)
+	if #value <= maximum then
+		return value
+	end
+	if maximum <= 3 then
+		return value:sub(1, maximum)
+	end
+	return value:sub(1, maximum - 3) .. "..."
+end
+
+local function sleep_for(seconds)
+	-- Poll input between short sleeps so q stays responsive with long intervals.
+	while seconds > 0 do
+		local slice = math.min(seconds, 0.05)
+		C.usleep(math.floor(slice * 1000000))
+		if quit_requested() then
+			return true
+		end
+		seconds = seconds - slice
+	end
+	return false
+end
+
+-- pmon adds columns across driver versions. Resolve their positions from the
+-- header instead of assuming fixed offsets (e.g. newer JPEG/OFA/CCPM columns).
+local function sample_programs()
+	local pipe, message = io.popen("LC_ALL=C nvidia-smi pmon -s um -c 1 2>&1", "r")
+	if not pipe then
+		error("cannot run nvidia-smi: " .. tostring(message), 0)
+	end
+	local output = pipe:read("*a")
+	pipe:close()
+	local columns
+	local instances = {}
+	for line in output:gmatch("[^\n]+") do
+		local fields = {}
+		for field in line:gmatch("%S+") do
+			fields[#fields + 1] = field
+		end
+		if fields[1] == "#" and fields[2] == "gpu" then
+			columns = {}
+			for index = 2, #fields do
+				columns[fields[index]] = index - 1
+			end
+		elseif columns and tonumber(fields[columns.gpu]) and tonumber(fields[columns.pid]) then
+			local instance = { gpu = tonumber(fields[columns.gpu]), pid = tonumber(fields[columns.pid]) }
+			for _, metric in ipairs({ "sm", "mem", "enc", "dec", "fb" }) do
+				instance[metric] = columns[metric] and tonumber(fields[columns[metric]]) or nil
+			end
+			local command = columns.command and table.concat(fields, " ", columns.command) or tostring(instance.pid)
+			instance.command = command:gsub("[%c]", "?")
+			instances[#instances + 1] = instance
+		end
+	end
+	if not columns or not columns.gpu or not columns.pid or not columns.sm or not columns.fb then
+		-- A driver failure, missing command, or unsupported pmon must not look like
+		-- an idle GPU. Include NVIDIA's diagnostic instead of an empty table.
+		error("cannot read NVIDIA process data: " .. (output:match("^%s*(.-)%s*$") or "")
+			.. "\nRequires nvidia-smi with pmon -s um support.", 0)
+	end
+
+	local groups = {}
+	for _, instance in ipairs(instances) do
+		local key, label, command_line = process_identity(instance.pid, instance)
+		key = instance.gpu .. "\0" .. key
+		local program = groups[key]
+		if not program then
+			program = { gpu = instance.gpu, label = label, instances = {}, missing = {} }
+			groups[key] = program
+		end
+		instance.command_line = command_line
+		program.instances[#program.instances + 1] = instance
+		for _, metric in ipairs({ "sm", "mem", "enc", "dec", "fb" }) do
+			if instance[metric] ~= nil then
+				program[metric] = (program[metric] or 0) + instance[metric]
+			else
+				program.missing[metric] = true
+			end
+		end
+	end
+
+	local function higher_usage(left, right)
+		for _, metric in ipairs({ "sm", "enc", "dec", "fb" }) do
+			local a, b = left[metric] or -1, right[metric] or -1
+			if a ~= b then
+				return a > b
+			end
+		end
+		if left.gpu ~= right.gpu then
+			return left.gpu < right.gpu
+		end
+		if left.label then
+			return left.label < right.label
+		end
+		return left.pid < right.pid
+	end
+	-- Rebuild each snapshot so exited processes do not retain stale activity.
+	local programs = {}
+	for _, program in pairs(groups) do
+		table.sort(program.instances, higher_usage)
+		programs[#programs + 1] = program
+	end
+	table.sort(programs, higher_usage)
+	return programs
+end
+
+local function format_metric(entry, metric)
+	local value = entry[metric]
+	if value == nil then
+		return "-"
+	end
+	local marker = entry.missing and entry.missing[metric] and "*" or ""
+	if metric == "fb" then
+		-- NVIDIA reports framebuffer usage in MiB, despite labeling it MB.
+		if value >= 1024 then
+			return string.format("%.2fGiB", value / 1024) .. marker
+		end
+		return string.format("%.0fMiB", value) .. marker
+	end
+	return string.format("%.0f%%", value) .. marker
+end
+
+local function render(state, programs, options)
+	local lines = {
+		string.format("gpu-monitor  NVIDIA compute + graphics processes  interval %.2fs", options.interval),
+		string.format("%3s %7s %7s %7s %7s %10s %4s  %s",
+			"GPU", "SM", "MEM", "ENC", "DEC", "VRAM", "RUN", "PROGRAM / INSTANCE"),
+	}
+	for index = 1, math.min(options.limit, #programs) do
+		local program = programs[index]
+		lines[#lines + 1] = string.format("%3d %7s %7s %7s %7s %10s %4d  %s",
+			program.gpu, format_metric(program, "sm"), format_metric(program, "mem"),
+			format_metric(program, "enc"), format_metric(program, "dec"), format_metric(program, "fb"),
+			#program.instances, truncate(program.label, 96))
+		for row = 1, math.min(options.instances, #program.instances) do
+			local instance = program.instances[row]
+			lines[#lines + 1] = string.format("%3s %7s %7s %7s %7s %10s %4s    pid %-7d %s",
+				"", format_metric(instance, "sm"), format_metric(instance, "mem"),
+				format_metric(instance, "enc"), format_metric(instance, "dec"), format_metric(instance, "fb"),
+				"", instance.pid, truncate(instance.command_line, 96))
+		end
+	end
+	if #programs == 0 then
+		lines[#lines + 1] = "No GPU processes reported by NVIDIA."
+	elseif #programs > options.limit then
+		lines[#lines + 1] = string.format("... %d more GPU/program groups", #programs - options.limit)
+	end
+	lines[#lines + 1] = "SM: GPU execution; MEM: memory controller activity; ENC/DEC: video engines; VRAM: framebuffer memory."
+	lines[#lines + 1] = "Sorted by SM, ENC, DEC, then VRAM. Group percentages are sums and may exceed 100%."
+	lines[#lines + 1] = (terminal_state and "q quit | " or "") .. "- unavailable; * partial total. NVIDIA pmon support varies by GPU/driver."
+
+	if not options.no_clear and C.isatty(1) == 1 then
+		-- Reuse the other monitors' overwrite strategy to avoid full-screen flashes.
+		if not state.rendered then
+			io.write("\27[2J\27[H")
+			state.rendered = true
+		else
+			io.write("\27[H")
+		end
+		io.write(table.concat(lines, "\27[K\n"), "\27[K\n\27[J")
+	else
+		io.write(table.concat(lines, "\n"), "\n")
+	end
+	io.flush()
+end
+
+local function main()
+	local options = parse_options(arg)
+	local state = {}
+	local snapshots = 0
+	enable_terminal_input(options)
+	while not options.count or snapshots < options.count do
+		if quit_requested() then
+			break
+		end
+		local programs = sample_programs()
+		render(state, programs, options)
+		snapshots = snapshots + 1
+		if options.count and snapshots >= options.count then
+			break
+		end
+		if sleep_for(options.interval) then
+			break
+		end
+	end
+end
+
+local succeeded, error_message = xpcall(main, function(message) return tostring(message) end)
+restore_terminal()
+if not succeeded then
+	io.stderr:write("gpu-monitor: ", error_message, "\n")
+	os.exit(1)
+end
