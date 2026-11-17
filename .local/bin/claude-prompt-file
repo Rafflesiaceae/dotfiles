@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Start an interactive Claude Code session with the contents of a file as
+# the initial prompt. Any further arguments are passed through to claude.
+#
+# Usage: claude-prompt-file <file> [claude options...]
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+	echo "usage: $(basename "$0") <file> [claude options...]" >&2
+	exit 1
+fi
+
+file=$1
+shift
+
+if [[ ! -f $file || ! -r $file ]]; then
+	echo "error: '$file' is not a readable file" >&2
+	exit 1
+fi
+
+prompt=$(<"$file")
+
+if [[ -z ${prompt//[[:space:]]/} ]]; then
+	echo "error: '$file' is empty" >&2
+	exit 1
+fi
+
+# "--" ends option parsing so prompts starting with "-" aren't treated as flags
+exec claude "$@" -- "$prompt"

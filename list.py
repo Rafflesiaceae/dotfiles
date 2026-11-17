@@ -122,6 +122,7 @@ sources = {
     "./.local/bin/check-sh-dash": "",
     "./.local/bin/check-system": "",
     "./.local/bin/check-xml": "",
+    "./.local/bin/claude-prompt-file": "",
     "./.local/bin/clean": "",
     "./.local/bin/clean-zsh-dirstack": "",
     "./.local/bin/clipdiff": "",
