@@ -125,7 +125,6 @@ nvidia({
     format = function(value)
         local load = math.min(tonumber(value.load_percent) or 0, 99)
         local color = color_gradient3(load, 20, 60, 99, color_dim, color_degraded, color_bad)
-
         return {
             full_text = ("  🔘 <span foreground='%s'>%02.0f%%</span> "):format(color, load),
             markup = "pango",
@@ -159,11 +158,9 @@ json_command({
             tonumber(value.week) or 0,
             value["week_reset_local"]
         )
-
         if value.credits > 0 then
             result = result .. (" · credits %g"):format(tonumber(value.credits) or 0)
         end
-
         return {
             full_text = result .. "  ",
             markup = "pango",
