@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -eo pipefail
+claude-prompt-file ./claude-handoff.md

@@ -267,6 +267,7 @@ sources = {
     "./.local/bin/gr": "",
     "./.local/bin/grr": "",
     "./.local/bin/gru": "",
+    "./.local/bin/handoff-continue": "",
     "./.local/bin/hex-to-decimal": "",
     "./.local/bin/http-server": "",
     "./.local/bin/i3-chrome-open-url-in-mpv": {"linux": ""},
