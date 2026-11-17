@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""Drive repeated Claude handoff sessions inside a tmux pane.
+
+Loop:
+  1. type `handoff-continue` into the target pane (skipped on the first
+     round if something is already running there, in that case the
+     running session is watched instead)
+  2. poll the pane until the handoff path shows up in new output
+  3. wait for Claude to finish its turn, then exit it with Ctrl-C
+  4. go back to 1
+
+Usage:
+  handoff-loop -t 0:0.0
+  handoff-loop -t 0:0.0 -n 3          # stop after three sessions
+"""
+
+import argparse
+import re
+import subprocess
+import sys
+import time
+
+DEFAULT_NEEDLE = "/home/raf/workspace/reigw/claude-handoff.md"
+DEFAULT_COMMAND = "handoff-continue"
+
+# Shown in Claude Code's footer while a turn is in progress.
+BUSY_MARKER = "esc to interrupt"
+
+# CSI/OSC escape sequences, in case any leak into the captured text.
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)")
+WS_RE = re.compile(r"\s+")
+
+
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def tmux(*args):
+    return subprocess.run(
+        ["tmux", *args], check=True, capture_output=True, text=True
+    ).stdout
+
+
+def capture(target, history=True):
+    """Return pane text; with history=True the whole scrollback is included."""
+    args = ["capture-pane", "-p", "-J", "-t", target]
+    if history:
+        args += ["-S", "-"]
+    return tmux(*args)
+
+
+def squash(text):
+    """Remove escapes and all whitespace.
+
+    Claude Code wraps long lines itself (newline plus indentation), so a
+    path can be split over several screen lines. Dropping all whitespace on
+    both sides makes the match independent of where it got wrapped.
+    """
+    return WS_RE.sub("", ANSI_RE.sub("", text))
+
+
+def count_needle(target, needle):
+    return squash(capture(target)).count(needle)
+
+
+def pane_busy(target):
+    """True if the pane's shell has a child process (e.g. claude) running."""
+    pid = tmux("display-message", "-p", "-t", target, "#{pane_pid}").strip()
+    res = subprocess.run(["pgrep", "-P", pid], capture_output=True, text=True)
+    return bool(res.stdout.strip())
+
+
+def claude_working(target):
+    """True while Claude Code shows its 'esc to interrupt' footer."""
+    tail = capture(target, history=False).rstrip("\n").splitlines()[-6:]
+    return any(BUSY_MARKER in line for line in tail)
+
+
+def send_line(target, line):
+    # -l sends the text literally, Enter is sent as a separate key.
+    tmux("send-keys", "-t", target, "-l", line)
+    tmux("send-keys", "-t", target, "Enter")
+
+
+def already_done(target, needle):
+    """True if an attached session has printed the needle and is idle.
+
+    When attaching to a running session the scrollback cannot tell which
+    output belongs to it, so only the visible screen is trusted: if the
+    needle is on it and Claude is waiting for input, the session is done.
+    """
+    on_screen = needle in squash(capture(target, history=False))
+    return on_screen and not claude_working(target)
+
+
+def wait_for_needle(target, needle, poll):
+    """Block until the needle count rises above its baseline.
+
+    The baseline is the count present before this session produced
+    anything (old output in the scrollback). It is lowered whenever old
+    lines fall out of the history limit, so a later rise always means new
+    output. Returns False if the pane went idle without a match.
+    """
+    baseline = count_needle(target, needle)
+    while True:
+        time.sleep(poll)
+        current = count_needle(target, needle)
+        if current > baseline:
+            return True
+        baseline = min(baseline, current)
+        if not pane_busy(target):
+            return False
+
+
+def wait_until_idle(target, timeout, poll):
+    """Give Claude time to finish the turn in which it printed the path."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not pane_busy(target) or not claude_working(target):
+            return True
+        time.sleep(poll)
+    return False
+
+
+def stop_claude(target, timeout):
+    """Exit Claude Code via Ctrl-C until only the shell is left.
+
+    The first Ctrl-C interrupts a running turn or clears typed input, a
+    second one in quick succession exits Claude Code. Keys are only sent
+    while something is still running so the shell does not get spammed.
+    """
+    deadline = time.monotonic() + timeout
+    while pane_busy(target):
+        if time.monotonic() > deadline:
+            return False
+        tmux("send-keys", "-t", target, "C-c")
+        time.sleep(0.3)
+        if pane_busy(target):
+            tmux("send-keys", "-t", target, "C-c")
+        time.sleep(1.5)
+    return True
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument("-t", "--target", required=True,
+                    help="tmux target pane, e.g. 0:0.0 or %%3")
+    ap.add_argument("-c", "--command", default=DEFAULT_COMMAND,
+                    help="command typed into the pane (default: %(default)s)")
+    ap.add_argument("-s", "--needle", default=DEFAULT_NEEDLE,
+                    help="substring that ends a session (default: %(default)s)")
+    ap.add_argument("-n", "--iterations", type=int, default=0,
+                    help="number of sessions to finish, 0 = forever (default)")
+    ap.add_argument("--poll", type=float, default=2.0,
+                    help="poll interval in seconds (default: %(default)s)")
+    ap.add_argument("--idle-timeout", type=float, default=300.0,
+                    help="max seconds to wait for Claude to finish its turn "
+                         "after the match before stopping it anyway "
+                         "(default: %(default)s)")
+    ap.add_argument("--settle", type=float, default=3.0,
+                    help="extra seconds to wait before stopping Claude "
+                         "(default: %(default)s)")
+    ap.add_argument("--stop-timeout", type=float, default=60.0,
+                    help="max seconds to try exiting Claude (default: %(default)s)")
+    args = ap.parse_args()
+
+    needle = squash(args.needle)
+    if not needle:
+        ap.error("--needle must not be empty")
+
+    # Fail early on a bad target. display-message exits 0 even for unknown
+    # targets, list-panes does not.
+    try:
+        tmux("list-panes", "-t", args.target, "-F", "#{pane_id}")
+    except subprocess.CalledProcessError as e:
+        sys.exit(f"invalid tmux target {args.target!r}: {e.stderr.strip()}")
+
+    done = 0
+    while args.iterations == 0 or done < args.iterations:
+        matched = False
+        if pane_busy(args.target):
+            # Only expected on the first round: attach to the running session.
+            if already_done(args.target, needle):
+                log("attached session already printed the handoff path")
+                matched = True
+            else:
+                log("Claude already running in pane, watching that session")
+        else:
+            log(f"starting {args.command!r}")
+            send_line(args.target, args.command)
+
+        if not matched and not wait_for_needle(args.target, needle, args.poll):
+            log("session ended without printing the handoff path, stopping")
+            return 1
+        log("handoff path seen, waiting for Claude to finish its turn")
+
+        if not wait_until_idle(args.target, args.idle_timeout, args.poll):
+            log(f"still working after {args.idle_timeout:.0f}s, stopping anyway")
+        time.sleep(args.settle)
+
+        log("stopping Claude")
+        if not stop_claude(args.target, args.stop_timeout):
+            log("could not stop Claude, giving up")
+            return 1
+
+        done += 1
+        log(f"session {done} finished")
+        # Let the shell redraw its prompt before typing into it again.
+        time.sleep(1.0)
+
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)
