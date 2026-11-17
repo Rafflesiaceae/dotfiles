@@ -58,3 +58,5 @@
         - crop to the relevant region and avoid redundant captures
         - prefer a single visual verification after a batch of changes over
           repeated screenshots after every change
+
+- always chmod +x scripts with a shebang
