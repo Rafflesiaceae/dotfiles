@@ -523,9 +523,17 @@ def run_update(repos: list[dict], *, jobs: int, config_module=None, debug: bool 
         # immediate child leaves a grandchild holding the stdout/stderr pipe
         # open, and communicate() then blocks until *that* one exits on its
         # own instead of returning right away.
-        proc = subprocess.Popen(
-            cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True
-        )
+        try:
+            proc = subprocess.Popen(
+                cmd, cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True
+            )
+        except OSError as e:
+            # The command couldn't be started at all (e.g. a custom_clone_cmd
+            # naming a program that isn't on $PATH). Turn that into an
+            # ordinary failed result, using the shell's "command not found"
+            # exit code 127, so the caller reports it for this one repo
+            # instead of the exception tearing down the whole run.
+            return subprocess.CompletedProcess(cmd, 127, "", f"{cmd[0]}: {e.strerror or e}")
         with active_procs_lock:
             active_procs.add(proc)
         try:
