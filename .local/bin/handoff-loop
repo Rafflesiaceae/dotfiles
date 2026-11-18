@@ -5,7 +5,7 @@ Loop:
   1. type `handoff-continue` into the target pane (skipped on the first
      round if something is already running there, in that case the
      running session is watched instead)
-  2. poll the pane until the handoff path shows up in new output
+  2. poll the pane until the handoff path newly shows up on its screen
   3. wait for Claude to finish its turn, then exit it with Ctrl-C
   4. go back to 1
 
@@ -59,8 +59,9 @@ def squash(text):
     return WS_RE.sub("", ANSI_RE.sub("", text))
 
 
-def count_needle(target, needle):
-    return squash(capture(target)).count(needle)
+def needle_on_screen(target, needle):
+    """True if the needle is on the visible part of the pane."""
+    return needle in squash(capture(target, history=False))
 
 
 def pane_busy(target):
@@ -89,25 +90,30 @@ def already_done(target, needle):
     output belongs to it, so only the visible screen is trusted: if the
     needle is on it and Claude is waiting for input, the session is done.
     """
-    on_screen = needle in squash(capture(target, history=False))
-    return on_screen and not claude_working(target)
+    return needle_on_screen(target, needle) and not claude_working(target)
 
 
 def wait_for_needle(target, needle, poll):
-    """Block until the needle count rises above its baseline.
+    """Block until the needle newly shows up on the visible screen.
 
-    The baseline is the count present before this session produced
-    anything (old output in the scrollback). It is lowered whenever old
-    lines fall out of the history limit, so a later rise always means new
-    output. Returns False if the pane went idle without a match.
+    The scrollback is not usable for this: once it reaches tmux's
+    history-limit, tmux drops the oldest 10% in one go, which can remove
+    an old needle in the same poll interval in which the new one gets
+    printed, so any count over the scrollback can stay flat.
+
+    The screen may still show the previous session's needle right after
+    the command was typed, so a match only counts once the needle has
+    been off the screen at least once (scrolled away, or cleared by Claude
+    Code's redraw). Returns False if the pane went idle without a match.
     """
-    baseline = count_needle(target, needle)
+    armed = False
     while True:
         time.sleep(poll)
-        current = count_needle(target, needle)
-        if current > baseline:
-            return True
-        baseline = min(baseline, current)
+        if needle_on_screen(target, needle):
+            if armed:
+                return True
+        else:
+            armed = True
         if not pane_busy(target):
             return False
 
