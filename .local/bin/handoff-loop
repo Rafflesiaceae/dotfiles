@@ -5,7 +5,7 @@ Loop:
   1. type `handoff-continue` into the target pane (skipped on the first
      round if something is already running there, in that case the
      running session is watched instead)
-  2. poll the pane until the handoff path newly shows up on its screen
+  2. poll until the handoff file gets written after the session started
   3. wait for Claude to finish its turn, then exit it with Ctrl-C
   4. go back to 1
 
@@ -15,20 +15,16 @@ Usage:
 """
 
 import argparse
-import re
+import os
 import subprocess
 import sys
 import time
 
-DEFAULT_NEEDLE = "/home/raf/workspace/reigw/claude-handoff.md"
+DEFAULT_FILE = "/home/raf/workspace/reigw/claude-handoff.md"
 DEFAULT_COMMAND = "handoff-continue"
 
 # Shown in Claude Code's footer while a turn is in progress.
 BUSY_MARKER = "esc to interrupt"
-
-# CSI/OSC escape sequences, in case any leak into the captured text.
-ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*(?:\x07|\x1b\\)")
-WS_RE = re.compile(r"\s+")
 
 
 def log(msg):
@@ -41,39 +37,56 @@ def tmux(*args):
     ).stdout
 
 
-def capture(target, history=True):
-    """Return pane text; with history=True the whole scrollback is included."""
-    args = ["capture-pane", "-p", "-J", "-t", target]
-    if history:
-        args += ["-S", "-"]
-    return tmux(*args)
+def capture(target):
+    """Return the text on the visible part of the pane."""
+    return tmux("capture-pane", "-p", "-J", "-t", target)
 
 
-def squash(text):
-    """Remove escapes and all whitespace.
-
-    Claude Code wraps long lines itself (newline plus indentation), so a
-    path can be split over several screen lines. Dropping all whitespace on
-    both sides makes the match independent of where it got wrapped.
-    """
-    return WS_RE.sub("", ANSI_RE.sub("", text))
-
-
-def needle_on_screen(target, needle):
-    """True if the needle is on the visible part of the pane."""
-    return needle in squash(capture(target, history=False))
+def pane_children(target):
+    """PIDs of the processes started by the pane's shell."""
+    pid = tmux("display-message", "-p", "-t", target, "#{pane_pid}").strip()
+    res = subprocess.run(["pgrep", "-P", pid], capture_output=True, text=True)
+    return [int(p) for p in res.stdout.split()]
 
 
 def pane_busy(target):
     """True if the pane's shell has a child process (e.g. claude) running."""
-    pid = tmux("display-message", "-p", "-t", target, "#{pane_pid}").strip()
-    res = subprocess.run(["pgrep", "-P", pid], capture_output=True, text=True)
-    return bool(res.stdout.strip())
+    return bool(pane_children(target))
+
+
+def session_start(target):
+    """Wall-clock start time of the session running in the pane.
+
+    That is the oldest child of the pane's shell (the `handoff-continue`
+    wrapper, or claude itself if it was started directly). ps only gives
+    the elapsed time in whole seconds, which is precise enough here since
+    the handoff file is written minutes into a session. Returns None if
+    nothing is running.
+    """
+    pids = pane_children(target)
+    if not pids:
+        return None
+    res = subprocess.run(
+        ["ps", "-o", "etimes=", "-p", ",".join(map(str, pids))],
+        capture_output=True, text=True,
+    )
+    elapsed = [int(e) for e in res.stdout.split()]
+    if not elapsed:
+        return None
+    return time.time() - max(elapsed)
+
+
+def mtime(path):
+    """Modification time of path, or None if it does not exist."""
+    try:
+        return os.stat(path).st_mtime
+    except FileNotFoundError:
+        return None
 
 
 def claude_working(target):
     """True while Claude Code shows its 'esc to interrupt' footer."""
-    tail = capture(target, history=False).rstrip("\n").splitlines()[-6:]
+    tail = capture(target).rstrip("\n").splitlines()[-6:]
     return any(BUSY_MARKER in line for line in tail)
 
 
@@ -83,43 +96,31 @@ def send_line(target, line):
     tmux("send-keys", "-t", target, "Enter")
 
 
-def already_done(target, needle):
-    """True if an attached session has printed the needle and is idle.
+def handoff_written(path, since):
+    """True if the handoff file was modified after `since`."""
+    m = mtime(path)
+    return m is not None and m > since
 
-    When attaching to a running session the scrollback cannot tell which
-    output belongs to it, so only the visible screen is trusted: if the
-    needle is on it and Claude is waiting for input, the session is done.
+
+def wait_for_handoff(target, path, since, poll):
+    """Block until the handoff file gets written after `since`.
+
+    This does not depend on what Claude prints: the session counts as
+    handed off as soon as the file is newer than the session's start,
+    however the final message is worded. Returns False if the pane went
+    idle without the file being written.
     """
-    return needle_on_screen(target, needle) and not claude_working(target)
-
-
-def wait_for_needle(target, needle, poll):
-    """Block until the needle newly shows up on the visible screen.
-
-    The scrollback is not usable for this: once it reaches tmux's
-    history-limit, tmux drops the oldest 10% in one go, which can remove
-    an old needle in the same poll interval in which the new one gets
-    printed, so any count over the scrollback can stay flat.
-
-    The screen may still show the previous session's needle right after
-    the command was typed, so a match only counts once the needle has
-    been off the screen at least once (scrolled away, or cleared by Claude
-    Code's redraw). Returns False if the pane went idle without a match.
-    """
-    armed = False
     while True:
-        time.sleep(poll)
-        if needle_on_screen(target, needle):
-            if armed:
-                return True
-        else:
-            armed = True
+        if handoff_written(path, since):
+            return True
         if not pane_busy(target):
-            return False
+            # The file may have been written right before the exit.
+            return handoff_written(path, since)
+        time.sleep(poll)
 
 
 def wait_until_idle(target, timeout, poll):
-    """Give Claude time to finish the turn in which it printed the path."""
+    """Give Claude time to finish the turn in which it wrote the file."""
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if not pane_busy(target) or not claude_working(target):
@@ -155,16 +156,17 @@ def main():
                     help="tmux target pane, e.g. 0:0.0 or %%3")
     ap.add_argument("-c", "--command", default=DEFAULT_COMMAND,
                     help="command typed into the pane (default: %(default)s)")
-    ap.add_argument("-s", "--needle", default=DEFAULT_NEEDLE,
-                    help="substring that ends a session (default: %(default)s)")
+    ap.add_argument("-f", "--file", default=DEFAULT_FILE,
+                    help="handoff file whose update ends a session "
+                         "(default: %(default)s)")
     ap.add_argument("-n", "--iterations", type=int, default=0,
                     help="number of sessions to finish, 0 = forever (default)")
     ap.add_argument("--poll", type=float, default=2.0,
                     help="poll interval in seconds (default: %(default)s)")
     ap.add_argument("--idle-timeout", type=float, default=300.0,
                     help="max seconds to wait for Claude to finish its turn "
-                         "after the match before stopping it anyway "
-                         "(default: %(default)s)")
+                         "after the file was written before stopping it "
+                         "anyway (default: %(default)s)")
     ap.add_argument("--settle", type=float, default=3.0,
                     help="extra seconds to wait before stopping Claude "
                          "(default: %(default)s)")
@@ -172,9 +174,9 @@ def main():
                     help="max seconds to try exiting Claude (default: %(default)s)")
     args = ap.parse_args()
 
-    needle = squash(args.needle)
-    if not needle:
-        ap.error("--needle must not be empty")
+    # The pane's shell may have a different cwd, so a relative path would
+    # silently point at the wrong file.
+    path = os.path.abspath(args.file)
 
     # Fail early on a bad target. display-message exits 0 even for unknown
     # targets, list-panes does not.
@@ -185,22 +187,21 @@ def main():
 
     done = 0
     while args.iterations == 0 or done < args.iterations:
-        matched = False
-        if pane_busy(args.target):
-            # Only expected on the first round: attach to the running session.
-            if already_done(args.target, needle):
-                log("attached session already printed the handoff path")
-                matched = True
-            else:
-                log("Claude already running in pane, watching that session")
+        since = session_start(args.target)
+        if since is not None:
+            # Only expected on the first round: attach to the running
+            # session and measure the file against when it was started,
+            # so an already finished session is detected right away.
+            log("Claude already running in pane, watching that session")
         else:
+            since = time.time()
             log(f"starting {args.command!r}")
             send_line(args.target, args.command)
 
-        if not matched and not wait_for_needle(args.target, needle, args.poll):
-            log("session ended without printing the handoff path, stopping")
+        if not wait_for_handoff(args.target, path, since, args.poll):
+            log("session ended without writing the handoff file, stopping")
             return 1
-        log("handoff path seen, waiting for Claude to finish its turn")
+        log("handoff file written, waiting for Claude to finish its turn")
 
         if not wait_until_idle(args.target, args.idle_timeout, args.poll):
             log(f"still working after {args.idle_timeout:.0f}s, stopping anyway")
