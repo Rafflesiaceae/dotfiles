@@ -2,17 +2,13 @@
 # Creates a marker file with optional contents.
 # Removes the file when stdin reaches EOF, including when
 # the parent process crashes or is killed with SIGKILL.
-#
 # Usage:
-#   ./examples/marker-watch.siml /tmp/foo
-#   ./examples/marker-watch.siml /tmp/foo 'foo\nboo\ncsd\n'
-#
+# ./examples/marker-watch.siml /tmp/foo
+# ./examples/marker-watch.siml /tmp/foo 'foo\nboo\ncsd\n'
 # The parent must keep the watchdog's stdin pipe open.
-
 name: marker-watch
 command: meson setup build && meson compile -C build
 bin-path: build/marker-watch
-
 files:
   main.c: |
     #include <errno.h>
@@ -110,9 +106,9 @@ files:
 
         return 0;
     }
-
   meson.build: |
     project('marker-watch', 'c',
       default_options: ['c_std=c99', 'warning_level=3'])
 
     executable('marker-watch', 'main.c')
+# vim: set ft=siml:
