@@ -5,11 +5,14 @@ Write `./claude-handoff.md` under 60 lines so a fresh session with no context ca
 Be specific (paths, commands, commit hashes, errors), don't repeat repo docs (link to them instead), leave out secrets, and don't commit the file.
 
 Sections (write "none" if empty):
-1. **Goal**
-2. **State**: branch, what works, what's broken, uncommitted changes
-3. **Done**: with commit hashes
-4. **Next**: ordered steps, first one marked
-5. **Decisions**: what I decided and why, plus rejected options
-6. **Dropped**: finished or unwanted topics that must not come up again
-7. **Open questions**
-8. **Verify**: commands to check progress, and known noise to ignore
+1. **Scope**: limits I set (e.g. "only the server, not the client"), quoted verbatim from my messages or the previous handoff's Scope. Never reword, widen, drop or infer them; only I can change them.
+2. **Goal**
+3. **State**: branch, what works, what's broken, uncommitted changes
+4. **Done**: with commit hashes
+5. **Next**: ordered steps, first one marked, all inside Scope (anything outside goes to Open questions)
+6. **Decisions**: what I decided and why, plus rejected options
+7. **Dropped**: finished or unwanted topics that must not come up again
+8. **Open questions**
+9. **Verify**: commands to check progress, and known noise to ignore
+
+A handoff's Scope binds the next session as if I had just typed it.
