@@ -492,10 +492,10 @@ EOF
 #!/usr/bin/env bash
 set -eo pipefail
 
-parentd="$(dirname "${BASH_SOURCE[0]}")"
+# cd to parent dir of current script
+cd "$(dirname "${BASH_SOURCE[0]}")"
 
-"${parentd}/build.sh"
-"${parentd}/MY_BINARY_REPLACE_THIS" "$@"
+set -x
 EOF
         ;;
 # }}}
