@@ -7,7 +7,7 @@ Be specific (paths, commands, commit hashes, errors), don't repeat repo docs (li
 Sections (write "none" if empty):
 1. **Scope**: limits I set (e.g. "only the server, not the client"), quoted verbatim from my messages or the previous handoff's Scope. Never reword, widen, drop or infer them; only I can change them.
 2. **Goal**
-3. **State**: branch, what works, what's broken, uncommitted changes
+3. **State**: branch, what works, what's broken, uncommitted changes; if the project defines progress numbers, a **Progress** line with them freshly run (e.g. reigw: `./dev.py status` per target in Scope, its wrong bytes and layout defects, how many links ago wrong bytes was lowest, and the session's change since its start)
 4. **Done**: with commit hashes
 5. **Next**: ordered steps, first one marked, all inside Scope (anything outside goes to Open questions)
 6. **Decisions**: what I decided and why, plus rejected options
