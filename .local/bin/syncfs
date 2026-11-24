@@ -6,11 +6,12 @@
 -- Local stamp  = <syncdir>/.syncfs, first numeric line stores POSIX seconds.
 --
 -- Git ignore handling:
---   By default this script asks Git for the ignored path set and feeds those
---   exact paths to rsync via a generated --exclude-from file. This avoids
---   rsync's .gitignore-like filter syntax, which is not identical to Git's.
+--   Disabled by default. With --gitignore this script asks Git for the ignored
+--   path set and feeds those exact paths to rsync via a generated
+--   --exclude-from file. This avoids rsync's .gitignore-like filter syntax,
+--   which is not identical to Git's.
 --
--- Requirements: luajit, rsync, git (unless --no-gitignore), realpath/readlink/python3,
+-- Requirements: luajit, rsync, git (only with --gitignore), realpath/readlink/python3,
 --               md5sum or md5.
 
 local VERSION = "2.0.1-luajit"
@@ -358,8 +359,8 @@ Global options:
   -h, --help                   Show help.
 
 Git ignore options:
-      --no-gitignore           Disable Git-ignore based excludes entirely.
-      --gitignore              Enable Git-ignore based excludes. This is default.
+      --no-gitignore           Disable Git-ignore based excludes entirely. This is default.
+      --gitignore              Enable Git-ignore based excludes.
       --gitignore-mode MODE    MODE is one of:
                                   git    Ignore exactly what Git treats as ignored
                                          for this worktree. Tracked files are kept.
@@ -385,7 +386,7 @@ Behavior notes:
     in both push and pull directions.
   - .syncfs is always excluded.
   - .git is always included, so repository metadata is synced.
-  - Git-ignore support is implemented by asking Git for ignored paths and passing
+  - Git-ignore support is off by default (enable with --gitignore). It is implemented by asking Git for ignored paths and passing
     those exact paths to rsync. This handles recursive .gitignore files, negation,
     .git/info/exclude, and core.excludesFile the same way Git does.
   - If syncdir is not itself inside a Git worktree, syncfs searches for .git
@@ -405,7 +406,8 @@ local function parse_args(argv)
 		remote = os.getenv("SYNCFS_REMOTE"),
 		rsync = "rsync",
 		git = "git",
-		gitignore = true,
+		-- Git-ignore excludes are opt-in via --gitignore.
+		gitignore = false,
 		gitignore_mode = "git",
 		delete = true,
 		dry_run = false,
@@ -638,7 +640,7 @@ local function make_git_exclude_file(cfg, syncdir)
 	if not cfg.gitignore then
 		return nil
 	end
-	need(cfg.git, "needed unless --no-gitignore is used")
+	need(cfg.git, "needed when --gitignore is used")
 
 	-- Build a list of {root, prefix} pairs: each git repo root to query, plus
 	-- the path prefix (relative to syncdir) to prepend to its reported paths.
