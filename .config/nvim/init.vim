@@ -178,6 +178,12 @@ let g:ycm_language_server =
   \     'cmdline': [ 'java', '-jar', $HOME.'/workspace/jenkins-lsp/target/jenkins-lsp-1.0.0-all.jar', '--stdio' ],
   \     'filetypes': ['jenkins', 'groovy'],
   \   },
+  \   {
+  \     'name': 'lua',
+  \     'cmdline': [ 'luals'],
+  \     'filetypes': ['lua'],
+  \     'project_root_files': [ '.luarc.json', '.luarc.jsonc', '.git' ],
+  \   },
   \ ]
   " \   {
   " \     'name': 'groovy',
