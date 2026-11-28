@@ -44,8 +44,34 @@ if [[ "$1" != "--run" ]]; then
         fi
     done
 
-    # cat it
-    asciinema play -s 1000000 "$latest_cast_file"
+    # cat it, so the output survives the tmux session in the scrollback
+    #
+    # the recording contains everything programs sent to the (tmux)
+    # terminal, including queries (e.g. nvim asks for the background color
+    # via OSC 11, device attributes, DECRQM modes, kitty keyboard flags).
+    # replaying those verbatim makes the real terminal answer them, and the
+    # answers land in the tty input queue as if typed: after this script
+    # exits zsh reads them, the BEL terminating the OSC 11 reply triggers
+    # the ^G fzf widget and the rest shows up as garbage at the prompt.
+    # so dump the raw output and strip every query (plus window ops like
+    # resizing) before printing it
+    asciinema convert -f raw "$latest_cast_file" - | perl -0777 -pe '
+        s/\e\[[?>=]?[0-9;]*c//g;                         # DA1/DA2/DA3
+        s/\e\[\??[0-9;]*n//g;                            # DSR / CPR
+        s/\e\[\??[0-9;]*\$p//g;                          # DECRQM
+        s/\e\[\?u//g;                                    # kitty keyboard flags
+        s/\e\[>[0-9]*q//g;                               # XTVERSION
+        s/\e\[[0-9;]*t//g;                               # window ops/reports
+        s/\e\](?:1[0-9]|4;[0-9]+|52;[^;\a\e]*);\?(?:\a|\e\\)//g; # OSC color/clipboard queries
+        s/\eP[\$+]q.*?\e\\//gs;                          # DECRQSS / XTGETTCAP
+    '
+
+    # anything we failed to filter still gets answered by the terminal, so
+    # give it a moment to reply and then drain the tty input queue, which
+    # keeps such replies from reaching the shell prompt
+    if [[ -t 0 ]]; then
+        while IFS= read -r -s -n 1 -t 0.2 _; do :; done
+    fi
 
     exit 0
 fi
