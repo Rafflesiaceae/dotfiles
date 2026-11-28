@@ -7,7 +7,7 @@ export PAGER=cat
 export RIPGREP_CONFIG_PATH="$HOME/.config/.ripgreprc"
 
 # fzf
-export FZF_DEFAULT_OPTS="--no-separator"
+export FZF_DEFAULT_OPTS="--no-separator --color=pointer:green"
 
 # ssh
 export SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-$XDG_RUNTIME_DIR/ssh-agent.socket}"

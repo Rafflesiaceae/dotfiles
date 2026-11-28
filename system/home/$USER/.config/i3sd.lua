@@ -180,8 +180,8 @@ command({
         -- Other distributions get no block at all.
         return false
     end)(),
-    -- Upgrades are a days-scale concern, so checking every six hours is enough.
-    interval = 6 * 3600,
+    interval = 3 * 3600,
+    active_interval = 30,
     order = 400000,
     format = function(stdout)
         local last = tonumber(stdout:match("%d+"))
