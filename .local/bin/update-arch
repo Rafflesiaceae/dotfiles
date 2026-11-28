@@ -7,6 +7,7 @@ set -eo pipefail
 cbold=$(2>/dev/null tput bold) || true
 cblue=$(2>/dev/null tput setaf 4) || true
 cred=$(2>/dev/null tput setaf 1) || true
+cyellow=$(2>/dev/null tput setaf 3) || true
 creset=$(2>/dev/null tput sgr0) || true
 
 # prints a colored section banner, used in place of plain `echo` so the
